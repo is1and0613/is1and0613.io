@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>晚寝查寝系统 · 登录</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #EAF0E2;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px 32px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 24px rgba(44, 67, 111, 0.12);
+            text-align: center;
+        }
+        
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            background: #2C436F;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            color: white;
+            font-size: 36px;
+        }
+        
+        .login-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .login-subtitle {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 32px;
+        }
+        
+        .input-group {
+            margin-bottom: 24px;
+            text-align: left;
+        }
+        
+        .input-label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 16px;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 14px 14px 14px 44px;
+            border: 1px solid #d9d9d9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+            outline: none;
+        }
+        
+        .input-field:focus {
+            border-color: #2C436F;
+            box-shadow: 0 0 0 3px rgba(44, 67, 111, 0.1);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: #2C436F;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .login-btn:active {
+            background: #1a2d4d;
+            transform: scale(0.98);
+        }
+        
+        /* 提示消息 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2C436F;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 15px;
+            z-index: 3000;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(44, 67, 111, 0.3);
+        }
+        
+        .toast.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -40%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="login-icon">
+            <i class="fas fa-bed"></i>
+        </div>
+        <div class="login-title">晚寝查寝系统</div>
+        <div class="login-subtitle">请登录以继续使用</div>
+        
+        <div class="input-group">
+            <label class="input-label">登录密码</label>
+            <div class="input-wrapper">
+                <i class="fas fa-lock"></i>
+                <input type="password" class="input-field" id="password" placeholder="请输入密码" onkeypress="if(event.key==='Enter')doLogin()">
+            </div>
+        </div>
+        
+        <button class="login-btn" onclick="doLogin()">
+            <i class="fas fa-sign-in-alt"></i>
+            登录
+        </button>
+    </div>
+    
+    <!-- 提示消息 -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        async function doLogin() {
+            const password = document.getElementById('password').value.trim();
+            
+            if (!password) {
+                showToast('请输入密码');
+                return;
+            }
+            
+            const btn = document.querySelector('.login-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>登录中...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    sessionStorage.setItem('loggedIn', 'true');
+                    showToast('登录成功');
+                    setTimeout(() => {
+                        window.location.replace('index.html');
+                    }, 500);
+                } else {
+                    showToast(data.message || '密码错误');
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').focus();
+                }
+            } catch (error) {
+                console.error('登录请求失败:', error);
+                showToast('网络错误，请稍后重试');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+        
+        // 页面加载时自动聚焦密码框
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('password').focus();
+        });
+    </script>
+</body>
+</html>

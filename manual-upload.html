@@ -1,0 +1,2622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手动输入假单</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #EAF0E2;
+            font-size: 14px;
+            line-height: 1.5;
+            padding-bottom: 120px;
+            color: #1a1a2e;
+            letter-spacing: 0.02em;
+        }
+        
+        /* 顶部导航 */
+        .header {
+            background: #2C436F;
+            color: white;
+            padding: 12px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(44, 67, 111, 0.15);
+        }
+        
+        .header-back {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .header-back:active {
+            transform: scale(0.92);
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .header h1 {
+            font-size: 17px;
+            font-weight: 600;
+            flex: 1;
+            letter-spacing: 0.02em;
+        }
+        
+        /* 提示横幅 - 温馨背景：月苍白 */
+        .tip-banner {
+            background: #F9F6E5;
+            border: 1px solid #F9F6E5;
+            border-radius: 12px;
+            margin: 12px 16px;
+            padding: 16px;
+            text-align: center;
+        }
+        
+        .tip-banner .content {
+            color: #492D22;
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        
+        .tip-banner .content .highlight {
+            color: #2C436F;
+            font-weight: 600;
+        }
+        
+        .tip-banner .content .emoji {
+            font-size: 16px;
+        }
+        
+        .tip-banner .copy-btn {
+            background: #2C436F;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 0 auto;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .tip-banner .copy-btn:hover,
+        .tip-banner .copy-btn:active {
+            background: #1a2d4d;
+            transform: scale(0.96);
+        }
+        
+        /* 格式说明 */
+        .format-guide {
+            background: white;
+            margin: 12px 16px;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(44, 67, 111, 0.08);
+            border: 1px solid rgba(44, 67, 111, 0.05);
+        }
+        
+        .format-guide .title {
+            font-weight: 600;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .format-guide .title i {
+            color: #2C436F;
+        }
+        
+        .format-guide .desc {
+            color: #414b4e;
+            font-size: 13px;
+            margin-top: 8px;
+            padding: 12px;
+            background: #EAF0E2;
+            border-radius: 8px;
+        }
+        
+        /* 输入区域 */
+        .input-section {
+            background: white;
+            margin: 12px 16px;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(44, 67, 111, 0.08);
+            border: 1px solid rgba(44, 67, 111, 0.05);
+        }
+        
+        .input-section .label {
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+        }
+        
+        .input-section textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            font-family: monospace;
+            line-height: 1.6;
+        }
+        
+        .input-section textarea:focus {
+            outline: none;
+            border-color: #2C436F;
+            box-shadow: 0 0 0 2px rgba(44, 67, 111, 0.1);
+        }
+        
+        .input-section .parse-btn {
+            width: 100%;
+            padding: 12px;
+            background: #2C436F;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .input-section .parse-btn:hover,
+        .input-section .parse-btn:active {
+            background: #1a2d4d;
+            transform: scale(0.95);
+        }
+        
+        /* 清洗预览折叠面板 */
+        .preview-section {
+            background: white;
+            margin: 12px 16px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(44, 67, 111, 0.08);
+            border: 1px solid rgba(44, 67, 111, 0.05);
+            display: none;
+        }
+        
+        .preview-section.show {
+            display: block;
+        }
+        
+        .preview-header {
+            padding: 14px 16px;
+            background: #fafafa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #e8e8e8;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s;
+        }
+        
+        .preview-header:active {
+            background: #f0f0f0;
+        }
+        
+        .preview-header .title {
+            font-weight: 600;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .preview-header .title i {
+            color: #2C436F;
+            transition: transform 0.3s;
+        }
+        
+        .preview-section.collapsed .preview-header .title i {
+            transform: rotate(-90deg);
+        }
+        
+        .preview-body {
+            padding: 16px;
+        }
+        
+        .preview-section.collapsed .preview-body {
+            display: none;
+        }
+        
+        .preview-step {
+            margin-bottom: 16px;
+        }
+        
+        .preview-step:last-child {
+            margin-bottom: 0;
+        }
+        
+        .preview-step .step-title {
+            font-size: 13px;
+            color: #414b4e;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .preview-step .step-content {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .preview-step .step-content.cleaned {
+            background: #F9F6E5;
+            color: #492D22;
+        }
+        
+        /* 结果预览 */
+        .result-section {
+            display: none;
+        }
+        
+        .result-section.show {
+            display: block;
+        }
+        
+        .result-header {
+            background: white;
+            margin: 12px 16px 0;
+            border-radius: 12px 12px 0 0;
+            padding: 16px;
+            border-bottom: 1px solid #e8e8e8;
+            box-shadow: 0 4px 12px rgba(44, 67, 111, 0.08);
+        }
+        
+        .result-header .title {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+        
+        .result-header .count {
+            color: #2C436F;
+        }
+        
+        /* 分组卡片 */
+        .group-card {
+            background: white;
+            margin: 0 16px 12px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(44, 67, 111, 0.08);
+            border: 1px solid rgba(44, 67, 111, 0.05);
+        }
+        
+        .group-card:first-of-type {
+            border-radius: 0 0 12px 12px;
+            margin-top: 0;
+        }
+        
+        .group-header {
+            padding: 14px 16px;
+            background: #fafafa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #e8e8e8;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s;
+        }
+        .group-header:active {
+            background: #f0f0f0;
+        }
+        
+        .group-header .group-name {
+            font-weight: 600;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .group-header .group-name i {
+            color: #999;
+            transition: transform 0.3s;
+        }
+        
+        .group-card.collapsed .group-name i {
+            transform: rotate(-90deg);
+        }
+        
+        .group-header .group-count {
+            font-size: 13px;
+            color: #414b4e;
+        }
+        
+        .group-body {
+            padding: 16px;
+        }
+        
+        .group-card.collapsed .group-body {
+            display: none;
+        }
+        
+        /* 类型选择 */
+        .type-section {
+            margin-bottom: 16px;
+        }
+        
+        .type-section .label {
+            font-size: 13px;
+            color: #414b4e;
+            margin-bottom: 8px;
+        }
+        
+        .type-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .type-option {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            color: #414b4e;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .type-option:hover {
+            border-color: #2C436F;
+        }
+        
+        .type-option.selected {
+            border-color: #2C436F;
+            background: #EAF0E2;
+            color: #2C436F;
+        }
+        
+        .type-option:active {
+            transform: scale(0.92);
+        }
+        
+        .type-option input {
+            display: none;
+        }
+        
+        /* 事由选择 */
+        .reason-section {
+            margin-bottom: 16px;
+        }
+        
+        .reason-section .label {
+            font-size: 13px;
+            color: #414b4e;
+            margin-bottom: 8px;
+        }
+        
+        .reason-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .reason-option {
+            padding: 8px 14px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #414b4e;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .reason-option:hover {
+            border-color: #2C436F;
+        }
+        
+        .reason-option.selected {
+            border-color: #2C436F;
+            background: #EAF0E2;
+            color: #2C436F;
+        }
+        
+        .reason-option:active {
+            transform: scale(0.92);
+        }
+        
+        .reason-option input {
+            display: none;
+        }
+        
+        .reason-other-input {
+            width: 100%;
+            margin-top: 8px;
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 13px;
+            display: none;
+        }
+        
+        .reason-other-input.show {
+            display: block;
+        }
+        
+        .reason-other-input:focus {
+            outline: none;
+            border-color: #2C436F;
+            box-shadow: 0 0 0 2px rgba(44, 67, 111, 0.1);
+        }
+        
+        /* 人员列表 */
+        .people-list {
+            border-top: 1px solid #e8e8e8;
+            padding-top: 12px;
+        }
+        
+        .people-list .label {
+            font-size: 13px;
+            color: #414b4e;
+            margin-bottom: 8px;
+        }
+        
+        .person-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s;
+        }
+        
+        .person-item:active {
+            background: #f5f5f5;
+        }
+        
+        .person-item:last-child {
+            border-bottom: none;
+        }
+        
+        .person-item.not-found {
+            color: #ff8a00;
+        }
+        
+        .person-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d9d9d9;
+            border-radius: 4px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: white;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+        
+        .person-checkbox.checked {
+            background: #2C436F;
+            border-color: #2C436F;
+            transform: scale(1);
+            animation: checkPop 0.2s ease;
+        }
+        
+        @keyframes checkPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .person-info {
+            flex: 1;
+        }
+        
+        .person-name {
+            font-size: 14px;
+            color: #1a1a2e;
+        }
+        
+        .person-location {
+            font-size: 12px;
+            color: #414b4e;
+            margin-left: 8px;
+        }
+        
+        .person-item.not-found .person-location {
+            color: #ff8a00;
+        }
+        
+        /* 报告预览 */
+        .report-preview {
+            background: white;
+            margin: 12px 16px;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(44, 67, 111, 0.08);
+            border: 1px solid rgba(44, 67, 111, 0.05);
+        }
+        
+        .report-preview .title {
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+        }
+        
+        .report-content {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* 底部按钮 */
+        .bottom-actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e8e8e8;
+            padding: 12px 16px;
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+        
+        .bottom-btn {
+            flex: 1;
+            padding: 14px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .bottom-btn.secondary {
+            background: #EAF0E2;
+            color: #2C436F;
+        }
+        
+        .bottom-btn.secondary:hover,
+        .bottom-btn.secondary:active {
+            background: #d4e0cc;
+            transform: scale(0.96);
+        }
+        
+        .bottom-btn.primary {
+            background: #2C436F;
+            color: white;
+        }
+        
+        .bottom-btn.primary:hover,
+        .bottom-btn.primary:active {
+            background: #1a2d4d;
+            transform: scale(0.96);
+        }
+        
+        /* 提示消息 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2C436F;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 14px;
+            z-index: 3000;
+            display: none;
+            box-shadow: 0 4px 16px rgba(44, 67, 111, 0.3);
+        }
+        
+        .toast.show {
+            display: block;
+            animation: toastIn 0.3s ease;
+        }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translate(-50%, -40%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #414b4e;
+        }
+        
+        /* Loading 动画 */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #ff8a00;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .reason-option.has-children {
+            background: #F9F6E5;
+            border-color: #ff8a00;
+            color: #492D22;
+            grid-column: span 3;
+            text-align: center;
+            font-weight: 500;
+        }
+        .reason-option.has-children.selected {
+            background: #ff8a00;
+            color: white;
+            border-color: #ff8a00;
+        }
+        .sub-reason-menu {
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 文本高亮样式 */
+        .highlight-name {
+            color: #2C436F;
+            font-weight: 600;
+            background: rgba(253, 217, 95, 0.4);
+            padding: 0 4px;
+            border-radius: 3px;
+        }
+        
+        .highlight-reason {
+            color: #2C436F;
+            font-weight: 600;
+        }
+
+        /* 全局加载遮罩 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #EAF0E2;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            transition: opacity 0.3s ease;
+        }
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-spinner-large {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(44, 67, 111, 0.2);
+            border-top-color: #2C436F;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #2C436F;
+            font-size: 14px;
+        }
+        .loading-error {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 0 24px;
+            text-align: center;
+        }
+        .loading-error.show {
+            display: flex;
+        }
+        .loading-error p {
+            color: #ff4d4f;
+            font-size: 14px;
+        }
+        .loading-error button {
+            background: #2C436F;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- 全局加载遮罩 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner-large"></div>
+        <div class="loading-text">正在加载宿舍数据...</div>
+        <div class="loading-error" id="loadingError">
+            <p>加载数据失败，请检查网络后刷新重试</p>
+            <button onclick="location.reload()">刷新页面</button>
+        </div>
+    </div>
+
+    <!-- 顶部导航 -->
+    <div class="header">
+        <div class="header-back" onclick="goBack()">
+            <i class="fas fa-arrow-left"></i>
+        </div>
+        <h1>手动输入假单</h1>
+    </div>
+    
+    <!-- 提示横幅 -->
+    <div class="tip-banner">
+        <div class="content">
+            <p>建议先把假单丢给豆包让它</p>
+            <p class="highlight">"提取图片中人名并以空格间隔"</p>
+            <br>
+            <p>开发者能力有限，内置的OCR烂得不行</p>
+            <p>有好的ai就让我们把它用起来好吗！<span class="emoji">💪💪</span></p>
+        </div>
+        <button class="copy-btn" onclick="copyPromptText()">
+            <i class="fas fa-clipboard"></i>复制提示文字
+        </button>
+    </div>
+    
+    <!-- 格式说明 -->
+    <div class="format-guide">
+        <div class="title">
+            <i class="fas fa-magic"></i>
+            支持自由输入，自动识别人名和事由
+        </div>
+        <div class="desc">
+            系统会自动从文本中提取人名和关键词（数分/网安/阿sir/辩论队/备赛/请假离校等），支持混合格式：人名事由交替、事由在前扩散、标题分组等多种格式
+        </div>
+    </div>
+    
+    <!-- 输入区域 -->
+    <div class="input-section">
+        <div class="label">请粘贴人名列表</div>
+        <textarea id="inputText" placeholder="例如：&#10;604-1何锐颖 数分&#10;604-2杨欣欣 数分&#10;605-1田宸菲 数分&#10;605-3秦小斐 辩论队&#10;&#10;或：&#10;数分 何锐颖 杨欣欣 田宸菲 辩论队 秦小斐"></textarea>
+        <button class="parse-btn" onclick="parseInput()">
+            <i class="fas fa-magic"></i>智能解析
+        </button>
+    </div>
+    
+    <!-- 清洗预览折叠面板 -->
+    <div class="preview-section" id="previewSection">
+        <div class="preview-header" onclick="togglePreview()">
+            <div class="title">
+                <i class="fas fa-chevron-down"></i>
+                清洗预览（点击查看解析过程）
+            </div>
+        </div>
+        <div class="preview-body">
+            <div class="preview-step">
+                <div class="step-title">1. 原始文本</div>
+                <div class="step-content" id="originalPreview"></div>
+            </div>
+            <div class="preview-step">
+                <div class="step-title">2. 清洗后文本（去除宿舍编号、班级前缀等）</div>
+                <div class="step-content cleaned" id="cleanedPreview"></div>
+            </div>
+            <div class="preview-step">
+                <div class="step-title">3. 识别结果</div>
+                <div class="step-content" id="resultPreview"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 结果预览 -->
+    <div class="result-section" id="resultSection">
+        <div class="result-header">
+            <div class="title">解析到 <span class="count" id="groupCount">0</span> 组人员</div>
+        </div>
+        
+        <div id="groupsContainer"></div>
+        
+        <!-- 报告预览 -->
+        <div class="report-preview">
+            <div class="title">报告预览</div>
+            <pre class="report-content" id="reportContent"></pre>
+        </div>
+    </div>
+    
+    <!-- 底部按钮 -->
+    <div class="bottom-actions" id="bottomActions" style="display: none;">
+        <button class="bottom-btn secondary" onclick="goBack()">取消</button>
+        <button class="bottom-btn primary" onclick="applyAll()">
+            <i class="fas fa-check"></i>应用所有假单
+        </button>
+    </div>
+    
+    <!-- 提示消息 -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+// ============================================
+// 全局状态
+// ============================================
+const state = {
+    groups: [],
+    nameIndex: {},
+    allNames: [],
+    namePatterns: [],
+    lastCleanedText: '',
+    lastParseResult: null,
+    collapsedStates: {}  // 修改：存储各 group 的折叠状态
+};
+
+// ============================================
+// 从后端 API 加载宿舍数据
+// ============================================
+async function loadDormData() {
+    try {
+        const response = await fetch('/api/dorm-data');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        window.dormData = data.dormData;
+        window.nameIndex = data.nameIndex;
+
+        // 隐藏加载遮罩
+        document.getElementById('loadingOverlay').classList.add('hidden');
+
+        // 数据加载完成后初始化
+        initApp();
+    } catch (error) {
+        console.error('加载宿舍数据失败:', error);
+        document.querySelector('.loading-spinner-large').style.display = 'none';
+        document.querySelector('.loading-text').style.display = 'none';
+        document.getElementById('loadingError').classList.add('show');
+        showToast('加载数据失败，请刷新重试');
+    }
+}
+
+function initApp() {
+    buildNameIndex();
+
+    // 优先处理 URL 参数 ?text=xxx（来自 OCR 识别结果）
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlText = urlParams.get('text');
+    if (urlText) {
+        updateToOCRPipelineUI();
+        const inputText = document.getElementById('inputText');
+        inputText.value = urlText;
+        setTimeout(() => {
+            parseInput();
+        }, 300);
+    } else {
+        checkOCRPipelineMode();
+    }
+}
+
+// ============================================
+// 事由关键词映射（大小写不敏感）
+// ============================================
+const reasonKeywords = {
+    // 工作室类型
+    '数分': '数分', '数分工作室': '数分', '数据分析工作室': '数分',
+    '数据分析': '数分', 'data': '数分',
+    '网安': '网安', '网安工作室': '网安', '网络安全工作室': '网安', '网络安全': '网安',
+    '阿sir': '阿sir', '啊sir': '阿sir', '啊SIR': '阿sir', '预备阿sir': '阿sir',
+    '自媒体工作室': '阿sir', '预备阿sir自媒体工作室': '阿sir', '自媒体': '阿sir',
+    'sir': '阿sir', '阿SIR': '阿sir', '阿Sir': '阿sir',
+    '数据实战': '数实战', '数据实战工作室': '数实战', '数实战': '数实战',
+    '网管': '网管', '网管工作室': '网管',
+    
+    // 新增事由
+    '分团委': '分团委', '学生会': '学生会', '合唱团': '合唱团',
+    '运动会': '运动会', '警乐团': '警乐团', '羽毛球': '羽毛球',
+    
+    // 其他事由
+    '辩论队': '辩论队', '辩队': '辩论队',
+    '备赛': '备赛', '比赛': '备赛', '竞赛': '备赛',
+    '复习': '复习', '学习': '学习', '自习': '学习',
+    '校督': '校督', '校督促': '校督',
+    
+    // 请假类型
+    '请假离校': 'leaveSchool', '离校': 'leaveSchool', '回家': 'leaveSchool',
+    '请假外出': 'leaveOutside', '外出': 'leaveOutside', '出门': 'leaveOutside',
+    '事假': 'leaveInside', '假': 'leaveInside'
+};
+
+// 二级事由列表（用于UI显示）
+const subReasons = ['分团委', '学生会', '学习', '合唱团', '运动会', '警乐团', '羽毛球', '校督', '其他'];
+
+// ============================================
+// 初始化
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    // 从后端加载宿舍数据，完成后执行初始化
+    loadDormData();
+});
+
+// ============================================
+// OCR 流水线模式检测与自动解析
+// ============================================
+// ============================================
+// 修改：同时支持 text-pipeline 和 ocr-pipeline 两种模式
+// ============================================
+function checkOCRPipelineMode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    if (mode === 'ocr-pipeline' || mode === 'text-pipeline') {
+        // OCR 流水线模式：自动读取并解析
+        const ocrText = localStorage.getItem('ocrRawText');
+        if (ocrText) {
+            // 更新为 OCR 流水线 UI
+            updateToOCRPipelineUI();
+            
+            // 填充文本
+            const inputText = document.getElementById('inputText');
+            inputText.value = ocrText;
+            
+            // 自动触发解析（延迟一点确保 DOM 已更新）
+            setTimeout(() => {
+                parseInput();
+            }, 300);
+        }
+    }
+}
+
+// 切换到 OCR 流水线 UI
+function updateToOCRPipelineUI() {
+    // 更新页面标题
+    const mode = new URLSearchParams(window.location.search).get('mode');
+    document.querySelector('.header h1').textContent = mode === 'text-pipeline' ? '文本解析结果确认' : '图片识别结果确认';
+    
+    // 更新提示横幅为 OCR 流水线样式
+    const tipBanner = document.querySelector('.tip-banner');
+    tipBanner.innerHTML = `
+        <div class="content">
+            <p><i class="fas fa-magic" style="color:#2C436F;"></i> 图片识别结果已自动导入</p>
+            <p style="margin-top:8px; font-size:13px; color:#666;">请核对智能分组结果，确认无误后点击底部按钮</p>
+        </div>
+    `;
+    tipBanner.style.background = '#EAF0E2';
+    tipBanner.style.border = '1px solid #2C436F';
+    
+    // 隐藏格式说明区域
+    document.querySelector('.format-guide').style.display = 'none';
+    
+    // 更新输入区域标签
+    document.querySelector('.input-section .label').textContent = '提取到的文本（可编辑修正）：';
+    
+    // 更新底部按钮
+    const bottomActions = document.getElementById('bottomActions');
+    const backBtnText = mode === 'text-pipeline' ? '<i class="fas fa-arrow-left"></i>返回上传' : '<i class="fas fa-redo"></i>返回重拍';
+    bottomActions.innerHTML = `
+        <button class="bottom-btn danger" onclick="goBackToUpload()" style="background:#fff1f0;color:#ff4d4f;border:1px solid #ffccc7;">
+            ${backBtnText}
+        </button>
+        <button class="bottom-btn primary" onclick="confirmAndReturn()">
+            <i class="fas fa-check"></i>确认并返回
+        </button>
+    `;
+    bottomActions.style.display = 'flex';
+}
+
+// 返回 upload.html（放弃当前结果）
+function goBackToUpload() {
+    // 清理 localStorage 中的临时数据
+    localStorage.removeItem('ocrRawText');
+    localStorage.removeItem('ocrContext');
+    window.location.href = 'upload.html';
+}
+
+// 确认并返回（OCR流水线模式直接跳 index）
+function confirmAndReturn() {
+    const updates = {};
+    let count = 0;
+    
+    state.groups.forEach(group => {
+        group.people.forEach(p => {
+            if (!p.checked) return;
+            
+            let reason = '';
+            if (group.leaveType === 'leaveInside') {
+                reason = group.reason || '其他';
+            }
+            
+            updates[p.name] = {
+                status: group.leaveType,
+                reason: reason,
+            };
+            count++;
+        });
+    });
+    
+    if (count === 0) { showToast('请至少勾选一名人员'); return; }
+    
+    // 触觉反馈
+    if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+    
+    // 存储假单数据
+    localStorage.setItem('pendingLeaveRecords', JSON.stringify(updates));
+    
+    showToast(`已确认 ${count} 人，正在应用假单...`);
+    
+    // 关键修复：直接跳转到 index.html 并带上 applyLeaves=1 参数，不再返回 upload
+    setTimeout(() => {
+        window.location.href = 'index.html?applyLeaves=1';
+    }, 800);
+}
+
+// 构建人名索引和模糊匹配模式
+function buildNameIndex() {
+    for (const grade in window.dormData) {
+        for (const className in window.dormData[grade]) {
+            for (const dorm in window.dormData[grade][className]) {
+                window.dormData[grade][className][dorm].forEach((name, index) => {
+                    if (name) {
+                        if (!state.nameIndex[name]) {
+                            state.nameIndex[name] = {
+                                name: name,
+                                grade: grade,
+                                className: className,
+                                dorm: dorm,
+                                bed: index + 1
+                            };
+                        }
+                        state.allNames.push(name);
+                        // 构建2-4字的人名片段用于模糊匹配
+                        for (let i = 0; i < name.length; i++) {
+                            for (let len = 2; len <= 4 && i + len <= name.length; len++) {
+                                state.namePatterns.push(name.substr(i, len));
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+    // 去重
+    state.allNames = [...new Set(state.allNames)];
+    state.namePatterns = [...new Set(state.namePatterns)];
+}
+
+// ============================================
+// 输入预处理（清洗阶段）- 增强版 v3 (Critical Fix)
+// ============================================
+function cleanInputText(text) {
+    let cleaned = text;
+    let hasStudioMarker = false;
+    let studioType = '';
+    
+    // ===== 阶段1: OCR常见错误修正映射 =====
+    const ocrCorrections = {
+        '据警务': '数据警务',
+        '据警': '数据警',
+        '全安': '网安',
+        '像安': '网安',
+        '阿sier': '阿sir',
+        '阿Sier': '阿sir',
+        '阿SIR': '阿sir',
+        '啊sir': '阿sir',
+        '啊SIR': '阿sir',
+        'sir': '阿sir',
+        'Sir': '阿sir',
+        '自媒体': '阿sir',
+        '自媒体工作室': '阿sir',
+        '预备阿sir': '阿sir',
+        '预备阿Sir': '阿sir',
+    };
+    
+    // 应用OCR修正
+    for (const [wrong, correct] of Object.entries(ocrCorrections)) {
+        cleaned = cleaned.replace(new RegExp(wrong, 'g'), correct);
+    }
+    
+    // ===== 阶段2: 检测事由标记（在提取前检测，用于后续标记）=====
+    if (/阿\s*[sS][iI][rR]|阿sir|阿Sir|自媒体|工作室/i.test(text)) {
+        hasStudioMarker = true;
+        studioType = '阿sir';
+    }
+    if (/数分|数据分析/i.test(text) && !studioType) {
+        hasStudioMarker = true;
+        studioType = '数分';
+    }
+    if (/网安|网络安全/i.test(text) && !studioType) {
+        hasStudioMarker = true;
+        studioType = '网安';
+    }
+    
+    // ===== 阶段3: 严格提取人员列表区域 =====
+    // 策略：找到"具体人员如下"或类似引导语，提取其后的内容，直到落款日期前
+    let personnelContent = '';
+    
+    // 匹配模式："具体人员如下" 到 日期/落款 之间的内容
+    const startPatterns = [
+        /(?:具体)?\s*人员\s*[如]?[下]?[：:\n]\s*([\s\S]*?)(?=\d{4}\s*年|落款|签名|日期|$)/i,
+        /(?:名单|人员)[：:\n]\s*([\s\S]*?)(?=\d{4}\s*年|落款|签名|日期|$)/i,
+        /(?:以下|下列)[是为]?\s*(?:人员|名单|同学|学生)[：:\n]\s*([\s\S]*?)(?=\d{4}\s*年|落款|签名|日期|$)/i,
+    ];
+    
+    for (const pattern of startPatterns) {
+        const match = cleaned.match(pattern);
+        if (match && match[1]) {
+            personnelContent = match[1];
+            break;
+        }
+    }
+    
+    // 如果没找到引导语，尝试提取人名密集区域（包含班级前缀的模式）
+    if (!personnelContent) {
+        // 查找包含班级+姓名的段落
+        const classNamePattern = /(?:[\u4e00-\u9fa5]{2,6}\d{4}|[\u4e00-\u9fa5]{2,4}[:：])\s*[\u4e00-\u9fa5]{2,4}(?:[,，、\s][\u4e00-\u9fa5]{2,4})*/g;
+        const matches = cleaned.match(classNamePattern);
+        if (matches) {
+            personnelContent = matches.join('\n');
+        }
+    }
+    
+    // 如果成功提取到人员内容，使用它；否则使用原文本
+    if (personnelContent.trim()) {
+        cleaned = personnelContent;
+    }
+    
+    // ===== 阶段4: 去除无关内容 =====
+    
+    // 4.1 去除事由描述性长文本（保留关键词）
+    // 去除"由于...备赛..."、"申请..."、"恳请批准"等描述
+    const descriptionsToRemove = [
+        /由于[\s\S]*?备赛[\s\S]*?(?=\n|$)/gi,
+        /[由因]于[\s\S]*?(?:原因|理由)[\s\S]*?(?=\n|$)/gi,
+        /(?:申请|恳请|望请)[\s\S]*?(?:批准|同意|准许)[\s\S]*?(?=\n|$)/gi,
+        /(?:参加|参与)[\s\S]*?(?:比赛|竞赛|活动|培训)[\s\S]*?(?=\n|$)/gi,
+        /(?:备赛|训练)[\s\S]*?(?:需要|因此)[\s\S]*?(?=\n|$)/gi,
+        /赛程[\s\S]*?紧张[\s\S]*?(?=\n|$)/gi,
+        /新大陆杯[\s\S]*?(?=\n|$)/gi,
+        /2026\s*江苏省\s*大学生\s*计算机[\s\S]*?(?=\n|$)/gi,
+        /计算机设计[\s\S]*?(?=\n|$)/gi,
+        /设计大赛[\s\S]*?(?=\n|$)/gi,
+        /部分成员[\s\S]*?(?=\n|$)/gi,
+    ];
+    
+    for (const pattern of descriptionsToRemove) {
+        cleaned = cleaned.replace(pattern, ' ');
+    }
+    
+    // 4.2 去除宿舍-床位编号
+    cleaned = cleaned.replace(/\d{3,4}-\d{1,3}(?:-\d{1,2})?/g, ' ');
+    
+    // 4.3 增强班级前缀去除 - 更宽松匹配，支持OCR错误
+    // 匹配：中文班级名+4位数字，如"数据警务2401"
+    cleaned = cleaned.replace(/[\u4e00-\u9fa5]{2,8}\d{4}/g, ' ');
+    
+    // 4.4 去除残留的孤立冒号和顿号
+    cleaned = cleaned.replace(/\s*[：:、]\s*/g, ' ');
+    
+    // 4.5 去除引导语本身
+    cleaned = cleaned.replace(/(?:具体)?\s*人员[如]?[下]?[是为]?[：:\n]*/gi, '\n');
+    cleaned = cleaned.replace(/(?:名单|人员)[：:\n]*/gi, '\n');
+    cleaned = cleaned.replace(/(?:以下|下列)[是为]?\s*(?:人员|名单|同学|学生)[：:\n]*/gi, '\n');
+    
+    // 4.6 去除落款和日期
+    cleaned = cleaned.replace(/\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*[日号]?/g, ' ');
+    cleaned = cleaned.replace(/(?:预备)?\s*阿\s*[sS][iI][rR]\s*(?:自媒体)?\s*工作室/gi, ' ');
+    cleaned = cleaned.replace(/(?:数据)?\s*分析\s*工作室/gi, ' ');
+    cleaned = cleaned.replace(/网络安全工作室/gi, ' ');
+    cleaned = cleaned.replace(/(情况说明|尊敬的大队老师|大队老师)/gi, ' ');
+    cleaned = cleaned.replace(/落款[：:\n]?/gi, ' ');
+    
+    // 4.7 去除//包裹的标记
+    cleaned = cleaned.replace(/\/(事假|请假离校|请假外出|外出|离校)\//g, '$1');
+    
+    // 4.8 标准化分隔符
+    cleaned = cleaned.replace(/[\/\\、，；;|]/g, ' ');
+    
+    // ===== 阶段5: 去重处理 =====
+    // 检测并去除重复的人名列表
+    const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l);
+    const seenLines = new Set();
+    const uniqueLines = [];
+    
+    // 事由关键词集合（用于去重阶段）
+    const reasonKeywordsSet = new Set([
+        '数分', '数分工作室', '数据分析工作室', '数据分析', 'data',
+        '网安', '网安工作室', '网络安全工作室', '网络安全',
+        '阿sir', '啊sir', '啊SIR', '预备阿sir', '自媒体工作室', 
+        '预备阿sir自媒体工作室', '自媒体', 'sir', '阿SIR', '阿Sir',
+        '数据实战', '数据实战工作室', '数实战', '网管', '网管工作室',
+        '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球',
+        '辩论队', '辩队', '备赛', '比赛', '竞赛', '复习', '学习', '自习',
+        '校督', '校督促', '请假离校', '离校', '回家', '请假外出', '外出', '出门', '事假', '假'
+    ]);
+    
+    for (const line of lines) {
+        // 提取行中的人名（2-4个汉字的序列）
+        const namesInLine = line.match(/[\u4e00-\u9fa5]{2,4}/g) || [];
+        // 过滤掉事由关键词
+        const filteredNames = namesInLine.filter(n => !reasonKeywordsSet.has(n));
+        
+        if (filteredNames.length === 0) {
+            // 没有有效人名的行，可能是事由标记行，保留
+            uniqueLines.push(line);
+            continue;
+        }
+        
+        // 创建行的签名（排序后的人名列表）用于去重
+        const lineSignature = filteredNames.slice().sort().join(',');
+        
+        if (!seenLines.has(lineSignature)) {
+            seenLines.add(lineSignature);
+            uniqueLines.push(line);
+        }
+    }
+    
+    cleaned = uniqueLines.join('\n');
+    
+    // ===== 阶段6: 最终清理 =====
+    // 清理多余空白
+    cleaned = cleaned.replace(/[^\S\n]+/g, ' ');
+    cleaned = cleaned.replace(/\n+/g, '\n');
+    cleaned = cleaned.split('\n').map(line => line.trim()).join('\n').trim();
+    
+    // ===== 阶段7: 添加事由标记 =====
+    if (hasStudioMarker && studioType && cleaned) {
+        cleaned = studioType + '\n' + cleaned;
+    }
+    
+    return cleaned;
+}
+
+// ============================================
+// 从清洗后的文本中提取人名（使用模糊匹配）
+// ============================================
+function extractNamesFromCleanedText(text) {
+    const names = [];
+    const foundNames = new Set();
+    
+    // 提取连续2-4个汉字
+    const candidates = text.match(/[\u4e00-\u9fa5]{2,4}/g) || [];
+    
+    for (const candidate of candidates) {
+        // 跳过事由关键词
+        if (isReasonKeyword(candidate)) continue;
+        
+        // 直接匹配
+        if (state.nameIndex[candidate] && !foundNames.has(candidate)) {
+            names.push(candidate);
+            foundNames.add(candidate);
+            continue;
+        }
+        
+        // 模糊匹配（支持同音字/形近字容错）
+        const fuzzy = fuzzyMatchNameAdvanced(candidate);
+        if (fuzzy && !foundNames.has(fuzzy)) {
+            names.push(fuzzy);
+            foundNames.add(fuzzy);
+        }
+    }
+    
+    return names;
+}
+
+// 高级模糊匹配（支持同音字/形近字容错）
+function fuzzyMatchNameAdvanced(input) {
+    if (!input || input.length < 2) return null;
+    
+    // 直接包含匹配
+    for (const name of state.allNames) {
+        if (input.includes(name)) return name;
+    }
+    
+    // 编辑距离匹配
+    for (const name of state.allNames) {
+        if (name.length >= 3 && input.length >= 3) {
+            const dist = levenshteinDistance(input, name);
+            const threshold = name.length <= 3 ? 1 : 2;
+            if (dist <= threshold && dist > 0) {
+                // 首字必须相同（确保姓氏正确）
+                if (input[0] === name[0]) {
+                    return name;
+                }
+            }
+        }
+    }
+    
+    // 子串匹配（如"杨欣"匹配"杨欣欣"）
+    for (const name of state.allNames) {
+        if (name.length >= 3) {
+            // 输入是名字的前缀
+            if (name.startsWith(input)) return name;
+            // 输入是名字的后缀
+            if (name.endsWith(input)) return name;
+            // 输入包含在名字中
+            if (name.includes(input) && input.length >= 2) return name;
+        }
+    }
+    
+    return null;
+}
+
+// ============================================
+// 核心算法：滑动窗口配对引擎
+// ============================================
+
+/**
+ * 判断是否为事由关键词
+ */
+function isReasonKeyword(token) {
+    // 检查是否在事由关键词映射中
+    if (reasonKeywords[token]) return true;
+    
+    // 扩展的事由关键词
+    const extendedReasons = {
+        '数分': true, '网安': true, '阿sir': true, '辩论队': true,
+        '备赛': true, '复习': true, '学习': true, '校督': true,
+        '分团委': true, '学生会': true, '合唱团': true,
+        '运动会': true, '警乐团': true, '羽毛球': true,
+        '数实战': true, '网管': true,
+        '请假离校': true, '离校': true, '事假': true, '外出': true,
+        '请假外出': true, '回家': true, '出门': true
+    };
+    return extendedReasons[token] || false;
+}
+
+/**
+ * 根据事由判断请假类型
+ */
+function getLeaveTypeByReason(reason) {
+    const mapped = reasonKeywords[reason];
+    if (mapped === 'leaveSchool') return 'leaveSchool';
+    if (mapped === 'leaveOutside') return 'leaveOutside';
+    return 'leaveInside'; // 默认事假
+}
+
+/**
+ * 查找人名（复用现有模糊匹配逻辑）
+ */
+function findName(token) {
+    if (!token || token.length < 2) return null;
+    
+    // 优先直接匹配
+    if (state.nameIndex[token]) return token;
+    
+    // 其次模糊匹配
+    return fuzzyMatchName(token);
+}
+
+/**
+ * 检测行内是否有标题式事由
+ */
+function detectReasonInLineAdvanced(line) {
+    const result = { found: false, reason: null, leaveType: 'leaveInside' };
+    
+    // 遍历所有事由关键词
+    for (const [keyword, mapped] of Object.entries(reasonKeywords)) {
+        if (line.includes(keyword)) {
+            const isLeaveType = mapped === 'leaveSchool' || mapped === 'leaveOutside';
+            return {
+                found: true,
+                reason: isLeaveType ? (mapped === 'leaveSchool' ? '请假离校' : '请假外出') : mapped,
+                leaveType: isLeaveType ? mapped : 'leaveInside',
+                matchedKeyword: keyword
+            };
+        }
+    }
+    
+    return result;
+}
+
+/**
+ * 判断是否为标题模式（行中只有事由，没有人名）
+ */
+function isTitlePattern(line) {
+    if (!line || line.length > 20) return false;
+    
+    const hasReason = detectReason(line).found;
+    
+    // 检查是否包含人名
+    const tokens = line.split(/[\s,，、]+/).filter(t => t.length >= 2);
+    let hasName = false;
+    for (const token of tokens) {
+        if (findName(token)) {
+            hasName = true;
+            break;
+        }
+    }
+    
+    return hasReason && !hasName;
+}
+
+/**
+ * 智能格式解析器（双层解析架构）
+ * 第一层：文本分段（按大标题切分）
+ * 第二层：行内细分解析（人名-事由配对）
+ * 
+ * 支持：格式A（人名事由交替）、格式B（事由在前扩散）、格式C（标题+列表）、格式D（行内混合）
+ */
+function parseSmartFormat(originalText, cleanedText) {
+    // ===== 第一层：文本分段 =====
+    const sections = splitIntoSections(originalText);
+    
+    // ===== 第二层：逐段解析 =====
+    const allEntries = [];
+    
+    sections.forEach(section => {
+        const entries = parseSection(section.lines, section.defaultReason, section.defaultLeaveType);
+        allEntries.push(...entries);
+    });
+    
+    // ===== 按事由分组聚合 =====
+    const groups = {};
+    
+    allEntries.forEach(entry => {
+        const key = `${entry.leaveType}:${entry.reason}`;
+        if (!groups[key]) {
+            groups[key] = {
+                reason: entry.reason,
+                leaveType: entry.leaveType,
+                names: []
+            };
+        }
+        if (!groups[key].names.includes(entry.name)) {
+            groups[key].names.push(entry.name);
+        }
+    });
+    
+    // 转换为标准格式
+    return Object.values(groups).map(g => ({
+        ...g,
+        people: matchNames([...new Set(g.names)]),
+        name: g.reason
+    }));
+}
+
+/**
+ * 第一层：文本分段
+ * 按大标题（请假离校、事假、/事假/等）将文本切成多个段落
+ */
+function splitIntoSections(text) {
+    const sections = [];
+    const lines = text.split('\n');
+    
+    let currentSection = null;
+    
+    lines.forEach(line => {
+        line = line.trim();
+        if (!line) return; // 跳过空行
+        
+        // 检测是否为段落分隔符（标题行）
+        const sectionHeader = parseSectionHeader(line);
+        
+        if (sectionHeader.isHeader) {
+            // 保存当前段落（如果存在）
+            if (currentSection && currentSection.lines.length > 0) {
+                sections.push(currentSection);
+            }
+            // 开启新段落
+            currentSection = {
+                lines: [],
+                defaultReason: sectionHeader.reason,
+                defaultLeaveType: sectionHeader.leaveType
+            };
+        } else {
+            // 普通行，加入当前段落
+            if (!currentSection) {
+                // 没有前置标题，创建一个无默认事由的段落
+                currentSection = {
+                    lines: [],
+                    defaultReason: null,
+                    defaultLeaveType: 'leaveInside'
+                };
+            }
+            currentSection.lines.push(line);
+        }
+    });
+    
+    // 保存最后一个段落
+    if (currentSection && currentSection.lines.length > 0) {
+        sections.push(currentSection);
+    }
+    
+    return sections;
+}
+
+/**
+ * 解析段落标题
+ * 检测是否为分段标题，并提取默认事由
+ */
+function parseSectionHeader(line) {
+    const result = { isHeader: false, reason: null, leaveType: 'leaveInside' };
+    
+    // 清洗行内容（去除标记符号）
+    let cleanLine = line.replace(/\//g, '').trim();
+    
+    // 检测事由
+    const reasonInfo = detectReason(cleanLine);
+    if (!reasonInfo.found) return result;
+    
+    // 检查是否是纯标题（只有事由，没有人名）
+    const tokens = cleanLine.split(/[\s,，、]+/).filter(t => t.length >= 2);
+    let hasName = false;
+    for (const token of tokens) {
+        if (findName(token)) {
+            hasName = true;
+            break;
+        }
+    }
+    
+    // 如果是纯事由行，则作为段落标题
+    if (!hasName) {
+        result.isHeader = true;
+        result.reason = reasonInfo.reason;
+        result.leaveType = reasonInfo.leaveType;
+    }
+    
+    return result;
+}
+
+/**
+ * 第二层：段落内逐行解析
+ * 对每一行执行人名-事由配对提取
+ */
+function parseSection(lines, sectionDefaultReason, sectionDefaultLeaveType) {
+    const entries = [];
+    
+    lines.forEach(line => {
+        const lineEntries = parseLine(line, sectionDefaultReason, sectionDefaultLeaveType);
+        entries.push(...lineEntries);
+    });
+    
+    return entries;
+}
+
+/**
+ * 解析单行：提取人名-事由配对
+ * 策略：行内具体事由 > 段落默认事由
+ */
+function parseLine(line, sectionDefaultReason, sectionDefaultLeaveType) {
+    const entries = [];
+    
+    // 1. 清洗行内干扰字符
+    let cleanLine = line.replace(/\d{3,4}-\d{1,3}(?:-\d{1,2})?/g, ' ')
+                        .replace(/[\u4e00-\u9fa5]+\d{4}/g, ' ')
+                        .trim();
+    
+    if (!cleanLine) return entries;
+    
+    // 2. 分词
+    const tokens = cleanLine.split(/[\s,，、]+/).filter(t => t.length >= 2);
+    
+    // 3. 预处理：标记每个token是人名还是事由
+    const tokenInfos = tokens.map((token, idx) => ({
+        idx,
+        token,
+        isReason: isReasonKeyword(token) && !findName(token), // 是事由且不是人名
+        name: findName(token) // 匹配到的人名（如果有）
+    }));
+    
+    // 4. 成对提取
+    let i = 0;
+    while (i < tokenInfos.length) {
+        const info = tokenInfos[i];
+        
+        if (info.name) {
+            // 找到人名，确定其对应的事由
+            let specificReason = null;
+            let specificLeaveType = sectionDefaultLeaveType;
+            
+            // 策略1：向后查找（人名在前，事由在后）→ "尹文珺 阿sir"
+            if (i + 1 < tokenInfos.length && tokenInfos[i + 1].isReason) {
+                specificReason = tokenInfos[i + 1].token;
+                specificLeaveType = getLeaveTypeByReason(specificReason);
+                i += 2; // 跳过人名和事由
+            }
+            // 策略2：向前查找（事由在前，人名在后）→ "数分 何锐颖"
+            else if (i - 1 >= 0 && tokenInfos[i - 1].isReason) {
+                specificReason = tokenInfos[i - 1].token;
+                specificLeaveType = getLeaveTypeByReason(specificReason);
+                i++;
+            }
+            // 策略3：使用段落默认事由（只有人名，没有行内事由）
+            else {
+                specificReason = sectionDefaultReason || '其他';
+                specificLeaveType = sectionDefaultLeaveType;
+                i++;
+            }
+            
+            entries.push({
+                name: info.name,
+                reason: specificReason,
+                leaveType: specificLeaveType
+            });
+        } else {
+            // 不是人名，跳过
+            i++;
+        }
+    }
+    
+    return entries;
+}
+
+// ============================================
+// 终极智能解析器
+// ============================================
+function parseInput() {
+    const text = document.getElementById('inputText').value.trim();
+    if (!text) { showToast('请输入人名列表'); return; }
+    
+    // 触觉反馈
+    if (navigator.vibrate) navigator.vibrate(15);
+    
+    state.groups = [];
+    
+    // 步骤1: 清洗输入
+    const cleanedText = cleanInputText(text);
+    state.lastCleanedText = cleanedText;
+    
+    // 步骤2: 使用多策略解析（parseSmartFormat 作为主策略优先）
+    const strategies = [
+        parseSmartFormat,      // 新的智能配对算法（优先）
+        parseStructuredFormat, // 现有的标题分组格式
+        parseInlineFormat,     // 现有的行内格式
+        parseMixedFormat,      // 现有的混合格式
+        parseLooseFormat       // 现有的兜底格式
+    ];
+    
+    let bestResult = null;
+    let maxMatched = 0;
+    
+    for (const strategy of strategies) {
+        const result = strategy(text, cleanedText);
+        const matchedCount = result.reduce((sum, g) => sum + g.people.filter(p => p.matched).length, 0);
+        
+        if (matchedCount > maxMatched) {
+            maxMatched = matchedCount;
+            bestResult = result;
+        }
+        
+        if (matchedCount >= 5) break;
+    }
+    
+    if (!bestResult || bestResult.length === 0) {
+        bestResult = parseFallback(text, cleanedText);
+    }
+    
+    state.groups = bestResult.map((g, idx) => ({
+        ...g,
+        id: idx,
+        showSubReasons: subReasons.includes(g.reason) || g.reason === '其他'
+    }));
+    
+    state.lastParseResult = bestResult;
+    
+    // 更新预览面板
+    updatePreviewPanel(text, cleanedText, bestResult);
+    
+    renderGroups();
+    updateReport();
+    
+    document.getElementById('resultSection').classList.add('show');
+    document.getElementById('previewSection').classList.add('show');
+    document.getElementById('bottomActions').style.display = 'flex';
+    document.getElementById('groupCount').textContent = state.groups.length;
+    
+    const totalMatched = state.groups.reduce((sum, g) => sum + g.people.filter(p => p.matched).length, 0);
+    showToast(`解析到 ${state.groups.length} 组，共 ${totalMatched} 人`);
+}
+
+// 更新清洗预览面板 - 增强版
+function updatePreviewPanel(original, cleaned, result) {
+    document.getElementById('originalPreview').textContent = original || '（空）';
+    document.getElementById('cleanedPreview').textContent = cleaned || '（空）';
+    
+    let resultHtml = '';
+    if (result && result.length > 0) {
+        result.forEach((group, idx) => {
+            const matchedNames = group.people.filter(p => p.matched).map(p => p.name).join('、');
+            const unmatchedNames = group.people.filter(p => !p.matched).map(p => p.name).join('、');
+            
+            // 显示事由和请假类型
+            const typeLabel = group.leaveType === 'leaveSchool' ? '[离校]' : 
+                             group.leaveType === 'leaveOutside' ? '[外出]' : '[事假]';
+            
+            resultHtml += `【${typeLabel}${group.reason}】\n`;
+            if (matchedNames) {
+                resultHtml += `  匹配: ${matchedNames}\n`;
+            }
+            if (unmatchedNames) {
+                resultHtml += `  未匹配: ${unmatchedNames}\n`;
+            }
+        });
+    } else {
+        resultHtml = '未识别到有效数据';
+    }
+    
+    document.getElementById('resultPreview').innerHTML = resultHtml
+        .replace(/【(.+?)】/g, '<span style="color:#2C436F;font-weight:600;">【$1】</span>')
+        .replace(/匹配: (.+?)(?= 未匹配:|\n|$)/g, '匹配: <span style="color:#2C436F;">$1</span>')
+        .replace(/未匹配: (.+?)(?=\n|$)/g, '未匹配: <span style="color:#ff8a00;">$1</span>')
+        .replace(/\n/g, '<br>');
+}
+
+// 切换预览面板
+function togglePreview() {
+    const section = document.getElementById('previewSection');
+    section.classList.toggle('collapsed');
+}
+
+// 结构化格式解析（标题分组格式）- 格式C
+function parseStructuredFormat(originalText, cleanedText) {
+    const groups = [];
+    const lines = originalText.split('\n');
+    let currentReason = '';
+    let currentLeaveType = 'leaveInside';
+    let currentBuffer = [];
+    
+    const flushBuffer = () => {
+        if (currentBuffer.length > 0 && currentReason) {
+            groups.push({
+                name: currentReason,
+                reason: currentReason,
+                leaveType: currentLeaveType,
+                people: matchNames(currentBuffer)
+            });
+            currentBuffer = [];
+        }
+    };
+    
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) {
+            flushBuffer();
+            continue;
+        }
+        
+        const reasonInfo = detectReason(line);
+        if (reasonInfo.found && isTitleLine(line, lines[i-1], lines[i+1])) {
+            flushBuffer();
+            currentReason = reasonInfo.reason;
+            currentLeaveType = reasonInfo.leaveType;
+            continue;
+        }
+        
+        if (line.match(/^(\/+.*\/+|\+)/)) {
+            flushBuffer();
+            continue;
+        }
+        
+        const names = extractNamesFromLine(line);
+        currentBuffer.push(...names);
+    }
+    
+    flushBuffer();
+    return groups;
+}
+
+// 行内格式解析
+function parseInlineFormat(originalText, cleanedText) {
+    const groups = {};
+    const lines = originalText.split('\n');
+    
+    lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        
+        if (isPureTitle(line)) return;
+        
+        const reasonInfo = detectReasonInLine(line);
+        const cleanLine = reasonInfo.cleanLine || line;
+        
+        const names = extractNamesFromLine(cleanLine);
+        
+        if (names.length > 0 && reasonInfo.found) {
+            const key = `${reasonInfo.leaveType}:${reasonInfo.reason}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    reason: reasonInfo.reason,
+                    leaveType: reasonInfo.leaveType,
+                    names: []
+                };
+            }
+            groups[key].names.push(...names);
+        }
+    });
+    
+    return Object.values(groups).map(g => ({
+        ...g,
+        people: matchNames([...new Set(g.names)])
+    }));
+}
+
+
+// ============================================
+// 多格式智能识别（解析阶段）- 混合格式
+// ============================================
+function parseMixedFormat(originalText, cleanedText) {
+    const groups = {};
+    const lines = originalText.split('\n');
+    
+    // 标题分类状态
+    let currentLeaveType = 'leaveInside';
+    let currentReason = '';
+    let inLeaveSchoolSection = false;
+    let inLeaveInsideSection = false;
+    
+    // 先扫描所有行，检测标题
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // 检测标题行
+        const titleMatch = line.match(/^(请假离校|事假|外出|请假外出)[：:\s]*/);
+        if (titleMatch || isTitleLine(line, lines[i-1], lines[i+1])) {
+            const reasonInfo = detectReason(line);
+            if (reasonInfo.found) {
+                inLeaveSchoolSection = reasonInfo.leaveType === 'leaveSchool';
+                inLeaveInsideSection = reasonInfo.leaveType === 'leaveInside';
+                currentLeaveType = reasonInfo.leaveType;
+                currentReason = reasonInfo.reason;
+            }
+            continue;
+        }
+        
+        // 解析当前行
+        const result = parseMixedLine(line);
+        if (!result.names.length) continue;
+        
+        // 确定该行的类型和事由
+        let leaveType = currentLeaveType;
+        let reason = currentReason;
+        
+        // 如果行内检测到事由，优先使用行内的事由
+        if (result.reasonInfo.found) {
+            leaveType = result.reasonInfo.leaveType;
+            reason = result.reasonInfo.reason;
+        } else if (inLeaveSchoolSection) {
+            // 在请假离校标题下，标记为 leaveSchool
+            leaveType = 'leaveSchool';
+            reason = '请假离校';
+        }
+        
+        // 构建分组key
+        const key = `${leaveType}:${reason}`;
+        if (!groups[key]) {
+            groups[key] = {
+                reason: reason,
+                leaveType: leaveType,
+                names: [],
+                dormInfo: {}
+            };
+        }
+        
+        // 添加人员
+        result.names.forEach(name => {
+            if (!groups[key].names.includes(name)) {
+                groups[key].names.push(name);
+                if (result.dormInfo) {
+                    groups[key].dormInfo[name] = result.dormInfo;
+                }
+            }
+        });
+    }
+    
+    return Object.values(groups).map(g => ({
+        ...g,
+        people: matchNames(g.names).map(p => ({
+            ...p,
+            ...(g.dormInfo[p.name] && {
+                info: {
+                    ...p.info,
+                    dorm: g.dormInfo[p.name].dorm,
+                    bed: g.dormInfo[p.name].bed
+                }
+            })
+        }))
+    }));
+}
+
+// 解析单行混合格式
+// 格式A（紧凑格式）：宿舍-床位姓名 事由
+// 例："604-1何锐颖 数分" → 清洗后提取"何锐颖"，识别事由"数分"
+// 格式B（列表格式）：班级 姓名 事由 宿舍-床位
+// 例："情报2201 唐杨曦 阿sir 106-3" → 清洗后提取"唐杨曦"，识别事由"阿sir"
+// 格式C（标题分组格式）：请假离校\n[人名列表]
+function parseMixedLine(line) {
+    const result = {
+        names: [],
+        reasonInfo: { found: false },
+        dormInfo: null
+    };
+    
+    // 步骤1: 先检测整行的事由（标题或行尾）
+    const lineReason = detectReasonInLineAdvanced(line);
+    if (lineReason.found) {
+        result.reasonInfo = lineReason;
+    }
+    
+    // 步骤2: 处理 班级+姓名+宿舍 格式（格式B）
+    // 匹配模式: 情报2201 唐杨曦 512-106-3 或 情报2201 唐杨曦 512-3
+    const classNameDormPattern = /([\u4e00-\u9fa5]+\d{2,4})\s+([\u4e00-\u9fa5]{2,4})\s+(\d{3,4})[-](\d{1,3})(?:[-](\d{1,2}))?/;
+    const classMatch = line.match(classNameDormPattern);
+    if (classMatch) {
+        const name = classMatch[2];
+        if (state.nameIndex[name]) {
+            result.names.push(name);
+            result.dormInfo = {
+                dorm: classMatch[3],
+                bed: parseInt(classMatch[4]),
+                fullDorm: `${classMatch[3]}-${classMatch[4]}`
+            };
+            return result;
+        }
+    }
+    
+    // 步骤3: 处理 宿舍-床位姓名 格式（格式A）
+    // 模式: 604-1何锐颖 或 604-1-1何锐颖 或 512-106-3唐杨曦
+    const dormBedNamePattern = /(\d{3,4})[-](\d{1,3})(?:[-](\d{1,2}))?([\u4e00-\u9fa5]{2,4})/;
+    const dormMatch = line.match(dormBedNamePattern);
+    if (dormMatch) {
+        const extractedName = dormMatch[4];
+        // 验证是否是已知人名
+        if (state.nameIndex[extractedName]) {
+            result.names.push(extractedName);
+            result.dormInfo = {
+                dorm: dormMatch[1],
+                bed: parseInt(dormMatch[2]),
+                fullDorm: `${dormMatch[1]}-${dormMatch[2]}`
+            };
+            
+            // 如果行内还有其他内容，检查是否有事由
+            const remaining = line.replace(dormMatch[0], '').trim();
+            if (remaining) {
+                const remainingReason = detectReason(remaining);
+                if (remainingReason.found) {
+                    result.reasonInfo = remainingReason;
+                }
+            }
+            return result;
+        }
+    }
+    
+    // 步骤4: 处理普通格式（姓名 事由）
+    // 分割成多个部分
+    const parts = line.split(/[\s,，、]+/).filter(p => p && p.length >= 2);
+    
+    parts.forEach(part => {
+        // 跳过纯宿舍格式
+        if (isDormFormat(part) && !part.match(/[\u4e00-\u9fa5]/)) {
+            result.dormInfo = parseDormFormat(part);
+            return;
+        }
+        
+        // 尝试直接匹配人名
+        if (state.nameIndex[part]) {
+            result.names.push(part);
+            return;
+        }
+        
+        // 检测事由
+        const r = detectReason(part);
+        if (r.found) {
+            result.reasonInfo = r;
+            return;
+        }
+        
+        // 尝试从混合文本中提取人名
+        const extracted = extractNameFromMixed(part);
+        if (extracted) {
+            result.names.push(extracted);
+        }
+    });
+    
+    return result;
+}
+
+function parseLooseFormat(originalText, cleanedText) {
+    const groups = {};
+    const segments = originalText.split(/\n\s*\n/);
+    
+    segments.forEach(segment => {
+        const lines = segment.split('\n').filter(l => l.trim());
+        if (lines.length === 0) return;
+        
+        let segmentReason = null;
+        let segmentLeaveType = 'leaveInside';
+        
+        const firstLineReason = detectReason(lines[0]);
+        if (firstLineReason.found && lines[0].length < 20) {
+            segmentReason = firstLineReason.reason;
+            segmentLeaveType = firstLineReason.leaveType;
+            lines.shift();
+        }
+        
+        const allNames = [];
+        lines.forEach(line => {
+            const names = extractNamesFromLine(line);
+            allNames.push(...names);
+            
+            if (!segmentReason) {
+                const inlineReason = detectReasonInLine(line);
+                if (inlineReason.found && allNames.length > 0) {
+                    const key = `${inlineReason.leaveType}:${inlineReason.reason}`;
+                    if (!groups[key]) {
+                        groups[key] = {
+                            reason: inlineReason.reason,
+                            leaveType: inlineReason.leaveType,
+                            names: []
+                        };
+                    }
+                    groups[key].names.push(...allNames.splice(0));
+                }
+            }
+        });
+        
+        if (segmentReason && allNames.length > 0) {
+            const key = `${segmentLeaveType}:${segmentReason}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    reason: segmentReason,
+                    leaveType: segmentLeaveType,
+                    names: []
+                };
+            }
+            groups[key].names.push(...allNames);
+        }
+    });
+    
+    return Object.values(groups).map(g => ({
+        ...g,
+        people: matchNames([...new Set(g.names)])
+    }));
+}
+
+function parseFallback(originalText, cleanedText) {
+    const allNames = extractNamesFromLine(originalText);
+    if (allNames.length === 0) return [];
+    
+    let mainReason = '未分组';
+    let mainLeaveType = 'leaveInside';
+    
+    const textLower = originalText.toLowerCase();
+    for (const [keyword, mapped] of Object.entries(reasonKeywords)) {
+        if (textLower.includes(keyword.toLowerCase())) {
+            if (mapped === 'leaveSchool' || mapped === 'leaveOutside') {
+                mainLeaveType = mapped;
+                mainReason = mapped === 'leaveSchool' ? '请假离校' : '请假外出';
+            } else {
+                mainReason = mapped;
+            }
+            break;
+        }
+    }
+    
+    return [{
+        name: mainReason,
+        reason: mainReason === '未分组' ? '' : mainReason,
+        leaveType: mainLeaveType,
+        people: matchNames(allNames)
+    }];
+}
+
+function detectReason(text) {
+    const lower = text.toLowerCase();
+    for (const [keyword, mapped] of Object.entries(reasonKeywords)) {
+        if (lower.includes(keyword.toLowerCase())) {
+            return {
+                found: true,
+                reason: mapped === 'leaveSchool' || mapped === 'leaveOutside' ? 
+                    (mapped === 'leaveSchool' ? '请假离校' : '请假外出') : mapped,
+                leaveType: mapped === 'leaveSchool' || mapped === 'leaveOutside' ? mapped : 'leaveInside',
+                matchedKeyword: keyword
+            };
+        }
+    }
+    return { found: false };
+}
+
+function detectReasonInLine(line) {
+    let result = { found: false, cleanLine: line };
+    const parts = line.split(/\s+/);
+    
+    for (let i = 0; i < parts.length; i++) {
+        const reasonCheck = detectReason(parts[i]);
+        if (reasonCheck.found) {
+            const cleanParts = parts.filter((_, idx) => idx !== i);
+            return {
+                found: true,
+                reason: reasonCheck.reason,
+                leaveType: reasonCheck.leaveType,
+                cleanLine: cleanParts.join(' ')
+            };
+        }
+    }
+    
+    return result;
+}
+
+function isTitleLine(current, prev, next) {
+    if (current.length < 15 && detectReason(current).found) {
+        if (next && (extractNamesFromLine(next).length > 0 || isDormFormat(next))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function isPureTitle(line) {
+    if (line.length > 20) return false;
+    const hasReason = detectReason(line).found;
+    const hasName = extractNamesFromLine(line).length > 0;
+    return hasReason && !hasName;
+}
+
+function extractNamesFromLine(line) {
+    const names = [];
+    const cleaned = line.replace(/\d{3,4}-\d{1,2}(?:-\d{1,2})?/g, ' ');
+    
+    const parts = cleaned.split(/[\s,，、]+/).filter(p => p && p.length >= 2);
+    
+    parts.forEach(part => {
+        if (state.nameIndex[part]) {
+            names.push(part);
+            return;
+        }
+        
+        const fuzzy = fuzzyMatchName(part);
+        if (fuzzy) {
+            names.push(fuzzy);
+        }
+    });
+    
+    return [...new Set(names)];
+}
+
+function extractNameFromMixed(text) {
+    const cleaned = text.replace(/^\d{3,4}-\d{1,2}(?:-\d{1,2})?/, '');
+    
+    const matches = cleaned.match(/[\u4e00-\u9fa5]{2,4}/g);
+    if (!matches) return null;
+    
+    for (const match of matches) {
+        if (state.nameIndex[match]) return match;
+        const fuzzy = fuzzyMatchName(match);
+        if (fuzzy) return fuzzy;
+    }
+    
+    return null;
+}
+
+function isDormFormat(text) {
+    return /^\d{3,4}[- ]*\d{1,2}(?:[- ]*\d{1,2})?$/.test(text);
+}
+
+function parseDormFormat(text) {
+    const matches = text.match(/(\d{3,4})[- ]*(\d{1,2})(?:[- ]*(\d{1,2}))?/);
+    if (matches) {
+        return {
+            dorm: matches[1],
+            bed: parseInt(matches[2]),
+            fullDorm: `${matches[1]}-${matches[2]}`
+        };
+    }
+    return null;
+}
+
+function fuzzyMatchName(input) {
+    if (!input || input.length < 2) return null;
+    
+    for (const name of state.allNames) {
+        if (input.includes(name)) return name;
+    }
+    
+    for (const name of state.allNames) {
+        if (name.length >= 3 && input.length >= 3) {
+            const dist = levenshteinDistance(input, name);
+            const threshold = name.length <= 3 ? 1 : 2;
+            if (dist <= threshold && dist > 0) {
+                if (input[0] === name[0]) {
+                    return name;
+                }
+            }
+        }
+    }
+    
+    return null;
+}
+
+function levenshteinDistance(a, b) {
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i-1) === a.charAt(j-1)) {
+                matrix[i][j] = matrix[i-1][j-1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i-1][j-1] + 1,
+                    matrix[i][j-1] + 1,
+                    matrix[i-1][j] + 1
+                );
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+}
+
+function matchNames(names) {
+    return names.map(name => {
+        const info = state.nameIndex[name];
+        return {
+            name: name,
+            matched: !!info,
+            info: info || { name, grade: '未知', className: '未知', dorm: '未知', bed: '-' },
+            checked: !!info
+        };
+    });
+}
+
+
+// ============================================
+// UI渲染函数
+// ============================================
+function renderGroups() {
+    const container = document.getElementById('groupsContainer');
+    
+    container.innerHTML = state.groups.map(group => {
+        const isCollapsed = state.collapsedStates[group.id] !== false; // 默认折叠
+        const isSubReasonSelected = subReasons.includes(group.reason) && group.reason !== '其他';
+        const subMenuBtnText = isSubReasonSelected
+            ? `▼ ${group.reason}`
+            : (group.showSubReasons || group.reason === '其他' ? '▲ 收起其他选项' : '▼ 更多事由（分团委、学生会...）');
+        return `
+        <div class="group-card ${isCollapsed ? 'collapsed' : ''}" data-group-id="${group.id}">
+            <div class="group-header" onclick="toggleGroup(${group.id})">
+                <div class="group-name">
+                    <i class="fas fa-chevron-down"></i>
+                    ${group.name} (${group.people.filter(p => p.matched && p.checked).length}/${group.people.length}人)
+                </div>
+                <div class="group-count">${group.people.filter(p => p.matched).length}人匹配</div>
+            </div>
+            <div class="group-body">
+                <div class="type-section">
+                    <div class="label">请选择假单类型：</div>
+                    <div class="type-options">
+                        <label class="type-option ${group.leaveType === 'leaveSchool' ? 'selected' : ''}" onclick="setGroupType(${group.id}, 'leaveSchool')">
+                            <input type="radio" name="type_${group.id}" ${group.leaveType === 'leaveSchool' ? 'checked' : ''}>
+                            请假离校
+                        </label>
+                        <label class="type-option ${group.leaveType === 'leaveInside' ? 'selected' : ''}" onclick="setGroupType(${group.id}, 'leaveInside')">
+                            <input type="radio" name="type_${group.id}" ${group.leaveType === 'leaveInside' ? 'checked' : ''}>
+                            事假
+                        </label>
+                        <label class="type-option ${group.leaveType === 'leaveOutside' ? 'selected' : ''}" onclick="setGroupType(${group.id}, 'leaveOutside')">
+                            <input type="radio" name="type_${group.id}" ${group.leaveType === 'leaveOutside' ? 'checked' : ''}>
+                            请假外出
+                        </label>
+                    </div>
+                </div>
+                
+                ${group.leaveType === 'leaveInside' ? `
+                <div class="reason-section">
+                    <div class="label">事假事由：</div>
+                    
+                    <div class="reason-options" style="margin-bottom:8px;">
+                        ${['数分', '网安', '阿sir', '数实战', '网管', '辩论队', '备赛', '复习'].map(r => `
+                            <label class="reason-option ${group.reason === r ? 'selected' : ''}" 
+                                   onclick="setGroupReason(${group.id}, '${r}')">
+                                <input type="radio" name="reason_${group.id}" ${group.reason === r ? 'checked' : ''}>
+                                ${r}
+                            </label>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="reason-option has-children ${group.showSubReasons || group.reason === '其他' || isSubReasonSelected ? 'selected' : ''}" 
+                         onclick="toggleSubReasons(event, ${group.id})"
+                         style="width:100%; margin-bottom:8px; background:${group.showSubReasons || group.reason === '其他' || isSubReasonSelected ? '#EAF0E2' : ''};">
+                        <span>${subMenuBtnText}</span>
+                    </div>
+                    
+                    ${group.showSubReasons || subReasons.includes(group.reason) ? `
+                    <div class="sub-reason-menu" style="padding:12px; background:#EAF0E2; border-radius:8px; margin-bottom:12px; animation: slideDown 0.3s ease;">
+                        <div class="label" style="font-size:12px; color:#2C436F; margin-bottom:8px;">请选择具体事由：</div>
+                        <div class="reason-options">
+                            ${subReasons.map(r => `
+                                <label class="reason-option ${group.reason === r ? 'selected' : ''}" 
+                                       onclick="setGroupReason(${group.id}, '${r}', true)"
+                                       style="${r === '其他' ? 'grid-column:span 2;' : ''}">
+                                    <input type="radio" name="reason_${group.id}" ${group.reason === r ? 'checked' : ''}>
+                                    ${r}
+                                </label>
+                            `).join('')}
+                        </div>
+                        <input type="text" class="reason-other-input ${group.reason === '其他' ? 'show' : ''}" 
+                               placeholder="请输入其他事由" 
+                               value=""
+                               onchange="setGroupOtherReason(${group.id}, this.value)"
+                               style="margin-top:8px; width:100%; padding:8px; border:1px solid #d9d9d9; border-radius:4px;">
+                    </div>
+                    ` : ''}
+                </div>
+                ` : ''}
+                
+                <div class="people-list">
+                    <div class="label">匹配结果（点击可取消勾选）：</div>
+                    ${group.people.map(p => `
+                        <div class="person-item ${!p.matched ? 'not-found' : ''}" onclick="togglePerson(${group.id}, '${p.name}')">
+                            <div class="person-checkbox ${p.checked ? 'checked' : ''}">
+                                ${p.checked ? '✓' : ''}
+                            </div>
+                            <div class="person-info">
+                                <span class="person-name">${p.name}</span>
+                                ${p.matched ? `
+                                    <span class="person-location">${p.info.dorm}-${p.info.bed}</span>
+                                ` : `
+                                    <span class="person-location">（未找到）</span>
+                                `}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}).join('');
+}
+
+function toggleSubReasons(event, groupId) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    const group = state.groups.find(g => g.id === groupId);
+    if (group) {
+        group.showSubReasons = !group.showSubReasons;
+        renderGroups();
+    }
+}
+
+// 修改：将折叠状态持久化到 state 中
+function toggleGroup(groupId) {
+    state.collapsedStates[groupId] = !state.collapsedStates[groupId];
+    renderGroups();
+}
+
+function setGroupType(groupId, type) {
+    const group = state.groups.find(g => g.id === groupId);
+    if (group) {
+        group.leaveType = type;
+        if (type !== 'leaveInside') group.reason = '';
+        renderGroups();
+        updateReport();
+    }
+}
+
+// 修改：优化二级事由菜单交互
+function setGroupReason(groupId, reason, isSub = false) {
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    group.reason = reason;
+    if (isSub) {
+        group.showSubReasons = true; // 选中子菜单后保持展开
+    }
+    renderGroups();
+    updateReport();
+}
+
+function setGroupOtherReason(groupId, value) {
+    const group = state.groups.find(g => g.id === groupId);
+    if (group && value.trim()) {
+        group.reason = value.trim();
+        updateReport();
+    }
+}
+
+function togglePerson(groupId, name) {
+    const group = state.groups.find(g => g.id === groupId);
+    if (group) {
+        const person = group.people.find(p => p.name === name);
+        if (person) {
+            person.checked = !person.checked;
+            // 触觉反馈
+            if (navigator.vibrate) navigator.vibrate(10);
+            renderGroups();
+            updateReport();
+        }
+    }
+}
+
+function updateReport() {
+    let report = '';
+    const reasonGroups = {};
+    const leaveSchoolList = [];
+    const leaveOutsideList = [];
+    
+    state.groups.forEach(group => {
+        group.people.forEach(p => {
+            if (!p.checked) return;
+            
+            if (group.leaveType === 'leaveSchool') {
+                leaveSchoolList.push(p);
+            } else if (group.leaveType === 'leaveOutside') {
+                leaveOutsideList.push(p);
+            } else {
+                const reason = group.reason || '未分组';
+                if (!reasonGroups[reason]) reasonGroups[reason] = [];
+                reasonGroups[reason].push(p);
+            }
+        });
+    });
+    
+    const orderedReasons = ['数分', '网安', '阿sir', '数实战', '网管', '分团委', '学生会', '学习', '合唱团', '运动会', '警乐团', '羽毛球', '辩论队', '备赛', '复习', '校督', '其他'];
+    orderedReasons.forEach(reason => {
+        if (reasonGroups[reason] && reasonGroups[reason].length > 0) {
+            report += `${reason}：\n`;
+            reasonGroups[reason].forEach(p => {
+                report += p.matched ? `${p.name} ${p.info.dorm}-${p.info.bed}\n` : `${p.name}（未找到）\n`;
+            });
+            report += '\n';
+        }
+    });
+    
+    if (leaveSchoolList.length > 0) {
+        report += `请假离校：\n`;
+        leaveSchoolList.forEach(p => {
+            report += p.matched ? `${p.name} ${p.info.dorm}-${p.info.bed}\n` : `${p.name}（未找到）\n`;
+        });
+        report += '\n';
+    }
+    
+    if (leaveOutsideList.length > 0) {
+        report += `请假外出：\n`;
+        leaveOutsideList.forEach(p => {
+            report += p.matched ? `${p.name} ${p.info.dorm}-${p.info.bed}\n` : `${p.name}（未找到）\n`;
+        });
+        report += '\n';
+    }
+    
+    document.getElementById('reportContent').textContent = report || '（暂无勾选人员）';
+}
+
+function applyAll() {
+    // 修改：同时检测 text-pipeline 和 ocr-pipeline 两种流水线模式
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    if (mode === 'ocr-pipeline' || mode === 'text-pipeline') {
+        confirmAndReturn();
+        return;
+    }
+    
+    const updates = {};
+    let count = 0;
+    
+    state.groups.forEach(group => {
+        group.people.forEach(p => {
+            if (!p.checked) return;
+            
+            let reason = '';
+            if (group.leaveType === 'leaveInside') {
+                reason = group.reason || '其他';
+            }
+            
+            updates[p.name] = {
+                status: group.leaveType,
+                reason: reason,
+            };
+            count++;
+        });
+    });
+    
+    if (count === 0) { showToast('请至少勾选一名人员'); return; }
+    
+    // 触觉反馈
+    if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+    
+    localStorage.setItem('pendingLeaveRecords', JSON.stringify(updates));
+    showToast(`成功设置 ${count} 条假单`);
+    
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1000);
+}
+
+function goBack() { 
+    // 修改：同时检测 text-pipeline 和 ocr-pipeline 两种流水线模式
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    if (mode === 'ocr-pipeline' || mode === 'text-pipeline') {
+        goBackToUpload();
+        return;
+    }
+    window.location.href = 'index.html'; 
+}
+
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function copyPromptText() {
+    const text = '提取图片中人名并以空格间隔';
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => showToast('已复制')).catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try { document.execCommand('copy'); showToast('已复制'); } catch (e) { showToast('复制失败'); }
+    document.body.removeChild(textarea);
+}
+    </script>
+</body>
+</html>
