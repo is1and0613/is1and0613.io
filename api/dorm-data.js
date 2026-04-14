@@ -1,11 +1,4 @@
 // api/dorm-data.js
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
 export default async function handler(req, res) {
   // 设置 CORS 头
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,17 +8,28 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    // 从数据库查询所有学生
-    const { data: students, error } = await supabase
-      .from('students')
-      .select('*')
-      .order('grade', { ascending: false })
-      .order('class_name')
-      .order('dorm')
-      .order('bed');
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
-    if (error) throw error;
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase environment variables');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  try {
+    // 直接调用 Supabase REST API
+    const response = await fetch(`${supabaseUrl}/rest/v1/students?select=*`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Supabase API error: ${response.status}`);
+    }
+
+    const students = await response.json();
 
     // 重建前端需要的 dormData 结构
     const dormData = {};
