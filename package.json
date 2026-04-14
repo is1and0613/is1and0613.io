@@ -7,7 +7,7 @@
     "dev": "vercel dev"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.103.0",
+    "@supabase/supabase-js": "2.39.0",
     "@vercel/node": "^3.0.0",
     "formidable": "^3.5.1",
     "openai": "^4.77.0"
