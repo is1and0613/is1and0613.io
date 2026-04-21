@@ -121,7 +121,6 @@
             transform: scale(0.98);
         }
         
-        /* 提示消息 */
         .toast {
             position: fixed;
             top: 50%;
@@ -171,7 +170,6 @@
         </button>
     </div>
     
-    <!-- 提示消息 -->
     <div class="toast" id="toast"></div>
     
     <script>
@@ -198,7 +196,13 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    // 存储 token
+                    sessionStorage.setItem('authToken', data.token);
                     sessionStorage.setItem('loggedIn', 'true');
+                    
+                    // 验证是否保存成功
+                    console.log('Token saved:', sessionStorage.getItem('authToken'));
+                    
                     showToast('登录成功');
                     setTimeout(() => {
                         window.location.replace('index.html');
@@ -224,7 +228,6 @@
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
         
-        // 页面加载时自动聚焦密码框
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('password').focus();
         });

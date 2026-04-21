@@ -4,13 +4,12 @@
   "description": "晚寝查寝系统 - Vercel 后端",
   "type": "module",
   "scripts": {
-    "preinstall": "npm install @supabase/supabase-js",
     "dev": "vercel dev"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.39.0",
     "@vercel/node": "^3.0.0",
     "formidable": "^3.5.1",
+    "jsonwebtoken": "^9.0.0",
     "openai": "^4.77.0"
   },
   "devDependencies": {

@@ -3,10 +3,11 @@
 <head>
     <script>
         // 检查是否已登录
-        if (!sessionStorage.getItem('loggedIn')) {
-            // 未登录，跳转到登录页
+        // 检查是否已登录（使用 token）
+        if (!sessionStorage.getItem('authToken')) {
             window.location.replace('login.html');
         }
+        console.log('index.html loaded, token:', sessionStorage.getItem('authToken'));
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -416,7 +417,6 @@
             scrollbar-width: none; /* 隐藏滚动条（Firefox） */
             -ms-overflow-style: none; /* 隐藏滚动条（IE） */
             -webkit-overflow-scrolling: touch; /* 关键：iOS 丝滑惯性滑动 */
-            touch-action: pan-x; /* 允许水平方向触摸 */
             cursor: grab; /* 鼠标样式提示可拖动 */
         }
         
@@ -486,26 +486,6 @@
             display: flex;
             gap: 12px;
             margin-bottom: 8px;
-        }
-        
-        .data-actions {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .data-actions .action-btn {
-            flex: 1;
-            padding: 10px 0;
-            font-size: 13px;
-            background: #fafafa;
-            color: #666;
-            border: 1px solid #e0e0e0;
-        }
-        
-        .data-actions .action-btn:active {
-            background: #f0f0f0;
-            transform: scale(0.96);
         }
         
         .action-btn {
@@ -1049,15 +1029,6 @@
                 <i class="fas fa-pen"></i>手动输入
             </button>
         </div>
-        <div class="data-actions">
-            <button class="action-btn secondary" onclick="exportData()">
-                <i class="fas fa-download"></i>导出数据
-            </button>
-            <button class="action-btn secondary" onclick="document.getElementById('importFile').click()">
-                <i class="fas fa-upload"></i>导入数据
-            </button>
-            <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(this)">
-        </div>
         <div class="bottom-stats" id="bottomStats">当前显示 0 人（未归 0 人，离校 0 人）</div>
     </div>
     
@@ -1163,28 +1134,44 @@
         // ============================================
         async function loadDormData() {
             try {
-                const response = await fetch('/api/dorm-data');
+                const token = sessionStorage.getItem('authToken');
+                
+                if (!token) {
+                    window.location.replace('login.html');
+                    return;
+                }
+                
+                const response = await fetch('/api/dorm-data', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                // 如果返回 401，说明 token 无效，跳回登录页
+                if (response.status === 401) {
+                    sessionStorage.removeItem('authToken');
+                    sessionStorage.removeItem('loggedIn');
+                    window.location.replace('login.html');
+                    return;
+                }
+                
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
+                
                 const data = await response.json();
                 window.dormData = data.dormData;
                 window.nameIndex = data.nameIndex;
 
-                // 隐藏加载遮罩
                 document.getElementById('loadingOverlay').classList.add('hidden');
-
-                // 数据加载完成后初始化渲染
                 initApp();
             } catch (error) {
                 console.error('加载宿舍数据失败:', error);
                 document.querySelector('.loading-spinner-large').style.display = 'none';
                 document.querySelector('.loading-text').style.display = 'none';
                 document.getElementById('loadingError').classList.add('show');
-                showToast('加载数据失败，请刷新重试');
             }
         }
-
         function initApp() {
             renderDormList();
 
@@ -1428,7 +1415,7 @@
                 // 事假（如果有）
                 if (stats.business.length > 0) {
                     // 工作室类型数组
-                    const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '工作室'];
+                    const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '舆情', '工作室', '数据分析工作室', '数据实战工作室'];
                     // 统计事由
                     const reasonCount = {};
                     stats.business.forEach(s => {
@@ -1706,9 +1693,9 @@
             // 获取所有学生按年级分组
             const studentsByGrade = getAllStudentsByGrade();
 
-            // 年级顺序（排除 2023级）
-            const gradeOrderDesc = ['2025级', '2024级', '2022级'];
-            const gradeOrderAsc = ['2022级', '2024级', '2025级'];
+            // 年级顺序（包含 2023级，但实习版会对其过滤）
+            const gradeOrderDesc = ['2025级', '2024级', '2023级', '2022级'];
+            const gradeOrderAsc = ['2022级', '2023级', '2024级', '2025级'];
 
             // 计算统计数据
             let totalShould = 0, totalActual = 0;
@@ -1717,7 +1704,13 @@
             const gradeStats = {};
 
             gradeOrderDesc.forEach(grade => {
-                const students = studentsByGrade[grade] || [];
+                let students = studentsByGrade[grade] || [];
+
+                // 实习版过滤：完全忽略 2023级（大三）所有学生
+                if (grade === '2023级') {
+                    students = [];
+                }
+
                 const should = students.length;
 
                 // 按状态分类
@@ -1779,7 +1772,7 @@
                 // 事假（如果有）
                 if (stats.business.length > 0) {
                     // 工作室类型数组
-                    const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '工作室'];
+                    const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '舆情', '工作室', '数据分析工作室', '数据实战工作室'];
                     // 统计事由
                     const reasonCount = {};
                     stats.business.forEach(s => {
@@ -2471,63 +2464,6 @@
             window.location.href = 'manual-upload.html';
         }
         
-        /**
-         * 导出查寝数据为 JSON 文件
-         */
-        function exportData() {
-            const data = {
-                studentStatus: state.studentStatus,
-                exportTime: new Date().toISOString(),
-                version: '1.0'
-            };
-            
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-            a.href = url;
-            a.download = `查寝数据_${dateStr}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast('数据已导出');
-        }
-        
-        /**
-         * 导入查寝数据
-         */
-        function importData(input) {
-            const file = input.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (data && data.studentStatus) {
-                        state.studentStatus = data.studentStatus;
-                        autoSaveState();
-                        refreshView();
-                        showToast('数据导入成功');
-                    } else {
-                        showToast('文件格式错误');
-                    }
-                } catch (err) {
-                    console.error('导入失败:', err);
-                    showToast('文件解析失败');
-                }
-            };
-            reader.onerror = function() {
-                showToast('文件读取失败');
-            };
-            reader.readAsText(file);
-            
-            // 重置 input，允许重复选择同一文件
-            input.value = '';
-        }
-        
         // 打开企业微信
         function openWorkWechat() {
             // 尝试使用企业微信协议跳转（移动端）
@@ -2620,6 +2556,7 @@
                     if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
                     showToast(`已自动应用 ${count} 条假单记录`);
                     console.log('[applyPendingLeaves] 应用后的状态:', state.studentStatus);
+                    autoSaveState();
                     refreshView();
                 }
             } catch (e) {

@@ -522,6 +522,24 @@
             color: #ff8a00;
         }
         
+        .person-item.fuzzy-match {
+            background: #fff7e6;
+            border-left: 4px solid #fa8c16;
+            padding-left: 6px;
+        }
+        
+        .fuzzy-warning {
+            margin-left: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
+            vertical-align: middle;
+        }
+        
         .person-checkbox {
             width: 20px;
             height: 20px;
@@ -915,25 +933,45 @@ const state = {
 // ============================================
 async function loadDormData() {
     try {
-        const response = await fetch('/api/dorm-data');
+        const token = sessionStorage.getItem('authToken');
+        
+        if (!token) {
+            window.location.replace('login.html');
+            return;
+        }
+        
+        const response = await fetch('/api/dorm-data', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.status === 401) {
+            sessionStorage.removeItem('authToken');
+            sessionStorage.removeItem('loggedIn');
+            window.location.replace('login.html');
+            return;
+        }
+        
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
+        
         const data = await response.json();
         window.dormData = data.dormData;
         window.nameIndex = data.nameIndex;
 
-        // 隐藏加载遮罩
         document.getElementById('loadingOverlay').classList.add('hidden');
-
-        // 数据加载完成后初始化
-        initApp();
+        
+        // 初始化页面（原有的初始化函数）
+        if (typeof initApp === 'function') {
+            initApp();
+        }
     } catch (error) {
         console.error('加载宿舍数据失败:', error);
         document.querySelector('.loading-spinner-large').style.display = 'none';
         document.querySelector('.loading-text').style.display = 'none';
         document.getElementById('loadingError').classList.add('show');
-        showToast('加载数据失败，请刷新重试');
     }
 }
 
@@ -967,6 +1005,7 @@ const reasonKeywords = {
     '自媒体工作室': '阿sir', '预备阿sir自媒体工作室': '阿sir', '自媒体': '阿sir',
     'sir': '阿sir', '阿SIR': '阿sir', '阿Sir': '阿sir',
     '数据实战': '数实战', '数据实战工作室': '数实战', '数实战': '数实战',
+    '舆情': '舆情', '舆情工作室': '舆情',
     '网管': '网管', '网管工作室': '网管',
     
     // 新增事由
@@ -1173,17 +1212,36 @@ function cleanInputText(text) {
     }
     
     // ===== 阶段2: 检测事由标记（在提取前检测，用于后续标记）=====
-    if (/阿\s*[sS][iI][rR]|阿sir|阿Sir|自媒体|工作室/i.test(text)) {
-        hasStudioMarker = true;
-        studioType = '阿sir';
-    }
-    if (/数分|数据分析/i.test(text) && !studioType) {
+    // 优先检测完整的工作室名称
+    if (/数据分析工作室|数分工作室/i.test(text)) {
         hasStudioMarker = true;
         studioType = '数分';
-    }
-    if (/网安|网络安全/i.test(text) && !studioType) {
+    } else if (/数据实战工作室|数实战工作室/i.test(text)) {
+        hasStudioMarker = true;
+        studioType = '数实战';
+    } else if (/网安工作室/i.test(text)) {
         hasStudioMarker = true;
         studioType = '网安';
+    } else if (/舆情工作室/i.test(text)) {
+        hasStudioMarker = true;
+        studioType = '舆情';
+    } else if (/网管工作室/i.test(text)) {
+        hasStudioMarker = true;
+        studioType = '网管';
+    } else if (/阿\s*[sS][iI][rR]|阿sir|阿Sir|预备阿sir|自媒体工作室/i.test(text)) {
+        hasStudioMarker = true;
+        studioType = '阿sir';
+    } else if (/数分|数据分析/i.test(text) && !studioType) {
+        hasStudioMarker = true;
+        studioType = '数分';
+    } else if (/网安\b(?!全)/i.test(text) && !studioType) {
+        // 只匹配"网安"，不匹配"网络安全"
+        hasStudioMarker = true;
+        studioType = '网安';
+    } else if (/工作室/i.test(text) && !studioType) {
+        // 通用的"工作室"关键词作为兜底，但不覆盖已检测到的类型
+        hasStudioMarker = true;
+        studioType = '工作室';
     }
     
     // ===== 阶段3: 严格提取人员列表区域 =====
@@ -1318,9 +1376,21 @@ function cleanInputText(text) {
     cleaned = cleaned.replace(/\n+/g, '\n');
     cleaned = cleaned.split('\n').map(line => line.trim()).join('\n').trim();
     
-    // ===== 阶段7: 添加事由标记 =====
+    // ===== 阶段7: 添加事由标记（优化版）=====
     if (hasStudioMarker && studioType && cleaned) {
-        cleaned = studioType + '\n' + cleaned;
+        const lines = cleaned.split('\n');
+        const firstLine = lines[0].trim();
+        
+        // 检查第一行是否已经是孤立的事由关键词
+        const isFirstLinePureReason = (isReasonKeyword(firstLine) && extractNamesFromLine(firstLine).length === 0);
+        
+        // 检查第一行是否已经以"事由 人名"的形式开头（如"网安 张三"）
+        const firstLineHasReasonWithName = (isReasonKeyword(firstLine.split(/\s+/)[0]) && extractNamesFromLine(firstLine).length > 0);
+        
+        // 只有当第一行不是孤立事由，且不是以"事由+人名"开头时，才添加事由标记
+        if (!isFirstLinePureReason && !firstLineHasReasonWithName) {
+            cleaned = studioType + '\n' + cleaned;
+        }
     }
     
     return cleaned;
@@ -1342,7 +1412,7 @@ function extractNamesFromCleanedText(text) {
         
         // 直接匹配
         if (state.nameIndex[candidate] && !foundNames.has(candidate)) {
-            names.push(candidate);
+            names.push({ name: candidate, originalInput: candidate, matchType: 'exact' });
             foundNames.add(candidate);
             continue;
         }
@@ -1350,7 +1420,7 @@ function extractNamesFromCleanedText(text) {
         // 模糊匹配（支持同音字/形近字容错）
         const fuzzy = fuzzyMatchNameAdvanced(candidate);
         if (fuzzy && !foundNames.has(fuzzy)) {
-            names.push(fuzzy);
+            names.push({ name: fuzzy, originalInput: candidate, matchType: 'fuzzy' });
             foundNames.add(fuzzy);
         }
     }
@@ -1437,10 +1507,16 @@ function findName(token) {
     if (!token || token.length < 2) return null;
     
     // 优先直接匹配
-    if (state.nameIndex[token]) return token;
+    if (state.nameIndex[token]) {
+        return { name: token, originalInput: token, matchType: 'exact' };
+    }
     
     // 其次模糊匹配
-    return fuzzyMatchName(token);
+    const fuzzy = fuzzyMatchName(token);
+    if (fuzzy) {
+        return { name: fuzzy, originalInput: token, matchType: 'fuzzy' };
+    }
+    return null;
 }
 
 /**
@@ -1517,7 +1593,8 @@ function parseSmartFormat(originalText, cleanedText) {
                 names: []
             };
         }
-        if (!groups[key].names.includes(entry.name)) {
+        const nameKey = typeof entry.name === 'object' ? entry.name.name : entry.name;
+        if (!groups[key].names.some(n => (typeof n === 'object' ? n.name : n) === nameKey)) {
             groups[key].names.push(entry.name);
         }
     });
@@ -1525,7 +1602,7 @@ function parseSmartFormat(originalText, cleanedText) {
     // 转换为标准格式
     return Object.values(groups).map(g => ({
         ...g,
-        people: matchNames([...new Set(g.names)]),
+        people: matchNames(dedupeNameObjects(g.names)),
         name: g.reason
     }));
 }
@@ -1598,6 +1675,10 @@ function parseSectionHeader(line) {
     const tokens = cleanLine.split(/[\s,，、]+/).filter(t => t.length >= 2);
     let hasName = false;
     for (const token of tokens) {
+        // 事由关键词优先视为事由，避免被误判为人名（如"网安"等）
+        if (isReasonKeyword(token)) {
+            continue;
+        }
         if (findName(token)) {
             hasName = true;
             break;
@@ -1620,10 +1701,25 @@ function parseSectionHeader(line) {
  */
 function parseSection(lines, sectionDefaultReason, sectionDefaultLeaveType) {
     const entries = [];
+    let currentDefaultReason = sectionDefaultReason;
+    let currentDefaultLeaveType = sectionDefaultLeaveType;
     
     lines.forEach(line => {
-        const lineEntries = parseLine(line, sectionDefaultReason, sectionDefaultLeaveType);
+        const lineEntries = parseLine(line, currentDefaultReason, currentDefaultLeaveType);
         entries.push(...lineEntries);
+        
+        // 检测行首是否有事由关键词，如果有则更新后续行的默认事由
+        const lineTokens = line.replace(/\d{3,4}-\d{1,3}(?:-\d{1,2})?/g, ' ')
+                               .replace(/[\u4e00-\u9fa5]+\d{4}/g, ' ')
+                               .trim()
+                               .split(/[\s,，、]+/).filter(t => t.length >= 2);
+        if (lineTokens.length > 0) {
+            const firstToken = lineTokens[0];
+            if (isReasonKeyword(firstToken) && !findName(firstToken)) {
+                currentDefaultReason = firstToken;
+                currentDefaultLeaveType = getLeaveTypeByReason(currentDefaultReason);
+            }
+        }
     });
     
     return entries;
@@ -1654,7 +1750,15 @@ function parseLine(line, sectionDefaultReason, sectionDefaultLeaveType) {
         name: findName(token) // 匹配到的人名（如果有）
     }));
     
-    // 4. 成对提取
+    // 4. 检测行首事由：如果一行以事由开头，则该行所有无特定事由的人名都继承此行首事由
+    let lineDefaultReason = sectionDefaultReason;
+    let lineDefaultLeaveType = sectionDefaultLeaveType;
+    if (tokenInfos.length > 0 && tokenInfos[0].isReason) {
+        lineDefaultReason = tokenInfos[0].token;
+        lineDefaultLeaveType = getLeaveTypeByReason(lineDefaultReason);
+    }
+    
+    // 5. 成对提取
     let i = 0;
     while (i < tokenInfos.length) {
         const info = tokenInfos[i];
@@ -1662,7 +1766,7 @@ function parseLine(line, sectionDefaultReason, sectionDefaultLeaveType) {
         if (info.name) {
             // 找到人名，确定其对应的事由
             let specificReason = null;
-            let specificLeaveType = sectionDefaultLeaveType;
+            let specificLeaveType = lineDefaultLeaveType;
             
             // 策略1：向后查找（人名在前，事由在后）→ "尹文珺 阿sir"
             if (i + 1 < tokenInfos.length && tokenInfos[i + 1].isReason) {
@@ -1670,16 +1774,16 @@ function parseLine(line, sectionDefaultReason, sectionDefaultLeaveType) {
                 specificLeaveType = getLeaveTypeByReason(specificReason);
                 i += 2; // 跳过人名和事由
             }
-            // 策略2：向前查找（事由在前，人名在后）→ "数分 何锐颖"
+            // 策略2：向前查找紧邻的事由（人名紧跟在事由后）→ "数分 何锐颖"
             else if (i - 1 >= 0 && tokenInfos[i - 1].isReason) {
                 specificReason = tokenInfos[i - 1].token;
                 specificLeaveType = getLeaveTypeByReason(specificReason);
                 i++;
             }
-            // 策略3：使用段落默认事由（只有人名，没有行内事由）
+            // 策略3：使用行默认事由或段落默认事由
             else {
-                specificReason = sectionDefaultReason || '其他';
-                specificLeaveType = sectionDefaultLeaveType;
+                specificReason = lineDefaultReason || '其他';
+                specificLeaveType = lineDefaultLeaveType;
                 i++;
             }
             
@@ -1883,7 +1987,7 @@ function parseInlineFormat(originalText, cleanedText) {
     
     return Object.values(groups).map(g => ({
         ...g,
-        people: matchNames([...new Set(g.names)])
+        people: matchNames(dedupeNameObjects(g.names))
     }));
 }
 
@@ -1949,11 +2053,12 @@ function parseMixedFormat(originalText, cleanedText) {
         }
         
         // 添加人员
-        result.names.forEach(name => {
-            if (!groups[key].names.includes(name)) {
-                groups[key].names.push(name);
+        result.names.forEach(nameObj => {
+            const nameKey = typeof nameObj === 'object' ? nameObj.name : nameObj;
+            if (!groups[key].names.some(n => (typeof n === 'object' ? n.name : n) === nameKey)) {
+                groups[key].names.push(nameObj);
                 if (result.dormInfo) {
-                    groups[key].dormInfo[name] = result.dormInfo;
+                    groups[key].dormInfo[nameKey] = result.dormInfo;
                 }
             }
         });
@@ -1961,7 +2066,7 @@ function parseMixedFormat(originalText, cleanedText) {
     
     return Object.values(groups).map(g => ({
         ...g,
-        people: matchNames(g.names).map(p => ({
+        people: matchNames(dedupeNameObjects(g.names)).map(p => ({
             ...p,
             ...(g.dormInfo[p.name] && {
                 info: {
@@ -2000,7 +2105,7 @@ function parseMixedLine(line) {
     if (classMatch) {
         const name = classMatch[2];
         if (state.nameIndex[name]) {
-            result.names.push(name);
+            result.names.push({ name: name, originalInput: name, matchType: 'exact' });
             result.dormInfo = {
                 dorm: classMatch[3],
                 bed: parseInt(classMatch[4]),
@@ -2018,7 +2123,7 @@ function parseMixedLine(line) {
         const extractedName = dormMatch[4];
         // 验证是否是已知人名
         if (state.nameIndex[extractedName]) {
-            result.names.push(extractedName);
+            result.names.push({ name: extractedName, originalInput: extractedName, matchType: 'exact' });
             result.dormInfo = {
                 dorm: dormMatch[1],
                 bed: parseInt(dormMatch[2]),
@@ -2050,7 +2155,7 @@ function parseMixedLine(line) {
         
         // 尝试直接匹配人名
         if (state.nameIndex[part]) {
-            result.names.push(part);
+            result.names.push({ name: part, originalInput: part, matchType: 'exact' });
             return;
         }
         
@@ -2125,7 +2230,7 @@ function parseLooseFormat(originalText, cleanedText) {
     
     return Object.values(groups).map(g => ({
         ...g,
-        people: matchNames([...new Set(g.names)])
+        people: matchNames(dedupeNameObjects(g.names))
     }));
 }
 
@@ -2217,17 +2322,17 @@ function extractNamesFromLine(line) {
     
     parts.forEach(part => {
         if (state.nameIndex[part]) {
-            names.push(part);
+            names.push({ name: part, originalInput: part, matchType: 'exact' });
             return;
         }
         
         const fuzzy = fuzzyMatchName(part);
         if (fuzzy) {
-            names.push(fuzzy);
+            names.push({ name: fuzzy, originalInput: part, matchType: 'fuzzy' });
         }
     });
     
-    return [...new Set(names)];
+    return dedupeNameObjects(names);
 }
 
 function extractNameFromMixed(text) {
@@ -2237,9 +2342,13 @@ function extractNameFromMixed(text) {
     if (!matches) return null;
     
     for (const match of matches) {
-        if (state.nameIndex[match]) return match;
+        if (state.nameIndex[match]) {
+            return { name: match, originalInput: match, matchType: 'exact' };
+        }
         const fuzzy = fuzzyMatchName(match);
-        if (fuzzy) return fuzzy;
+        if (fuzzy) {
+            return { name: fuzzy, originalInput: match, matchType: 'fuzzy' };
+        }
     }
     
     return null;
@@ -2304,14 +2413,30 @@ function levenshteinDistance(a, b) {
     return matrix[b.length][a.length];
 }
 
+function dedupeNameObjects(arr) {
+    const seen = new Set();
+    return arr.filter(obj => {
+        const key = obj.name;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
 function matchNames(names) {
-    return names.map(name => {
-        const info = state.nameIndex[name];
+    return names.map(item => {
+        const isObj = typeof item === 'object' && item !== null;
+        const rawName = isObj ? item.name : item;
+        const originalInput = isObj ? (item.originalInput || rawName) : rawName;
+        let matchType = isObj ? (item.matchType || 'none') : (state.nameIndex[item] ? 'exact' : 'none');
+        const info = state.nameIndex[rawName];
         return {
-            name: name,
-            matched: !!info,
-            info: info || { name, grade: '未知', className: '未知', dorm: '未知', bed: '-' },
-            checked: !!info
+            name: rawName,
+            matched: matchType !== 'none',
+            matchType: matchType,
+            originalInput: originalInput,
+            info: info || { name: rawName, grade: '未知', className: '未知', dorm: '未知', bed: '-' },
+            checked: matchType !== 'none'
         };
     });
 }
@@ -2403,12 +2528,13 @@ function renderGroups() {
                 <div class="people-list">
                     <div class="label">匹配结果（点击可取消勾选）：</div>
                     ${group.people.map(p => `
-                        <div class="person-item ${!p.matched ? 'not-found' : ''}" onclick="togglePerson(${group.id}, '${p.name}')">
+                        <div class="person-item ${!p.matched ? 'not-found' : ''} ${p.matchType === 'fuzzy' ? 'fuzzy-match' : ''}" onclick="togglePerson(${group.id}, '${p.name}')">
                             <div class="person-checkbox ${p.checked ? 'checked' : ''}">
                                 ${p.checked ? '✓' : ''}
                             </div>
                             <div class="person-info">
                                 <span class="person-name">${p.name}</span>
+                                ${p.matchType === 'fuzzy' ? `<span class="fuzzy-warning" onclick="event.stopPropagation(); alert('原输入：${p.originalInput}')" title="点击查看原输入">⚠️</span>` : ''}
                                 ${p.matched ? `
                                     <span class="person-location">${p.info.dorm}-${p.info.bed}</span>
                                 ` : `
