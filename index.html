@@ -1693,6 +1693,9 @@
             // 获取所有学生按年级分组
             const studentsByGrade = getAllStudentsByGrade();
 
+            // 源头过滤：彻底排除2023级（大三）所有学生
+            delete studentsByGrade['2023级'];
+
             // 年级顺序（包含 2023级，但实习版会对其过滤）
             const gradeOrderDesc = ['2025级', '2024级', '2023级', '2022级'];
             const gradeOrderAsc = ['2022级', '2023级', '2024级', '2025级'];
@@ -1704,12 +1707,10 @@
             const gradeStats = {};
 
             gradeOrderDesc.forEach(grade => {
-                let students = studentsByGrade[grade] || [];
+                // 遍历跳过2023级
+                if (grade === '2023级') return;
 
-                // 实习版过滤：完全忽略 2023级（大三）所有学生
-                if (grade === '2023级') {
-                    students = [];
-                }
+                let students = studentsByGrade[grade] || [];
 
                 const should = students.length;
 
@@ -1763,6 +1764,9 @@
             // 4. 年级统计块（按25→24→22顺序）
             // 规则：只有人数>0的分类才输出该行+名单
             gradeOrderDesc.forEach(grade => {
+                // 遍历跳过2023级
+                if (grade === '2023级') return;
+
                 const stats = gradeStats[grade];
                 const shortGrade = getShortGrade(grade);
 
@@ -1815,7 +1819,15 @@
             // 5. 汇总行（按22→24→25顺序）
             // 规则：只有人数>0的分类才显示，0的不显示
             gradeOrderAsc.forEach(grade => {
+                // 遍历跳过2023级
+                if (grade === '2023级') return;
+
                 const stats = gradeStats[grade];
+
+                // 汇总行空值过滤：如果应到为0且无任何请假记录，不输出该行
+                if (stats.should === 0 && stats.leaveSchool.length + stats.business.length + stats.leaveOut.length === 0) {
+                    return;
+                }
 
                 // 基础信息始终显示
                 let line = `${grade}应到${stats.should} 在校${stats.inSchool} 正常就寝${stats.normalSleep}`;
