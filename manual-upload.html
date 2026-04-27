@@ -1011,6 +1011,7 @@ const reasonKeywords = {
     // 新增事由
     '分团委': '分团委', '学生会': '学生会', '合唱团': '合唱团',
     '运动会': '运动会', '警乐团': '警乐团', '羽毛球': '羽毛球',
+    '篮球队': '篮球队', '篮球': '篮球队', '篮球队假单': '篮球队',
     
     // 其他事由
     '辩论队': '辩论队', '辩队': '辩论队',
@@ -1025,7 +1026,7 @@ const reasonKeywords = {
 };
 
 // 二级事由列表（用于UI显示）
-const subReasons = ['分团委', '学生会', '学习', '合唱团', '运动会', '警乐团', '羽毛球', '校督', '其他'];
+const subReasons = ['分团委', '学生会', '学习', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '校督', '其他'];
 
 // ============================================
 // 初始化
@@ -1342,7 +1343,7 @@ function cleanInputText(text) {
         '阿sir', '啊sir', '啊SIR', '预备阿sir', '自媒体工作室', 
         '预备阿sir自媒体工作室', '自媒体', 'sir', '阿SIR', '阿Sir',
         '数据实战', '数据实战工作室', '数实战', '网管', '网管工作室',
-        '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球',
+        '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '篮球', '篮球队假单',
         '辩论队', '辩队', '备赛', '比赛', '竞赛', '复习', '学习', '自习',
         '校督', '校督促', '请假离校', '离校', '回家', '请假外出', '外出', '出门', '事假', '假'
     ]);
@@ -1482,7 +1483,7 @@ function isReasonKeyword(token) {
         '数分': true, '网安': true, '阿sir': true, '辩论队': true,
         '备赛': true, '复习': true, '学习': true, '校督': true,
         '分团委': true, '学生会': true, '合唱团': true,
-        '运动会': true, '警乐团': true, '羽毛球': true,
+        '运动会': true, '警乐团': true, '羽毛球': true, '篮球队': true,
         '数实战': true, '网管': true,
         '请假离校': true, '离校': true, '事假': true, '外出': true,
         '请假外出': true, '回家': true, '出门': true
@@ -2487,7 +2488,7 @@ function renderGroups() {
                     <div class="label">事假事由：</div>
                     
                     <div class="reason-options" style="margin-bottom:8px;">
-                        ${['数分', '网安', '阿sir', '数实战', '网管', '辩论队', '备赛', '复习'].map(r => `
+                        ${['数分', '网安', '阿sir', '数实战', '网管', '篮球队', '辩论队', '备赛', '复习'].map(r => `
                             <label class="reason-option ${group.reason === r ? 'selected' : ''}" 
                                    onclick="setGroupReason(${group.id}, '${r}')">
                                 <input type="radio" name="reason_${group.id}" ${group.reason === r ? 'checked' : ''}>
@@ -2634,7 +2635,7 @@ function updateReport() {
         });
     });
     
-    const orderedReasons = ['数分', '网安', '阿sir', '数实战', '网管', '分团委', '学生会', '学习', '合唱团', '运动会', '警乐团', '羽毛球', '辩论队', '备赛', '复习', '校督', '其他'];
+    const orderedReasons = ['数分', '网安', '阿sir', '数实战', '网管', '分团委', '学生会', '学习', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '辩论队', '备赛', '复习', '校督', '其他'];
     orderedReasons.forEach(reason => {
         if (reasonGroups[reason] && reasonGroups[reason].length > 0) {
             report += `${reason}：\n`;
@@ -2643,6 +2644,15 @@ function updateReport() {
             });
             report += '\n';
         }
+    });
+    // 输出不在固定顺序中的自定义事由
+    Object.keys(reasonGroups).forEach(reason => {
+        if (orderedReasons.includes(reason)) return;
+        report += `${reason}：\n`;
+        reasonGroups[reason].forEach(p => {
+            report += p.matched ? `${p.name} ${p.info.dorm}-${p.info.bed}\n` : `${p.name}（未找到）\n`;
+        });
+        report += '\n';
     });
     
     if (leaveSchoolList.length > 0) {
