@@ -1083,6 +1083,7 @@
                     <div class="reason-item" onclick="selectReason('运动会')" style="padding-left: 32px; font-size: 13px;">运动会 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
                     <div class="reason-item" onclick="selectReason('警乐团')" style="padding-left: 32px; font-size: 13px;">警乐团 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
                     <div class="reason-item" onclick="selectReason('羽毛球')" style="padding-left: 32px; font-size: 13px;">羽毛球 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
+                    <div class="reason-item" onclick="selectReason('篮球队')" style="padding-left: 32px; font-size: 13px;">篮球队 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
                     <div class="reason-item" onclick="selectReason('其他')" style="padding-left: 32px; font-size: 13px; color: #666;">自定义其他 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
                 </div>
                 
@@ -1427,11 +1428,17 @@
                         reasonCount[r] = (reasonCount[r] || 0) + 1;
                     });
                     // 按固定顺序排列事由
-                    const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '其他'];
-                    const reasonStr = reasonOrder
+                    const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '其他'];
+                    const reasonStrParts = reasonOrder
                         .filter(r => reasonCount[r])
-                        .map(r => `${reasonCount[r]}${r}`)
-                        .join(' ');
+                        .map(r => `${reasonCount[r]}${r}`);
+                    // 追加不在固定顺序中的自定义事由
+                    Object.keys(reasonCount).forEach(r => {
+                        if (!reasonOrder.includes(r)) {
+                            reasonStrParts.push(`${reasonCount[r]}${r}`);
+                        }
+                    });
+                    const reasonStr = reasonStrParts.join(' ');
                     report += `${stats.business.length}事假（${reasonStr}）\n`;
                     report += stats.business.map(s => s.name).join(' ') + '\n';
                 }
@@ -1781,11 +1788,17 @@
                         reasonCount[r] = (reasonCount[r] || 0) + 1;
                     });
                     // 按固定顺序排列事由
-                    const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '其他'];
-                    const reasonStr = reasonOrder
+                    const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '其他'];
+                    const reasonStrParts = reasonOrder
                         .filter(r => reasonCount[r])
-                        .map(r => `${reasonCount[r]}${r}`)
-                        .join(' ');
+                        .map(r => `${reasonCount[r]}${r}`);
+                    // 追加不在固定顺序中的自定义事由
+                    Object.keys(reasonCount).forEach(r => {
+                        if (!reasonOrder.includes(r)) {
+                            reasonStrParts.push(`${reasonCount[r]}${r}`);
+                        }
+                    });
+                    const reasonStr = reasonStrParts.join(' ');
                     report += `${stats.business.length}事假（${reasonStr}）\n`;
                     report += stats.business.map(s => s.name).join(' ') + '\n';
                 }
