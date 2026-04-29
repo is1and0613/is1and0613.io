@@ -1803,9 +1803,9 @@ function parseLine(line, sectionDefaultReason, sectionDefaultLeaveType) {
 }
 
 // ============================================
-// 终极智能解析器
+// 终极智能解析器（改用后端 DeepSeek 智能分组）
 // ============================================
-function parseInput() {
+async function parseInput() {
     const text = document.getElementById('inputText').value.trim();
     if (!text) { showToast('请输入人名列表'); return; }
     
@@ -1818,13 +1818,60 @@ function parseInput() {
     const cleanedText = cleanInputText(text);
     state.lastCleanedText = cleanedText;
     
-    // 步骤2: 使用多策略解析（parseSmartFormat 作为主策略优先）
+    showToast('正在智能分组...');
+    
+    try {
+        const response = await fetch('/api/smart-group', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: cleanedText })
+        });
+        const data = await response.json();
+        
+        if (!data.success || !data.groups || data.groups.length === 0) {
+            throw new Error('智能分组失败');
+        }
+        
+        // 根据返回的 groups 重建 state.groups，调用 matchNames 进行精确匹配
+        state.groups = data.groups.map((g, idx) => ({
+            id: idx,
+            name: g.reason,
+            reason: g.reason,
+            leaveType: g.leaveType,
+            people: matchNames(g.people),
+            showSubReasons: subReasons.includes(g.reason) || g.reason === '其他'
+        }));
+        
+        state.lastParseResult = state.groups;
+        
+        // 更新预览面板
+        updatePreviewPanel(text, cleanedText, state.groups);
+        
+        renderGroups();
+        updateReport();
+        
+        document.getElementById('resultSection').classList.add('show');
+        document.getElementById('previewSection').classList.add('show');
+        document.getElementById('bottomActions').style.display = 'flex';
+        document.getElementById('groupCount').textContent = state.groups.length;
+        
+        const totalMatched = state.groups.reduce((sum, g) => sum + g.people.filter(p => p.matched).length, 0);
+        showToast(`解析到 ${state.groups.length} 组，共 ${totalMatched} 人`);
+    } catch (error) {
+        console.error('智能分组请求失败:', error);
+        showToast('智能分组失败，正在使用本地解析...');
+        fallbackParseInput(text, cleanedText);
+    }
+}
+
+// 本地降级解析（保留原有逻辑作为备用）
+function fallbackParseInput(text, cleanedText) {
     const strategies = [
-        parseSmartFormat,      // 新的智能配对算法（优先）
-        parseStructuredFormat, // 现有的标题分组格式
-        parseInlineFormat,     // 现有的行内格式
-        parseMixedFormat,      // 现有的混合格式
-        parseLooseFormat       // 现有的兜底格式
+        parseSmartFormat,
+        parseStructuredFormat,
+        parseInlineFormat,
+        parseMixedFormat,
+        parseLooseFormat
     ];
     
     let bestResult = null;
@@ -1854,7 +1901,6 @@ function parseInput() {
     
     state.lastParseResult = bestResult;
     
-    // 更新预览面板
     updatePreviewPanel(text, cleanedText, bestResult);
     
     renderGroups();
