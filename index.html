@@ -702,6 +702,9 @@
             width: 100%;
             max-width: 320px;
             overflow: hidden;
+            max-height: 80vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         
         .reason-header {
@@ -2015,8 +2018,10 @@
                 html += renderDormCard(dormNumber, filtered, students.length);
             });
             
-            container.innerHTML = html || '<div class="empty-state"><i class="fas fa-filter"></i><p>没有符合条件的学生</p></div>';
-            updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
+            requestAnimationFrame(() => {
+                container.innerHTML = html || '<div class="empty-state"><i class="fas fa-filter"></i><p>没有符合条件的学生</p></div>';
+                updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
+            });
         }
         
         function renderSingleDorm() {
@@ -2042,22 +2047,24 @@
                 if (st.status === 'leaveOutside') leaveOutsideCount++;
             });
             
-            container.innerHTML = `
-                <div class="single-dorm-view">
-                    <div class="dorm-card">
-                        <div class="dorm-nav">
-                            <button class="dorm-nav-btn" ${!prevDorm ? 'disabled' : ''} onclick="goToDorm('${prevDorm || ''}')">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="dorm-nav-current" onclick="backToList()">${state.currentDorm}宿舍</div>
-                            <button class="dorm-nav-btn" ${!nextDorm ? 'disabled' : ''} onclick="goToDorm('${nextDorm || ''}')">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
+            requestAnimationFrame(() => {
+                container.innerHTML = `
+                    <div class="single-dorm-view">
+                        <div class="dorm-card">
+                            <div class="dorm-nav">
+                                <button class="dorm-nav-btn" ${!prevDorm ? 'disabled' : ''} onclick="goToDorm('${prevDorm || ''}')">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div class="dorm-nav-current" onclick="backToList()">${state.currentDorm}宿舍</div>
+                                <button class="dorm-nav-btn" ${!nextDorm ? 'disabled' : ''} onclick="goToDorm('${nextDorm || ''}')">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div class="student-list">${students.map(s => renderStudentItem(s)).join('')}</div>
                         </div>
-                        <div class="student-list">${students.map(s => renderStudentItem(s)).join('')}</div>
-                    </div>
-                </div>`;
-            updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
+                    </div>`;
+                updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
+            });
         }
         
         function renderDormCard(dormNumber, students, totalBeds) {
