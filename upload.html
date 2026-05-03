@@ -7,7 +7,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- PDF解析 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script type="text/javascript" src="https://me.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=biR1f_zAv6upOiPp1BS5yUqK5a9VsNFH46hQ8_h8L15NT_oTxp3PRvuyXmsob2qln3V6bOvsSa9VhEfzT4XIrNR4kPmvKQEDRnb_VasGlv1CmEP3Q2MIeC99_JB9C8HIFbHaHUOz45dFojgMEgfpabQLKpaol8YsFYE41l7FLAW7MrK0RUllIH_rJY8HPzDTDMytJUeZDXThPxv1heIZXkVh4AHy7tPZOFk2XUjp1aPg1Pd8m39ieRBn5hlzGvM2Hp9CckGnDGS6NTKKLZcVsylIDsrcmmO6YEHp3PA0zwxzEBbmjlIm-v4JdHb9_lbMKvlGeCXaErwNNVqaeFUuxJi7OhVsvc4-e87eafwmohDvGHN9aqbE5sf9BRJMktGdLUPkYKMhNRikw6uNxL_AI2sXWKtmBvYbI6Gkx38Xw8MoPgulmsNrLFrAvGz4dowcbkv-ryJ5Vq5ss1UBJ0JNFAcQNogRbX2gT8AUGw28qb1zSCdPiytHGjMSAYT6f4kdBy0cDQqtFpoqWsKtn0xMLr2tKFcraxE60F0V8MD8uxsqBCM9BLXEn1Ij5bbjVGe8N-6HDYGnaYi7KQry34Mh0e4onJ-2j3lQVhcUBAw7QUkTW6w5SYJGsILVOBziJREa6BZRDKL9B-sjmGLOWTMf0Q" charset="UTF-8"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- Word解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <!-- Excel解析 -->
@@ -1198,7 +1198,9 @@ function continueToParse() {
     
     localStorage.setItem('ocrRawText', finalText);
     localStorage.setItem('ocrContext', JSON.stringify({
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        hasImageOCR: successItems.length > 0,
+        hasDocText: !!docText
     }));
     
     // 关键：必须跳转到 manual-upload.html 进行结果确认，不能直接跳 index
