@@ -599,7 +599,7 @@
         <div class="image-grid" id="imageGrid"></div>
     </div>
     
-    <input type="file" id="imageInput" accept="image/*" multiple onchange="handleImages(this.files)">
+    <input type="file" id="imageInput" multiple onchange="handleImages(this.files)">
     
     <!-- OCR 加载提示 -->
     <div id="ocrLoading" class="ocr-loading-overlay">
@@ -719,12 +719,30 @@ function stopLoadingCarousel() {
 // 处理批量图片
 function handleImages(files) {
     if (!files || files.length === 0) return;
-    if (files.length > 20) {
-        showToast('最多只能选择20张图片');
-        files = Array.from(files).slice(0, 20);
+    
+    const imageFiles = [];
+    const docFiles = [];
+    
+    Array.from(files).forEach(file => {
+        if (file.type.startsWith('image/')) {
+            imageFiles.push(file);
+        } else {
+            docFiles.push(file);
+        }
+    });
+    
+    if (docFiles.length > 0) {
+        handleDocs(docFiles);
     }
     
-    imageItems = Array.from(files).map((file, idx) => ({
+    if (imageFiles.length === 0) return;
+    
+    if (imageFiles.length > 20) {
+        showToast('最多只能选择20张图片');
+        imageFiles = imageFiles.slice(0, 20);
+    }
+    
+    imageItems = imageFiles.map((file, idx) => ({
         id: idx,
         file: file,
         url: URL.createObjectURL(file),
@@ -882,6 +900,28 @@ function updateContinueButton() {
         btn.innerHTML = `<div class="btn-main"><i class="fas fa-arrow-right"></i>解析并继续</div>`;
     }
 }
+
+// 图片拖拽上传
+const imageUploadArea = document.getElementById('imageUploadArea');
+
+imageUploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    imageUploadArea.classList.add('drag-over');
+});
+
+imageUploadArea.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    imageUploadArea.classList.remove('drag-over');
+});
+
+imageUploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    imageUploadArea.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+        handleImages(files);
+    }
+});
 
 // 选择文档
 function selectDocs() {
