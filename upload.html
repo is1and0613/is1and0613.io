@@ -285,6 +285,7 @@
             border-color: #d9d9d9;
             padding: 24px 20px;
             margin-top: 8px;
+            cursor: pointer;
         }
         
         .upload-area.doc-upload i {
@@ -594,12 +595,12 @@
         <div class="upload-empty" id="imageUploadEmpty">
             <i class="fas fa-images"></i>
             <p>点击批量选择假单图片（支持多张，最多20张）</p>
-            <p class="hint">支持 .jpg / .jpeg / .png / .webp</p>
+            <p class="hint">支持 .jpg / .jpeg / .png / .webp，或拖拽图片到此处</p>
         </div>
         <div class="image-grid" id="imageGrid"></div>
     </div>
     
-    <input type="file" id="imageInput" multiple onchange="handleImages(this.files)">
+    <input type="file" id="imageInput" multiple accept="image/*" onchange="handleImages(this.files)">
     
     <!-- OCR 加载提示 -->
     <div id="ocrLoading" class="ocr-loading-overlay">
@@ -610,7 +611,7 @@
     </div>
     
     <!-- 文档上传区域 -->
-    <div class="upload-area doc-upload" id="docUploadArea">
+    <div class="upload-area doc-upload" id="docUploadArea" onclick="selectDocs()">
         <i class="fas fa-file-alt"></i>
         <p>上传 PDF / Word / Excel / TXT 文件</p>
         <p class="hint">点击选择文件，或拖拽文件到此处</p>
@@ -742,13 +743,17 @@ function handleImages(files) {
         imageFiles = imageFiles.slice(0, 20);
     }
     
-    imageItems = imageFiles.map((file, idx) => ({
-        id: idx,
+    // 为新图片生成不重复的 ID
+    const startId = imageItems.length > 0 ? Math.max(...imageItems.map(i => i.id)) + 1 : 0;
+    const newItems = imageFiles.map((file, idx) => ({
+        id: startId + idx,
         file: file,
         url: URL.createObjectURL(file),
         status: 'pending',
         text: null
     }));
+    
+    imageItems = imageItems.concat(newItems);
     
     document.getElementById('imageUploadEmpty').style.display = 'none';
     document.getElementById('imageGrid').style.display = 'grid';
@@ -901,21 +906,31 @@ function updateContinueButton() {
     }
 }
 
-// 图片拖拽上传
+// ============================================
+// 拖拽上传核心修复
+// ============================================
+
+// 图片区域拖拽
 const imageUploadArea = document.getElementById('imageUploadArea');
 
 imageUploadArea.addEventListener('dragover', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     imageUploadArea.classList.add('drag-over');
 });
 
 imageUploadArea.addEventListener('dragleave', (e) => {
     e.preventDefault();
-    imageUploadArea.classList.remove('drag-over');
+    e.stopPropagation();
+    // 修复：只有当鼠标真正离开当前元素（而非进入子元素）时才移除样式
+    if (!imageUploadArea.contains(e.relatedTarget)) {
+        imageUploadArea.classList.remove('drag-over');
+    }
 });
 
 imageUploadArea.addEventListener('drop', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     imageUploadArea.classList.remove('drag-over');
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
@@ -1097,30 +1112,67 @@ async function handleDocs(files) {
     document.getElementById('docInput').value = '';
 }
 
-// 拖拽上传
+// 文档区域拖拽上传（核心修复）
 const docUploadArea = document.getElementById('docUploadArea');
 
 docUploadArea.addEventListener('dragover', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     docUploadArea.classList.add('drag-over');
 });
 
 docUploadArea.addEventListener('dragleave', (e) => {
     e.preventDefault();
-    docUploadArea.classList.remove('drag-over');
+    e.stopPropagation();
+    // 修复：只有当鼠标真正离开当前元素（而非进入子元素）时才移除样式
+    if (!docUploadArea.contains(e.relatedTarget)) {
+        docUploadArea.classList.remove('drag-over');
+    }
 });
 
 docUploadArea.addEventListener('drop', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     docUploadArea.classList.remove('drag-over');
-    const files = Array.from(e.dataTransfer.files).filter(f => {
-        const ext = f.name.split('.').pop().toLowerCase();
-        return ['pdf','docx','xlsx','xls','txt'].includes(ext);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+    
+    // 分离图片和文档，图片自动转给图片处理逻辑
+    const docFiles = [];
+    const imgFiles = [];
+    
+    files.forEach(f => {
+        if (f.type.startsWith('image/')) {
+            imgFiles.push(f);
+        } else {
+            docFiles.push(f);
+        }
     });
-    if (files.length > 0) {
-        handleDocs(files);
-    } else {
-        showToast('请拖拽 PDF / Word / Excel / TXT 文件');
+    
+    if (imgFiles.length > 0) {
+        handleImages(imgFiles);
+    }
+    
+    if (docFiles.length > 0) {
+        // 过滤出支持的文档类型
+        const supported = docFiles.filter(f => {
+            const ext = f.name.split('.').pop().toLowerCase();
+            return ['pdf','docx','xlsx','xls','txt'].includes(ext);
+        });
+        
+        const unsupported = docFiles.filter(f => {
+            const ext = f.name.split('.').pop().toLowerCase();
+            return !['pdf','docx','xlsx','xls','txt'].includes(ext);
+        });
+        
+        if (unsupported.length > 0) {
+            showToast(unsupported.length + ' 个文件格式不支持，已跳过');
+        }
+        
+        if (supported.length > 0) {
+            handleDocs(supported);
+        }
     }
 });
 
