@@ -1201,6 +1201,7 @@ function continueToParse() {
         timestamp: Date.now()
     }));
     
+    // 关键：必须跳转到 manual-upload.html 进行结果确认，不能直接跳 index
     window.location.href = 'manual-upload.html?mode=text-pipeline';
 }
 
