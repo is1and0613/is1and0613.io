@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手动输入假单</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
+    <script type="text/javascript" src="https://me.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=E5nznOWfNLWZRdIKjcUtWXOgAk-5UC4SzniwgkoEBQZ7XJW1GTFSBomd-4jr65YJfVluhw56GdfQI-utnZJHXhH6cfsPB6POLbpZRdPpO3lfAws7N-xQ1OEC1_H2zb4eJxmAqpJVdxrG4AYYiYB-L1g9LtmuM1gp-j8ndu4s74FDFMHc5kXp8dZVSYrfZsoJK_hwu9Llq44IkyGqJB84AkDKsyPQu5V-gvArCUFOPcnV5W60524r4R935C46ctJCDZyODUwJ9-GFfuJUxopKWtXSPXLtVz9HNOSwiTe-R6U8bsmILLJ8AV7AabTkTU3p48v-v025XRE-jpP_BnWx4xNyMYUrFcswztH4Ud1ZkmQeKespWpuDnQEL5dZjYM96K-u2om1j3AfQYrn-41f80aSUO8BEh5eGbbA_PoHfQ2CSYsmqcV6w1Nb6lC31MqgTF98OtpUbvxeuBYIdbDPf1BuXOFi0p1Dkl_hLI80lvq7J2TFjqlNffUsFMagF-BFAElE4mycKbby_kKasHpkCUl_PGxPyPuIrWFnPI5Y0cw1pO0lLnRGpd9CUmtiBPGIhS3y1r2vKYP9dPlF2gMxTYopMT_n5_llodS-zQSpspwUAbuUqHYy0kFurld6EH8ROQjO01Z-11V2aHJ1HwVqe9LEiFiNu6hwzLOIPND98nRo" charset="UTF-8"></script><style>
         * {
             margin: 0;
             padding: 0;
@@ -1499,28 +1499,28 @@ function extractNamesFromCleanedText(text) {
 
 function fuzzyMatchName(input) {
     if (!input || input.length < 2) return null;
-    
+
     // 构建候选集：首字相同或长度差异 <= 2
     const candidates = state.allNames.filter(name => {
         return name[0] === input[0] || Math.abs(name.length - input.length) <= 2;
     });
-    
+
     // 规则1: 精确匹配
     for (const name of candidates) {
         if (input === name) {
             return { matchedName: name, originalInput: input, matchType: 'exact', confidence: 'high', distance: 0 };
         }
     }
-    
+
     const pickBest = (matches) => {
         return matches.sort((a, b) => {
             if (a.distance !== b.distance) return a.distance - b.distance;
             return b.name.length - a.name.length;
         })[0];
     };
-    
+
     let matches = [];
-    
+
     // 规则2: 单向包含 (name.includes(input) 且 input.length >= 2)
     for (const name of candidates) {
         if (name.includes(input) && input.length >= 2) {
@@ -1529,9 +1529,9 @@ function fuzzyMatchName(input) {
     }
     if (matches.length > 0) {
         const best = pickBest(matches);
-        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: best.distance === 2 && Math.abs(best.name.length - input.length) > 1 ? 'low' : 'high', distance: best.distance };
+        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'high', distance: best.distance };
     }
-    
+
     // 规则3: 双向包含 (input.includes(name) 且 name.length >= 2)
     for (const name of candidates) {
         if (input.includes(name) && name.length >= 2) {
@@ -1540,36 +1540,64 @@ function fuzzyMatchName(input) {
     }
     if (matches.length > 0) {
         const best = pickBest(matches);
-        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: best.distance === 2 && Math.abs(best.name.length - input.length) > 1 ? 'low' : 'high', distance: best.distance };
+        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'high', distance: best.distance };
     }
-    
-    // 规则4: 编辑距离 <= 2 且首字符相同
+
+    // 辅助：共同字符比例检查，防止仅首字相同就匹配（如"陆天赐"→"陆梦茜"）
+    const getCommonChars = (a, b) => {
+        const setA = new Set(a);
+        let count = 0;
+        for (const ch of b) {
+            if (setA.has(ch)) {
+                count++;
+                setA.delete(ch); // 去重计数，避免重复字符虚高
+            }
+        }
+        return count;
+    };
+
+    const meetsQualityThreshold = (input, name, distance) => {
+        const maxLen = Math.max(input.length, name.length);
+        const common = getCommonChars(input, name);
+        // 硬性门槛：至少有一半（向上取整）的字符相同。3字名至少2字相同，4字名至少2字相同
+        if (common < Math.ceil(maxLen / 2)) return false;
+        // 编辑距离为2时，长度差异不能超过1，防止跨长度乱配
+        if (distance === 2 && Math.abs(input.length - name.length) > 1) return false;
+        return true;
+    };
+
+    // 规则4: 编辑距离 <= 2 且首字符相同（增加质量门槛，拒绝"陆天赐"→"陆梦茜"）
     for (const name of candidates) {
         if (name[0] === input[0]) {
             const dist = levenshteinDistance(input, name);
-            if (dist <= 2 && dist > 0) {
+            if (dist <= 2 && dist > 0 && meetsQualityThreshold(input, name, dist)) {
                 matches.push({ name, distance: dist });
             }
         }
     }
     if (matches.length > 0) {
         const best = pickBest(matches);
-        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: best.distance === 2 && Math.abs(best.name.length - input.length) > 1 ? 'low' : 'high', distance: best.distance };
+        const common = getCommonChars(input, best.name);
+        const maxLen = Math.max(input.length, best.name.length);
+        const confidence = (best.distance >= 2 && common < maxLen * 0.6) ? 'low' : 'high';
+        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence, distance: best.distance };
     }
-    
-    // 规则5: 首尾字匹配且长度差异 <= 2
+
+    // 规则5: 首尾字匹配且长度差异 <= 2（收紧：仅允许编辑距离<=1）
     for (const name of candidates) {
         if (name[0] === input[0] && name[name.length - 1] === input[input.length - 1] && Math.abs(name.length - input.length) <= 2) {
             const dist = levenshteinDistance(input, name);
-            matches.push({ name, distance: dist });
+            if (dist <= 1 && dist > 0) {
+                matches.push({ name, distance: dist });
+            }
         }
     }
     if (matches.length > 0) {
         const best = pickBest(matches);
-        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: best.distance === 2 && Math.abs(best.name.length - input.length) > 1 ? 'low' : 'high', distance: best.distance };
+        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'high', distance: best.distance };
     }
-    
-    // 规则6: 子串+编辑距离兜底
+
+    // 规则6: 子串+编辑距离兜底（增加质量门槛）
     for (const name of candidates) {
         let hasSubstr = false;
         if (input.length >= 2) {
@@ -1584,19 +1612,21 @@ function fuzzyMatchName(input) {
         }
         if (hasSubstr) {
             const dist = levenshteinDistance(input, name);
-            matches.push({ name, distance: dist });
+            if (dist <= 3 && dist > 0 && meetsQualityThreshold(input, name, dist)) {
+                matches.push({ name, distance: dist });
+            }
         }
     }
     if (matches.length > 0) {
         const best = pickBest(matches);
-        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: best.distance === 2 && Math.abs(best.name.length - input.length) > 1 ? 'low' : 'high', distance: best.distance };
+        return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'low', distance: best.distance };
     }
-    
+
     // 未匹配兜底
     if (input.length >= 2 && /[\u4e00-\u9fa5].*[\u4e00-\u9fa5]/.test(input)) {
         return { matchedName: null, originalInput: input, matchType: 'none', confidence: 'low', distance: null };
     }
-    
+
     return null;
 }
 
