@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <script>
+    <script type="text/javascript" src="https://me.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=qurtY-2_WtQg5En-NOsVeur97x3j7rD4m4ZaKkA42by-RT0omnaZyd8Rw2zNHJTmVT6p1EG6m2tNckyZsFgNtgKrH_vj_iX_4Harwn8F-UyMMyDlPc9FytXSdoFy9SmyRqErM2t2O51ZnAu9ligCwtgKWFVY5re0sw6gTVEQfW2l6PX2vXWAkl1BFPqHdbVY6Ai8mGnmjO3E5OR3IZzWKhx7DQbeaUDMviPhD7D4b8_i4BlJxDJhhfITgTNEQVmP28d8QLN5dN0ZlkWZwa4ldxos2nY2V_tdgdG8Mm3XWGTR9hjaHFhsxVHGu4gS9CYQt72qkFqhfD-2cPX3kQ65o1MbqD6-N5dolBB-9UgGDwSR3rrp-r7GxHUt-DKuvG2Mjq7imBQKsZIirYDCVymxFT77CKAw3NGjHbdJRBkbWAIWL2qLm7JhF-jw38Hg6sgAwCVKfu3tzLsSevBQWPdVW1z_E8GU59tf3FkMrowAwbNdtbTkra2DBdUjpTv9fy18lDzxIuCkFCNepnxYvET0zODUs7cAsax-KAk0eB7EqhZDqxE9jg4DDhBvy-Yerb_RUhY3sr4UpJrf8XvL-xrrwV3rZYB0I1nB1yDUyqpxlnA0sHmU7seoSqWV3XpuBbrhWcc9xlmGP8bBsgzUA7KpCA" charset="UTF-8"></script><script>
         // 检查是否已登录
         // 检查是否已登录（使用 token）
         if (!sessionStorage.getItem('authToken')) {
@@ -2579,9 +2579,11 @@
                     const startDate = new Date(dateRange.start);
                     const endDate = new Date(dateRange.end);
                     if (endDate < today) {
-                        localStorage.removeItem('pendingLeaveRecords');
-                        showToast('该假单已过期，未应用');
-                        return;
+                        const userConfirm = confirm('该假单已过期，确认应用？');
+                        if (!userConfirm) {
+                            localStorage.removeItem('pendingLeaveRecords');
+                            return;
+                        }
                     }
                     if (startDate > today) {
                         const userConfirm = confirm('该假单尚未生效（开始日期为 ' + dateRange.start + '），是否仍要提前应用？');
