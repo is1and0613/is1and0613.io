@@ -2545,7 +2545,8 @@
 
         /**
          * 应用从 upload.html / manual-upload.html 传来的假单数据
-         * 数据格式: { "姓名": { "status": "leaveInside", "reason": "数分" } }
+         * 新数据格式: { dateRange: { start, end }, records: { "姓名": { "status", "reason" } } }
+         * 兼容旧格式: { "姓名": { "status": "leaveInside", "reason": "数分" } }
          */
         function applyPendingLeaves() {
             const pendingData = localStorage.getItem('pendingLeaveRecords');
@@ -2554,7 +2555,43 @@
             if (!pendingData) return;
             
             try {
-                const updates = JSON.parse(pendingData);
+                let updates;
+                let dateRange = null;
+                const parsed = JSON.parse(pendingData);
+                
+                // 兼容旧格式（直接是对象）和新格式（包含 dateRange 和 records）
+                if (parsed && typeof parsed === 'object') {
+                    if (parsed.records && typeof parsed.records === 'object') {
+                        dateRange = parsed.dateRange || null;
+                        updates = parsed.records;
+                    } else {
+                        // 旧格式：直接是人员记录对象
+                        updates = parsed;
+                    }
+                } else {
+                    updates = parsed;
+                }
+                
+                // 日期二次校验
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (dateRange && dateRange.start && dateRange.end) {
+                    const startDate = new Date(dateRange.start);
+                    const endDate = new Date(dateRange.end);
+                    if (endDate < today) {
+                        localStorage.removeItem('pendingLeaveRecords');
+                        showToast('该假单已过期，未应用');
+                        return;
+                    }
+                    if (startDate > today) {
+                        const userConfirm = confirm('该假单尚未生效（开始日期为 ' + dateRange.start + '），是否仍要提前应用？');
+                        if (!userConfirm) {
+                            localStorage.removeItem('pendingLeaveRecords');
+                            return;
+                        }
+                    }
+                }
+                
                 let count = 0;
                 
                 Object.keys(updates).forEach(name => {
