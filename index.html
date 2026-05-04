@@ -586,13 +586,15 @@
         
         .modal-title { font-size: 18px; font-weight: 700; color: #333; }
         
-        /* 报告切换按钮 */
+        /* 报告切换按钮 - 支持换行 */
         .report-toggle {
             display: flex;
             background: #f0f0f0;
             border-radius: 20px;
             overflow: hidden;
             padding: 2px;
+            flex-wrap: wrap;
+            gap: 4px;
         }
         
         .report-toggle-btn {
@@ -1044,6 +1046,7 @@
                     <button class="report-toggle-btn" id="btnPresent" onclick="switchReportMode('present')">在校版</button>
                     <button class="report-toggle-btn" id="btnVacation" onclick="switchReportMode('vacation')">假期版</button>
                     <button class="report-toggle-btn" id="btnInternship" onclick="switchReportMode('internship')">实习版</button>
+                    <button class="report-toggle-btn" id="btnInternshipVacation" onclick="switchReportMode('internshipVacation')">实习假期</button>
                 </div>
                 <button class="modal-close" onclick="closeReportModal()">
                     <i class="fas fa-times"></i>
@@ -1320,7 +1323,7 @@
         // 报告生成函数（严格遵循格式要求）
         // ============================================
         
-        // 当前报告模式：'absent' | 'present' | 'vacation'
+        // 当前报告模式：'absent' | 'present' | 'vacation' | 'internship' | 'internshipVacation'
         let currentReportMode = 'absent';
         
         function generateReportText() {
@@ -1603,7 +1606,7 @@
         
         /**
          * 生成假期版报告文本
-         * 在校人数 = 应到 - 请假离校（in + leaveOutside + leaveInside 都算在校）
+         * 在校人数 = 应到 - 请假离校（leaveSchool）
          */
         function generateVacationReportText() {
             // 检查冲突标记（复用现有逻辑）
@@ -1857,28 +1860,115 @@
         }
 
         /**
+         * 生成实习假期版报告文本
+         * 基于假期版，完全忽略2023级（大三）学生
+         * 在校人数 = 应到 - 请假离校（leaveSchool）
+         */
+        function generateInternshipVacationReportText() {
+            // 检查冲突标记（复用现有逻辑）
+            const conflictNames = [];
+            for (const name in state.studentStatus) {
+                const statusObj = state.studentStatus[name];
+                if (Array.isArray(statusObj.status)) {
+                    if (statusObj.status.includes('absent') && statusObj.status.includes('leaveInside')) {
+                        conflictNames.push(name);
+                    }
+                }
+            }
+            
+            if (conflictNames.length > 0) {
+                showToast(`无法生成报告：${conflictNames.join('、')} 同时标记为未归和事假`);
+                return '【错误】存在冲突标记，请先修正';
+            }
+            
+            // 获取所有学生按年级分组
+            const studentsByGrade = getAllStudentsByGrade();
+            // 实习假期版：完全排除2023级（大三）
+            delete studentsByGrade['2023级'];
+            
+            // 年级顺序（仅包含22、24、25级）
+            const gradeOrder = ['2022级', '2024级', '2025级'];
+            
+            let totalShould = 0;  // 应到总人数（排除大三）
+            let totalPresent = 0; // 在校总人数（应到 - 请假离校）
+            const gradeStats = {};
+            
+            // 统计各年级数据
+            gradeOrder.forEach(grade => {
+                const students = studentsByGrade[grade] || [];
+                const should = students.length;
+                
+                // 在校人数 = 应到 - 请假离校人数（leaveSchool）
+                const leaveSchoolCount = students.filter(s => {
+                    const st = state.studentStatus[s.name];
+                    return st && st.status === 'leaveSchool';
+                }).length;
+                
+                const present = should - leaveSchoolCount;
+                
+                gradeStats[grade] = {
+                    should: should,
+                    present: present
+                };
+                
+                totalShould += should;
+                totalPresent += present;
+            });
+            
+            // 生成报告文本
+            let report = `信息大队女生${totalShould}名，在校${totalPresent}名，正常就寝${totalPresent}名，其中：\n`;
+            
+            gradeOrder.forEach((grade, index) => {
+                const stats = gradeStats[grade];
+                const shortGrade = grade.replace('级', '').slice(-2); // "2022级" -> "22"
+                const line = `${shortGrade}级女生${stats.should}名，在校${stats.present}名，正常就寝${stats.present}名`;
+                
+                // 标点处理：前两个用分号，最后一个用句号
+                if (index < gradeOrder.length - 1) {
+                    report += line + '；\n';
+                } else {
+                    report += line + '\n';
+                }
+            });
+            
+            report += '所有就寝学生已按要求熄灯。';
+            return report;
+        }
+        
+        /**
          * 切换报告模式
-         * @param {string} type - 'absent' | 'present' | 'vacation' | 'internship'
+         * @param {string} type - 'absent' | 'present' | 'vacation' | 'internship' | 'internshipVacation'
          */
         function switchReportMode(type) {
             currentReportMode = type;
 
-            // 更新按钮样式
+            // 更新所有五个按钮的样式
             document.getElementById('btnAbsent').classList.toggle('active', type === 'absent');
             document.getElementById('btnPresent').classList.toggle('active', type === 'present');
             document.getElementById('btnVacation').classList.toggle('active', type === 'vacation');
             document.getElementById('btnInternship').classList.toggle('active', type === 'internship');
+            document.getElementById('btnInternshipVacation').classList.toggle('active', type === 'internshipVacation');
 
             // 生成对应报告
             let reportText;
-            if (type === 'absent') {
-                reportText = generateReportText();
-            } else if (type === 'present') {
-                reportText = generatePresentReportText();
-            } else if (type === 'vacation') {
-                reportText = generateVacationReportText();
-            } else { // internship
-                reportText = generateInternshipReportText();
+            switch (type) {
+                case 'absent':
+                    reportText = generateReportText();
+                    break;
+                case 'present':
+                    reportText = generatePresentReportText();
+                    break;
+                case 'vacation':
+                    reportText = generateVacationReportText();
+                    break;
+                case 'internship':
+                    reportText = generateInternshipReportText();
+                    break;
+                case 'internshipVacation':
+                    reportText = generateInternshipVacationReportText();
+                    break;
+                default:
+                    reportText = generateReportText();
             }
 
             document.getElementById('reportContent').textContent = reportText;
@@ -2406,6 +2496,7 @@
             document.getElementById('btnPresent').classList.remove('active');
             document.getElementById('btnVacation').classList.remove('active');
             document.getElementById('btnInternship').classList.remove('active');
+            document.getElementById('btnInternshipVacation').classList.remove('active');
 
             const reportText = generateReportText();
             document.getElementById('reportContent').textContent = reportText;
