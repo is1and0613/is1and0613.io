@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- FIXED v7 - 2026-05-12: mobile longpress persistence, desktop selection validation, scrollbar min-height, event-driven hints -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -151,6 +152,7 @@ html, body {
 .chat-thread {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -283,6 +285,9 @@ html, body {
 #chat-input {
   font-size: 16px;
   -webkit-appearance: none;
+  z-index: 1;
+  pointer-events: auto;
+  position: relative;
 }
 
 /* ===== Entity ===== */
@@ -313,7 +318,11 @@ html, body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 .side-panel__header {
   padding: var(--space-4) var(--space-5);
@@ -321,8 +330,14 @@ html, body {
   font-weight: 600;
   font-size: 16px;
   color: var(--text-primary);
+  flex-shrink: 0;
 }
-.side-panel__body { padding: var(--space-4) var(--space-5); }
+.side-panel__body {
+  padding: var(--space-4) var(--space-5);
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
 
 .side-list-item {
   display: flex;
@@ -342,7 +357,7 @@ html, body {
 /* ===== Selection Bar ===== */
 .selection-bar {
   position: fixed;
-  z-index: 9999;
+  z-index: 150;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -383,7 +398,7 @@ html, body {
   position: fixed;
   inset: 0;
   background: var(--bg-overlay);
-  z-index: 100;
+  z-index: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -538,19 +553,33 @@ html, body {
 .energy-bar-fill.low { background: var(--status-danger); }
 
 /* ===== Toast / Notification ===== */
-.toast {
+.toast-container {
   position: fixed;
-  bottom: 88px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 10px;
   z-index: 200;
-  padding: 10px 16px;
+  pointer-events: none;
+}
+.toast {
+  position: relative;
+  pointer-events: auto;
+  padding: 10px 20px;
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
+  line-height: 1.5;
   color: var(--text-inverse);
   box-shadow: var(--shadow-modal);
   animation: slideUp 0.3s ease-out;
+  max-width: 90vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .toast--success { background: var(--status-success); }
 .toast--error { background: var(--status-danger); }
@@ -884,6 +913,7 @@ button, .app-header, .mobile-actionbar, .selection-bar, .selection-btn, .btn {
     "left   main   right";
   gap: var(--space-6);
   max-width: 1440px;
+  height: 100vh;
   margin: 0 auto;
   padding: var(--space-6);
 }
@@ -893,6 +923,7 @@ button, .app-header, .mobile-actionbar, .selection-bar, .selection-btn, .btn {
   .view-game.active {
     display: flex;
     flex-direction: column;
+    height: auto;
     padding: 0;
     gap: 0;
     max-width: 100%;
@@ -1035,7 +1066,7 @@ button, .app-header, .mobile-actionbar, .selection-bar, .selection-btn, .btn {
   <aside class="app-left" id="app-left">
     <div class="side-panel">
       <div class="side-panel__header">证据碎片</div>
-      <div class="side-panel__body" id="evidence-list" style="display: flex; flex-direction: column; gap: var(--space-3);">
+      <div class="side-panel__body evidence-list" id="evidence-list" style="display: flex; flex-direction: column; gap: var(--space-3);">
         <!-- injected by JS -->
       </div>
     </div>
@@ -1043,11 +1074,11 @@ button, .app-header, .mobile-actionbar, .selection-bar, .selection-btn, .btn {
 
   <!-- Main Column: Chat Thread -->
   <main class="app-main">
-    <div class="chat-thread no-scrollbar" id="chat-thread">
+    <div class="chat-thread" id="chat-thread">
       <!-- injected by JS -->
     </div>
     <div class="chat-inputbar">
-      <input type="text" id="chat-input" class="input" placeholder="输入关键词搜索线索..." style="flex: 1;">
+      <input type="text" id="chat-input" class="input" placeholder="输入关键词搜索线索..." style="flex: 1;" autocomplete="off" autocorrect="off" spellcheck="false">
       <button id="btn-search" class="btn btn-primary" style="min-height: 40px; padding: 10px 16px;">
         <svg class="icon"><use href="#icon-search"/></svg>
       </button>
@@ -1397,13 +1428,37 @@ const CASE_DB = {
           { id: 'loc_conflict', text: '位置矛盾：声称在英国出差，但IP显示在国内', condition: (meta) => meta && meta['当前IP地址'] && meta['当前IP地址'].includes('广东') }
         ]
       },
+      landlord_profile: {
+        id: 'landlord_profile',
+        title: '房东John档案',
+        icon: 'user',
+        isSuspicious: true,
+        unlocked: false,
+        unlockTrigger: { type: 'profile_viewed', target: '房东John' },
+        unlockHint: '点击对话中的"房东John"查看档案',
+        layers: {
+          surface: '<div style="background: var(--bg-hover); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);"><h4 style="font-size: 14px; font-weight: 600; margin-bottom: var(--space-3);">房东John 个人档案</h4><div style="font-size: 13px; color: var(--text-secondary); line-height: 1.8;"><p>账号注册时间: <span style="color: var(--status-danger);">2026-03-25 (3天前)</span></p><p>实名认证: <span style="color: var(--status-danger);">未认证</span></p><p>绑定手机: +44 7700 900xxx</p><p>历史头像: 1个 (默认头像)</p><p>关联风险: 该IP段涉及多起类似案件</p></div><div style="margin-top: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--status-danger-bg); border-radius: var(--radius-md); font-size: 12px; color: var(--status-danger);">新注册账号，无实名认证，高风险</div></div>',
+          metadata: {
+            '房东John': {
+              '账号注册时间': '2026-03-25 (3天前)',
+              '实名认证': '未认证',
+              '绑定手机': '+44 7700 900xxx',
+              '历史头像': '1个 (默认头像)',
+              '关联风险': '该IP段涉及多起类似案件'
+            }
+          }
+        },
+        contradictions: [
+          { id: 'account_new', text: '账号异常：John账号新注册3天，无实名认证', condition: function() { return true; } }
+        ]
+      },
       transfer_request: {
         id: 'transfer_request',
         title: '转账要求截图',
         icon: 'file',
         isSuspicious: true,
         unlocked: false,
-        unlockTrigger: { type: 'profile_viewed', target: '房东John' },
+        unlockTrigger: { type: 'evidence_viewed', target: 'landlord_profile' },
         unlockHint: '查看房东档案后解锁',
         layers: {
           surface: '<div style="background: var(--bg-hover); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);"><p style="margin-bottom: var(--space-3);">"我这边比较急，你先转定金到我朋友账户，他在英国帮我代收。账号是："</p><div style="background: var(--bg-base); padding: var(--space-3); border-radius: var(--radius-md); font-family: monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.8;"><p>Sort Code: <span style="color: var(--text-primary);">20-45-45</span></p><p>Account: <span style="color: var(--text-primary);">38924672</span></p><p>Name: <span class="entity" data-entity="Li Wei">Li Wei</span></p></div><p style="margin-top: var(--space-3); font-size: 12px; color: var(--text-tertiary);">*附注：尽快转账，收到后给你发合同</p></div>',
@@ -1616,12 +1671,35 @@ const CASE_DB = {
           }
         },
         contradictions: []
+      },
+      property_deed: {
+        id: 'property_deed',
+        title: '房产证照片',
+        icon: 'image',
+        isSuspicious: true,
+        unlocked: false,
+        unlockTrigger: { type: 'decision', decisionId: 'd1', choice: 'd' },
+        unlockHint: '抉择"要求身份证明"后解锁 或 搜索"房产证"',
+        layers: {
+          surface: '<div style="background: var(--bg-hover); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);"><h4 style="font-size: 14px; font-weight: 600; margin-bottom: var(--space-3);">HM Land Registry - Title Deed</h4><div style="background: var(--bg-base); padding: var(--space-3); border-radius: var(--radius-md); text-align: center; color: var(--text-tertiary);">[房产证照片占位]</div><div style="margin-top: var(--space-3); padding: var(--space-3); background: var(--status-danger-bg); border-radius: var(--radius-md); font-size: 12px; color: var(--status-danger);"><strong>PS痕迹：</strong>政府网站水印样式错误（应为连续水印，实际为平铺式）；产权编号格式不符英国Land Registry规范。</div></div>',
+          metadata: {
+            '房产证分析': {
+              '水印样式': '平铺式（非标准连续水印）',
+              '产权编号格式': '不符合Land Registry规范',
+              '签发日期': '格式错误',
+              '结论': '伪造房产证'
+            }
+          }
+        },
+        contradictions: [
+          { id: 'deed_fake', text: '证件伪造：房产证PS痕迹明显，政府网站水印样式错误', condition: function() { return true; } }
+        ]
       }
     },
     searchKeywords: {
       '定金': ['transfer_request', 'group_chat'],
       '转账': ['transfer_request', 'bank_sms'],
-      '房东': ['chat_landlord'],
+      '房东': ['chat_landlord', 'landlord_profile'],
       '合同': ['contract'],
       '照片': ['house_photo'],
       '房源': ['house_photo', 'landlord_moment'],
@@ -1632,21 +1710,25 @@ const CASE_DB = {
       'IP': ['chat_landlord', 'group_chat'],
       '学长': ['group_chat'],
       '银行': ['bank_sms'],
-      '朋友圈': ['landlord_moment']
+      '朋友圈': ['landlord_moment'],
+      '房产证': ['property_deed'],
+      '身份': ['landlord_profile'],
+      '档案': ['landlord_profile']
     },
+    searchStageLocks: {},
     decisions: {
       d1: {
-        id: 'd1', trigger: { type: 'contradiction_count', count: 2 },
+        id: 'd1', trigger: { type: 'dual', triggerStage: 2, requiredEvidence: ['chat_landlord'] },
         text: '房东催促："3个学生在抢房，现在转定金立刻锁定！只要£200，过了这村没这店了！"',
         options: [
           { id: 'a', text: '立即转账£200锁定房源', effect: 'scammed_early', reward: 0, desc: '你失去了£200，房东消失' },
           { id: 'b', text: '要求先视频看房再决定', effect: 'unlock_contract', reward: 10, desc: '房东发来合同，但拒绝视频' },
           { id: 'c', text: '询问能否走Rightmove正规平台', effect: 'unlock_agency', reward: 10, desc: '你收到了正规中介记录' },
-          { id: 'd', text: '要求房东提供身份证明', effect: 'stall', reward: 5, desc: '房东推脱，但给了你朋友圈照片' }
+          { id: 'd', text: '要求房东提供身份证明', effect: 'unlock_deed', reward: 5, desc: '房东发来房产证照片，但PS痕迹明显' }
         ]
       },
       d2: {
-        id: 'd2', trigger: { type: 'contradiction_count', count: 3 },
+        id: 'd2', trigger: { type: 'dual', triggerStage: 7, requiredEvidence: ['group_chat'] },
         text: '学长Tom私信你："我租过他的房，靠谱，放心吧。你犹豫的话房子就被别人抢了。"',
         options: [
           { id: 'a', text: '相信学长，准备转账', effect: 'scammed_peer', reward: 0, desc: '学长Tom是水军账号' },
@@ -1655,7 +1737,7 @@ const CASE_DB = {
         ]
       },
       d3: {
-        id: 'd3', trigger: { type: 'contradiction_count', count: 5 },
+        id: 'd3', trigger: { type: 'dual', triggerStage: 9, requiredEvidence: ['transfer_request', 'contract'] },
         text: '房东威胁："你到底转不转？不转我租给别人了，定金也退不了，合同上写着呢。"',
         options: [
           { id: 'a', text: '立即举报并停止联系', effect: 'perfect_end', reward: 20, desc: '你成功识破骗局并举报' },
@@ -1665,24 +1747,25 @@ const CASE_DB = {
         ]
       },
       d4: {
-        id: 'd4', trigger: { type: 'evidence_unlocked', evidenceId: 'hidden_agent_link' },
-        text: '你发现了一个隐藏线索：房东的"中介朋友"链接域名与他IP同属一个注册商。',
+        id: 'd4', trigger: { type: 'dual', triggerStage: 9, requiredEvidence: ['property_deed'] },
+        text: '群聊里出现了第四个"租客"催你付款，但你发现房产证是伪造的。是否深入调查这个"新租客"？',
         options: [
-          { id: 'a', text: '深入调查这个链接', effect: 'perfect_end_bonus', reward: 25, desc: '你发现了一个诈骗团伙的完整链条' },
+          { id: 'a', text: '深入调查这个"新租客"的背景', effect: 'perfect_end_bonus', reward: 25, desc: '你发现了一个诈骗团伙的完整链条' },
           { id: 'b', text: '忽略，已经掌握足够证据', effect: 'normal_end', reward: 10, desc: '你错过了隐藏结局' }
         ]
       }
     },
     endings: {
-      perfect: { title: '完美结局：诈骗克星', subtitle: '你成功识破了租房诈骗陷阱', evaluation: '恭喜你！你发现了所有矛盾点，识破了伪造合同、水军推荐和IP地址异常，成功避免了诈骗并保存了证据。' },
-      perfect_end_bonus: { title: '隐藏完美结局：团伙克星', subtitle: '你揭穿了一个诈骗团伙', evaluation: '不仅识破了单个骗局，你还通过隐藏线索发现了整个诈骗链条！你的调查帮助了更多人避免上当。' },
-      normal: { title: '普通结局', subtitle: '你没有被骗，但骗子逃脱了', evaluation: '你识破了大部分可疑点并避免了转账，但没有收集足够证据举报。下次记得保留证据。' },
-      scammed_early: { title: '早期被骗', subtitle: '你在第一步就转账了', evaluation: '诈骗者利用"限时稀缺"的话术制造紧迫感。任何要求先转账的房东都值得怀疑。记住：先核实，再付款。' },
-      scammed_peer: { title: '社交工程被骗', subtitle: '你轻信了"学长"推荐', evaluation: '骗子利用水军制造虚假社交认同。即使是"熟人推荐"也需要独立核实对方身份。账号新注册+IP相同的都是红旗信号。' },
-      scammed_final: { title: '最终被骗', subtitle: '你在压力下转账了', evaluation: '诈骗者利用合同条款和时间压力迫使你匆忙决定。英国租房定金通常可退还，"不可退还"条款本身就是危险信号。' },
-      stall_end: { title: '被拉黑', subtitle: '你的质疑让骗子退缩了', evaluation: '虽然你没有被骗，但骗子拉黑了你。下次可以更果断地举报，帮助平台封禁这类账号。' },
+      perfect: { title: '完美结局：诈骗克星', subtitle: '你成功识破了租房诈骗陷阱', evaluation: '恭喜你！你发现了所有矛盾点，识破了伪造合同、水军推荐和IP地址异常，成功避免了诈骗并保存了证据。你保护了自己，也保护了后来者。' },
+      perfect_end_bonus: { title: '隐藏完美结局：团伙克星', subtitle: '你揭穿了一个诈骗团伙', evaluation: '不仅识破了单个骗局，你还通过隐藏线索发现了整个水军团伙！你的调查帮助了更多人避免上当。' },
+      normal: { title: '普通结局：谨慎者', subtitle: '你没有被骗，但骗子逃脱了', evaluation: '你躲过了陷阱，但骗子还在逍遥法外。下次记得保留证据并举报。' },
+      scammed_early: { title: '早期被骗', subtitle: '你在第一步就转账了', evaluation: '紧迫感是诈骗的第一把刀。诈骗者利用"限时稀缺"的话术制造紧迫感。任何要求先转账的房东都值得怀疑。记住：先核实，再付款。' },
+      scammed_peer: { title: '社交工程被骗', subtitle: '你轻信了"学长"推荐', evaluation: '熟人推荐≠安全保证。骗子利用水军制造虚假社交认同。账号新注册+IP相同的都是红旗信号。' },
+      scammed_final: { title: '最终被骗', subtitle: '你在压力下转账了', evaluation: '最后一刻的松懈最致命。诈骗者利用合同条款和时间压力迫使你匆忙决定。英国租房定金通常可退还。' },
+      stall_end: { title: '被拉黑', subtitle: '你的质疑让骗子退缩了', evaluation: '骗子不会给你验证的机会。虽然你没有被骗，但骗子拉黑了你。下次可以更果断地举报。' },
+      observer: { title: '观察家', subtitle: '你发现了所有矛盾但没有采取行动', evaluation: '你有一双慧眼，但勇气同样重要。发现全部7个矛盾却没有做出任何抉择，等于放任诈骗。' },
       risk: { title: '风险结局', subtitle: '调查不够充分', evaluation: '你可能忽略了重要的可疑信号。下次遇到类似情况，请仔细核实对方身份和账户信息。' },
-      exhausted: { title: '能量耗尽', subtitle: '调查资源耗尽', evaluation: '能量管理也是调查的重要部分。合理分配AP，优先查看关键档案。' },
+      exhausted: { title: '能量耗尽', subtitle: '调查资源耗尽', evaluation: '调查需要坚持，半途而废等于放任诈骗。合理分配AP，优先查看关键档案。' },
       submitted: { title: '调查提交', subtitle: '案件调查报告已生成', evaluation: '调查完成。希望这次经历能帮助你提高反诈意识。' }
     }
   },
@@ -1694,7 +1777,7 @@ const CASE_DB = {
     difficulty: 3,
     estimatedTime: '20-25分钟',
     description: '你在留学群看到"Alex"声称急需人民币，愿以8.8汇率换英镑。对方发来护照和银行pending截图催促你先转人民币。',
-    totalContradictions: 5,
+    totalContradictions: 8,
     storyNodes: [
       { type: 'system', text: '你在留学群看到一条换汇广告...' },
       { type: 'other', sender: 'Alex', text: '急换汇！我需要人民币交学费，愿意以8.8的汇率换英镑。手里有£2000，伦敦面交改线上。有意私聊 @Alex', entities: ['Alex'] },
@@ -1863,8 +1946,76 @@ const CASE_DB = {
           }
         },
         contradictions: [
-          { id: 'passport_face', text: '视频人物耳朵形状与护照照片不一致，背景窗帘与声称的伦敦公寓不符', condition: () => true }
+          { id: 'video_mismatch', text: '视频人物耳朵形状与护照不一致，背景窗帘不符（东南亚民宿风格）', condition: function() { return true; } }
         ]
+      },
+      trial_transfer: {
+        id: 'trial_transfer',
+        title: '小额试探转账记录',
+        icon: 'credit',
+        isSuspicious: true,
+        unlocked: false,
+        unlockTrigger: { type: 'decision', decisionId: 'e1', choice: 'a' },
+        unlockHint: '抉择"小额试探"后解锁',
+        layers: {
+          surface: '<div style="background: var(--bg-hover); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);"><p style="font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-3);">Alex声称收到了£50试探转账：</p><div style="background: var(--bg-base); padding: var(--space-3); border-radius: var(--radius-md); font-family: monospace; font-size: 12px; color: var(--text-secondary); line-height: 1.8;"><p>Amount: £50.00</p><p>Status: <span style="color: var(--status-success);">Received</span></p><p>From: You</p></div><div style="margin-top: var(--space-3); padding: var(--space-3); background: var(--status-danger-bg); border-radius: var(--radius-md); font-size: 12px; color: var(--status-danger);"><strong>伪造记录：</strong>银行流水显示无此笔入账，Alex伪造了"已收到"的界面诱导你大额转账。</div></div>',
+          metadata: { '转账验证': { '银行流水': '无此笔入账记录', '对方截图': '显示已收到（伪造）', '结论': '伪造入账记录，诱导大额转账' } }
+        },
+        contradictions: [
+          { id: 'trial_fake', text: 'Alex声称收到试探转账£50，但银行流水无此记录（伪造入账）', condition: function() { return true; } }
+        ]
+      },
+      chat_mike: {
+        id: 'chat_mike',
+        title: '中介Mike私聊',
+        icon: 'alert',
+        isSuspicious: true,
+        unlocked: false,
+        unlockTrigger: { type: 'decision', decisionId: 'e3', choice: 'b' },
+        unlockHint: '拒绝Alex后自动触发 或 搜索"中介"',
+        layers: {
+          surface: [
+            { sender: '中介Mike', text: '同学，我听说你在和Alex换汇。他不太靠谱，走我这边担保通道吧，正规公司有保障。', isMe: false },
+            { sender: '你', text: '你怎么知道我在和Alex换汇？', isMe: true },
+            { sender: '中介Mike', text: '群里看到的。我有正规担保合同，100%资金安全，很多同学都走了我的通道。', isMe: false }
+          ],
+          metadata: {
+            '中介Mike': { '账号注册时间': '2026-04-02 (与Alex同天)', 'IP地址': '213.45.xxx.xxx (与Alex相同)', '历史发言': '本群0条', '风险提示': '与Alex同一IP段，实为同一团伙B角色' }
+          }
+        },
+        contradictions: [
+          { id: 'mike_ip', text: 'Mike与Alex同IP段（尼日利亚），推荐"安全通道"实为同一服务器', condition: function() { return true; } }
+        ]
+      },
+      guarantee_contract: {
+        id: 'guarantee_contract',
+        title: 'Mike的担保合同',
+        icon: 'image',
+        isSuspicious: true,
+        unlocked: false,
+        unlockTrigger: { type: 'evidence_viewed', target: 'chat_mike' },
+        unlockHint: '查看Mike私聊后解锁',
+        layers: {
+          surface: '<div style="background: var(--bg-hover); padding: var(--space-4); border-radius: var(--radius-md);"><h4 style="font-size:14px;font-weight:600;margin-bottom:var(--space-3);">换汇担保合同</h4><div style="font-size:13px;color:var(--text-secondary);line-height:1.8;"><p>担保方: Trust Exchange Ltd.</p><p>担保邮箱: <span style="color:var(--status-danger);">trustexchange2026@gmail.com</span></p></div><div style="margin-top:var(--space-3);padding:var(--space-3);background:var(--status-danger-bg);border-radius:var(--radius-md);font-size:12px;color:var(--status-danger);"><strong>矛盾点：</strong>无律所盖章；担保方邮箱为Gmail；条款存在法律错误。</div></div>',
+          metadata: { '合同分析': { '律所盖章': '无', '担保方邮箱': 'Gmail免费邮箱', '结论': '伪造担保合同，无法律效力' } }
+        },
+        contradictions: [
+          { id: 'contract_fake', text: '担保合同无律所盖章，担保方邮箱为Gmail免费邮箱，无法律效力', condition: function() { return true; } }
+        ]
+      },
+      school_finance: {
+        id: 'school_finance',
+        title: '学校财务处公告',
+        icon: 'shield',
+        isSuspicious: false,
+        unlocked: false,
+        unlockTrigger: { type: 'search', keyword: '学校' },
+        unlockHint: '搜索"学校"/"财务"解锁',
+        layers: {
+          surface: '<div style="background: var(--accent-primary-light); padding: var(--space-4); border-radius: var(--radius-md); border-left: 3px solid var(--accent-primary);"><div style="font-weight:600;font-size:13px;color:var(--accent-primary-text);margin-bottom:var(--space-2);">Finance Office Notice</div><p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Private currency exchange between students is not regulated. Use authorized banks or licensed services only. Beware of "guaranteed" private exchange channels.</p></div>',
+          metadata: {}
+        },
+        contradictions: []
       }
     },
     searchKeywords: {
@@ -1875,12 +2026,22 @@ const CASE_DB = {
       '银行': ['screenshot_bank_fake', 'screenshot_bank_real'],
       '视频': ['video_call'],
       '伦敦': ['chat_group_warn'],
-      '曼城': ['chat_group_warn']
+      '曼城': ['chat_group_warn'],
+      '中介': ['chat_mike'],
+      '担保': ['chat_mike', 'guarantee_contract'],
+      '学校': ['school_finance'],
+      '财务': ['school_finance'],
+      'Mike': ['chat_mike']
+    },
+    searchStageLocks: {
+      '中介': { stage: 8, requiresDecision: 'e3' },
+      '担保': { stage: 8, requiresDecision: 'e3' },
+      'Mike': { stage: 8, requiresDecision: 'e3' }
     },
     decisions: {
       e1: {
         id: 'e1',
-        trigger: { type: 'contradiction_count', count: 2 },
+        trigger: { type: 'dual', triggerStage: 2, requiredEvidence: ['chat_group_ad', 'chat_alex'] },
         text: 'Alex催促："我pending的钱很快就到账了，你先转人民币给我，我急用！"',
         options: [
           { id: 'a', text: '先转人民币锁定汇率', effect: 'bad_end', reward: 0 },
@@ -1890,7 +2051,7 @@ const CASE_DB = {
       },
       e2: {
         id: 'e2',
-        trigger: { type: 'contradiction_count', count: 4 },
+        trigger: { type: 'dual', triggerStage: 5, requiredEvidence: ['screenshot_bank_fake'] },
         text: '收到pending截图后，Alex说："银行说可能要24小时才到账，你先垫一下，我同学也要换。"',
         options: [
           { id: 'a', text: '相信截图立即转账', effect: 'bad_end', reward: 0 },
@@ -1900,24 +2061,48 @@ const CASE_DB = {
       },
       e3: {
         id: 'e3',
-        trigger: { type: 'contradiction_count', count: 5 },
+        trigger: { type: 'dual', triggerStage: 8, requiredEvidence: ['chat_alex', 'photo_passport'] },
         text: 'Alex说："我同学也要换£10000，你先转，回头一起算。"',
         options: [
           { id: 'a', text: '转账', effect: 'bad_end', reward: 0 },
           { id: 'b', text: '拒绝并举报', effect: 'perfect_end', reward: 20 },
-          { id: 'c', text: '拖延并收集证据', effect: 'normal_end', reward: 10 }
+          { id: 'c', text: '拖延并收集证据', effect: 'continue', reward: 10 }
+        ]
+      },
+      e4: {
+        id: 'e4',
+        trigger: { type: 'dual', triggerStage: 8, requiredEvidence: ['chat_mike'] },
+        text: '拒绝Alex后，"中介Mike"私聊你："同学，Alex不太靠谱，走我这边担保通道，安全有保障。"',
+        options: [
+          { id: 'a', text: '相信Mike，担保合同看起来正规', effect: 'scammed_mike', reward: 0, desc: '你进入了第二层陷阱' },
+          { id: 'b', text: '质疑Mike怎么知道我和Alex的事', effect: 'expose_mike', reward: 15, desc: 'Mike和Alex同一IP段！' },
+          { id: 'c', text: '要求Mike提供公司注册号和律所信息', effect: 'expose_mike', reward: 10, desc: 'Mike无法提供，暴露破绽' },
+          { id: 'd', text: '忽略并举报Mike', effect: 'safe_mike', reward: 10, desc: '安全路径' }
+        ]
+      },
+      e5: {
+        id: 'e5',
+        trigger: { type: 'dual', triggerStage: 10, requiredEvidence: ['chat_group_warn'] },
+        text: '发现深层骗局后，你决定如何应对？',
+        options: [
+          { id: 'a', text: '向学校和国际学生办公室正式举报', effect: 'perfect_end', reward: 20, desc: '完美结局' },
+          { id: 'b', text: '仅删除Alex和Mike联系方式', effect: 'normal_end', reward: 10, desc: '普通结局' },
+          { id: 'c', text: '继续观望，看看还有谁会上当', effect: 'risk_end', reward: 5, desc: '风险结局' },
+          { id: 'd', text: '在群里公开曝光，提醒其他同学', effect: 'expose_group', reward: 15, desc: '正义者结局' }
         ]
       }
     },
     endings: {
-      perfect: { title: '完美结局：骗局终结者', subtitle: '你识破了换汇诈骗并举报', evaluation: '你展现了出色的风险识别能力，发现了汇率异常、伪造截图、身份不符等所有矛盾点。换汇请通过正规银行或授权机构。' },
-      normal: { title: '普通结局', subtitle: '你避免了转账，但骗子逃脱了', evaluation: '你没有被骗，但没有收集足够证据举报。记住：任何要求你先转账的换汇都是高风险。' },
-      scammed_early: { title: '早期被骗', subtitle: '你在高汇率诱惑下转账了', evaluation: '高汇率是诱饵，pending截图是伪造的。对方利用"我先转你"的话术降低你的警惕。' },
-      scammed_mid: { title: '中期被骗', subtitle: '你轻信了伪造截图', evaluation: 'Barclays从不会通过截图转账，请通过官方APP核实。伪造的银行截图是换汇诈骗最常见的手段。' },
-      scammed_final: { title: '最终被骗', subtitle: '你在社交压力下转账了', evaluation: '"我同学也要换"是典型的话术，制造虚假紧迫感。' },
-      stall_end: { title: '僵持结局', subtitle: '骗子放弃了你', evaluation: '你的谨慎让骗子转向其他目标，但你没有举报，他们还会继续骗其他人。' },
-      risk: { title: '风险结局', subtitle: '你险些相信对方', evaluation: '诈骗者利用时间压力和社交认同来降低你的警惕。' },
-      exhausted: { title: '能量耗尽', subtitle: '调查资源耗尽', evaluation: '能量管理也是调查的重要部分，合理分配AP，优先查看关键档案。' },
+      perfect: { title: '完美结局：骗局终结者', subtitle: '你识破了双层骗局并举报', evaluation: '你不仅识破了Alex的换汇诈骗，还揭穿了中介Mike的担保骗局，保护了无数同学。换汇请通过正规银行或授权机构。' },
+      normal: { title: '普通结局：删除自保', subtitle: '你避免了转账，但骗子逃脱了', evaluation: '你保护了自己，但骗子还在寻找下一个目标。记住：任何要求你先转账的换汇都是高风险。' },
+      scammed_early: { title: '小额试探后全款被骗', subtitle: '试探降低了你的防备', evaluation: '试探降低了你的防备，但没降低骗子的演技。高汇率是诱饵，pending截图是伪造的。' },
+      scammed_mid: { title: '担保通道被骗', subtitle: '拒绝了一个骗子，走进了另一个陷阱', evaluation: 'Mike和Alex是同一团伙。中介担保听起来安全，但Gmail邮箱和缺律所盖章暴露了真相。' },
+      scammed_mike: { title: '第二层陷阱被骗', subtitle: '你以为拒绝了Alex就安全了', evaluation: '诈骗团伙设计了B角色。任何"担保"但用Gmail邮箱的，都不可信。' },
+      scammed_final: { title: '团购汇率被骗', subtitle: '贪小便宜是最大的突破口', evaluation: '"我同学也要换"是典型话术，制造虚假紧迫感。高汇率是诱饵。' },
+      stall_end: { title: '警惕者结局', subtitle: '你不给骗子机会', evaluation: '你坚持要求对方先转账，Alex直接拉黑了你。你的谨慎保护了自己，但他们还会骗其他人。' },
+      expose_group: { title: '正义者结局', subtitle: '你在群里公开曝光了骗局', evaluation: '你的勇敢让更多同学免于受害。一个人的警觉，保护了无数人。' },
+      risk: { title: '观望中被骗', subtitle: '拖延给了骗子时间', evaluation: '观望不是策略。诈骗者利用时间压力和社交认同来降低你的警惕。' },
+      exhausted: { title: '能量耗尽', subtitle: '调查资源耗尽', evaluation: '调查需要资源管理，AP耗尽等于放弃。合理分配AP，优先查看关键档案。' },
       submitted: { title: '调查提交', subtitle: '案件调查报告已生成', evaluation: '调查完成。希望这次经历能帮助你提高反诈意识。' }
     }
   },
@@ -1929,7 +2114,7 @@ const CASE_DB = {
     difficulty: 2,
     estimatedTime: '15-20分钟',
     description: '你收到一封"学校教务处"的紧急邮件，声称账户异常需24小时内验证。点击链接后进入一个仿冒登录页。次日又收到勒索邮件，威胁公开你的浏览记录。',
-    totalContradictions: 6,
+    totalContradictions: 8,
     storyNodes: [
       { type: 'system', text: '你收到一封来自"学校教务处"的邮件...' },
       { type: 'other', sender: 'Mrs. Smith', text: 'Urgent: Your student account has been flagged for unusual activity. Please verify within 24 hours to avoid suspension.', entities: ['Mrs. Smith'] },
@@ -1984,6 +2169,63 @@ const CASE_DB = {
         unlockTrigger: { type: 'evidence_viewed', target: 'email_it_real' }, unlockHint: '查看IT公告后解锁',
         layers: { surface: [{ sender: '小李', text: '我也收到了那封邮件，差点就点了！幸好看到了IT部门的提醒。', isMe: false }] },
         contradictions: []
+      },
+      chat_fake_it: {
+        id: 'chat_fake_it', title: '伪造IT支持聊天', icon: 'alert', isSuspicious: true, unlocked: false,
+        unlockTrigger: { type: 'search', keyword: '客服' }, unlockHint: '搜索"客服"/"支持" 或 点击钓鱼邮件中"联系IT"',
+        layers: {
+          surface: [
+            { sender: 'IT Support', text: '你好，这里是学校IT支持。我们检测到你的账户有异常登录，请提供你的密码以便我们核实身份。', isMe: false },
+            { sender: '你', text: '为什么需要我的密码？学校不是说不会索要密码吗？', isMe: true },
+            { sender: 'IT Support', text: '这是紧急安全核查流程，需要验证你的身份。请尽快提供，否则账户将被锁定。', isMe: false }
+          ],
+          metadata: {
+            'IT客服分析': { '域名': '非官方域名', '索要密码': '学校从不会索要密码', '客服头像': '网图（反向搜索可发现是企业员工照片）', '回应速度': '极快（非人工特征）', '结论': '伪造即时聊天窗口' }
+          }
+        },
+        contradictions: [
+          { id: 'fake_it_chat', text: '伪造IT聊天：域名非官方，索要密码，客服头像为网图', condition: function() { return true; } }
+        ]
+      },
+      security_tool: {
+        id: 'security_tool', title: '"安全检查工具"链接', icon: 'alert', isSuspicious: true, unlocked: false,
+        unlockTrigger: { type: 'search', keyword: '工具' }, unlockHint: '搜索"工具"/"检查"/"扫描"解锁',
+        layers: {
+          surface: '<div style="background: var(--bg-hover); padding: var(--space-4); border-radius: var(--radius-md);"><p style="font-size:13px;color:var(--text-secondary);">同学群中有人分享了一个"账户安全检查工具"：<br><span style="color:var(--status-danger);">student-security-tool.exe</span></p><div style="margin-top:var(--space-3);padding:var(--space-3);background:var(--status-danger-bg);border-radius:var(--radius-md);font-size:12px;color:var(--status-danger);"><strong>危险：</strong>下载文件为.exe可执行文件，非网页工具；域名非官方。这是木马下载器！</div></div>',
+          metadata: { '文件分析': { '文件类型': '.exe可执行文件', '域名': '非学校官方域名', '官方工具': '学校不会分发.exe安全工具', '结论': '木马下载器' } }
+        },
+        contradictions: [
+          { id: 'trojan_exe', text: '安全工具为.exe可执行文件（非网页工具），域名非官方，是木马下载器', condition: function() { return true; } }
+        ]
+      },
+      email_it_reply: {
+        id: 'email_it_reply', title: '真学校IT回复邮件', icon: 'shield', isSuspicious: false, unlocked: false,
+        unlockTrigger: { type: 'decision', decisionId: 'p1', choice: 'b' }, unlockHint: '抉择"联系IT部门"后解锁',
+        layers: {
+          surface: '<div style="background: var(--accent-primary-light); padding: var(--space-4); border-radius: var(--radius-md); border-left: 3px solid var(--accent-primary);"><div style="font-weight:600;font-size:13px;color:var(--accent-primary-text);margin-bottom:var(--space-2);">IT Security Team Reply</div><p style="font-size:13px;color:var(--text-secondary);">Thank you for reporting. This is indeed a phishing email. We have added university-security.com and login-university-portal.com to our blocklist. Please do not click any links in the email.</p><p style="font-size:12px;color:var(--text-tertiary);margin-top:var(--space-2);">From: security@university.ac.uk</p></div>',
+          metadata: {}
+        },
+        contradictions: []
+      },
+      darkweb_record: {
+        id: 'darkweb_record', title: '暗网泄露记录', icon: 'file', isSuspicious: true, unlocked: false,
+        unlockTrigger: { type: 'evidence_viewed', target: 'email_blackmail' }, unlockHint: '查看勒索邮件后解锁',
+        layers: {
+          surface: '<div style="background: var(--bg-hover); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);"><p style="font-size:13px;color:var(--text-secondary);">暗网泄露数据库查询结果：</p><div style="font-size:12px;color:var(--status-danger);line-height:1.8;"><p>你的邮箱: your.email@university.ac.uk</p><p>泄露密码: pas***rd (掩码显示)</p><p>泄露来源: 第三方网站数据泄露（非学校系统）</p></div><div style="margin-top:var(--space-3);padding:var(--space-3);background:var(--bg-hover);border-radius:var(--radius-md);font-size:12px;color:var(--text-tertiary);">分析：你的部分旧密码确实在公开泄露库中，但勒索者夸大了掌握的信息——他们只有公开泄露库的数据，并没有你的浏览记录。</div></div>',
+          metadata: { '暗网分析': { '泄露范围': '仅公开泄露库中的常见数据', '声称掌握': '全部浏览记录（夸大）', '实际证据': '有限的旧密码片段', '结论': '勒索者基于公开泄露数据夸大威胁' } }
+        },
+        contradictions: [
+          { id: 'info_exaggerated', text: '暗网记录仅显示旧密码片段，勒索者声称掌握"全部浏览记录"是夸大威胁', condition: function() { return true; } }
+        ]
+      },
+      school_notice2: {
+        id: 'school_notice2', title: '学校官方二次提醒', icon: 'shield', isSuspicious: false, unlocked: false,
+        unlockTrigger: { type: 'contradiction_count', count: 3 }, unlockHint: '发现3个矛盾后自动解锁',
+        layers: {
+          surface: '<div style="background: var(--accent-primary-light); padding: var(--space-4); border-radius: var(--radius-md);"><p style="font-size:13px;color:var(--accent-primary-text);">URGENT: Multiple students reported phishing + blackmail scam. The university is working with law enforcement. If you received such emails, do NOT pay. Report to security@university.ac.uk immediately.</p></div>',
+          metadata: {}
+        },
+        contradictions: []
       }
     },
     searchKeywords: {
@@ -1994,11 +2236,20 @@ const CASE_DB = {
       '学校': ['email_it_real', 'it_announcement'],
       '密码': ['email_it_real'],
       '举报': ['it_announcement'],
-      '同学': ['chat_classmate']
+      '同学': ['chat_classmate'],
+      '客服': ['chat_fake_it'],
+      '支持': ['chat_fake_it'],
+      '工具': ['security_tool'],
+      '检查': ['security_tool'],
+      '扫描': ['security_tool']
+    },
+    searchStageLocks: {
+      '客服': { stage: 7 },
+      '工具': { stage: 7 }
     },
     decisions: {
       p1: {
-        id: 'p1', trigger: { type: 'contradiction_count', count: 1 },
+        id: 'p1', trigger: { type: 'dual', triggerStage: 2, requiredEvidence: ['email_phishing'] },
         text: '邮件催促："Final notice: Your account will be suspended at midnight."',
         options: [
           { id: 'a', text: '点击链接立即验证', effect: 'unlock_fake_login', reward: 0, desc: '进入了一个仿学校登录页' },
@@ -2008,25 +2259,48 @@ const CASE_DB = {
         ]
       },
       p2: {
-        id: 'p2', trigger: { type: 'contradiction_count', count: 3 },
+        id: 'p2', trigger: { type: 'dual', triggerStage: 8, requiredEvidence: ['email_blackmail'] },
         text: '收到勒索邮件："Pay £500 via Bitcoin or we report your browsing history."',
         options: [
           { id: 'a', text: '恐慌并支付赎金', effect: 'scammed_ransom', reward: 0, desc: '你支付了£500比特币' },
           { id: 'b', text: '向学校IT举报并删除邮件', effect: 'perfect_end', reward: 20, desc: 'IT部门确认是空威胁' },
           { id: 'c', text: '与同学讨论', effect: 'normal_end', reward: 5, desc: '你发现很多同学都收到了类似邮件' },
-          { id: 'd', text: '忽略，认为是恶作剧', effect: 'risk', reward: 5, desc: '虽然这次没事...' }
+          { id: 'd', text: '忽略，认为是恶作剧', effect: 'risk_end', reward: 5, desc: '虽然这次没事...' }
+        ]
+      },
+      p3: {
+        id: 'p3', trigger: { type: 'dual', triggerStage: 8, requiredEvidence: ['chat_fake_it'] },
+        text: '弹出一个"IT支持聊天窗口"——"请提供密码以便我们核实你的账户安全状况。"',
+        options: [
+          { id: 'a', text: '提供密码以便核实', effect: 'scammed_password', reward: 0, desc: '双重受害：密码泄露+被勒索' },
+          { id: 'b', text: '要求对方提供工号和官方回拨电话', effect: 'expose_fake_it', reward: 15, desc: '对方断开连接' },
+          { id: 'c', text: '关闭窗口并向真IT举报', effect: 'safe_it', reward: 10, desc: '安全路径' },
+          { id: 'd', text: '截图保存后继续聊天套取信息', effect: 'risky_info', reward: 5, desc: '高风险高回报' }
+        ]
+      },
+      p4: {
+        id: 'p4', trigger: { type: 'dual', triggerStage: 10, requiredEvidence: ['email_it_real'] },
+        text: '发现连环陷阱后，你决定如何应对？',
+        options: [
+          { id: 'a', text: '全面举报+修改所有密码+开启双重验证', effect: 'perfect_end', reward: 20, desc: '完美结局' },
+          { id: 'b', text: '仅删除邮件，不修改密码', effect: 'normal_end', reward: 10, desc: '普通结局' },
+          { id: 'c', text: '认为是恶作剧，不采取任何行动', effect: 'risk_end', reward: 5, desc: '风险结局' },
+          { id: 'd', text: '在社交媒体曝光钓鱼手法', effect: 'expose_social', reward: 10, desc: '正义者变体' }
         ]
       }
     },
     endings: {
-      perfect: { title: '完美结局：追踪者', subtitle: '你识破了钓鱼邮件并协助追踪攻击源', evaluation: '你发现了域名异常、WHOIS信息和勒索链条，不仅保护了自己的账户，还提供了关键证据帮助学校IT部门追踪攻击者。' },
+      perfect: { title: '完美结局：追踪者', subtitle: '你识破了连环陷阱并追踪攻击源', evaluation: '你发现了域名异常、WHOIS信息、伪造IT聊天和勒索链条，不仅保护了自己的账户，还提供了关键证据帮助学校追踪攻击者。' },
       perfect_track: { title: '追踪者结局', subtitle: '你协助IT部门追踪了攻击源', evaluation: '你不仅识破了骗局，还提供了关键证据帮助学校追踪攻击者。学校已将相关域名加入黑名单。' },
-      normal: { title: '普通结局', subtitle: '你避免了输入密码', evaluation: '你没有泄露密码，这是正确的。但下次收到可疑邮件，请向IT部门报告，帮助他们保护其他同学。' },
-      risk: { title: '风险结局', subtitle: '你忽略了勒索邮件', evaluation: '虽然这次没事，但忽略安全威胁不是好习惯。遇到勒索邮件应立即向学校和警方报告。' },
-      scammed_password: { title: '密码泄露', subtitle: '你输入了密码', evaluation: '学校从不会通过邮件索要密码。立即修改密码并启用双因素认证！任何索要密码的邮件都是钓鱼邮件。' },
-      scammed_ransom: { title: '勒索受害', subtitle: '你支付了比特币赎金', evaluation: '支付赎金只会鼓励更多攻击。学校IT部门可以帮你处理此类威胁，下次请立即报告。' },
+      normal: { title: '普通结局：删除者', subtitle: '你避免了输入密码', evaluation: '你清理了表面，但根源还在。下次收到可疑邮件，请向IT部门报告。' },
+      risk: { title: '风险结局：侥幸者', subtitle: '你忽略了勒索邮件', evaluation: '运气不会永远站在你这边。忽略安全威胁不是好习惯。' },
+      scammed_password: { title: '密码泄露', subtitle: '你输入了密码', evaluation: '一次点击，全盘皆输。学校从不会通过邮件或聊天窗口索要密码。立即修改密码并启用双因素认证！' },
+      double_victim: { title: '双重受害', subtitle: '你在陷阱里又挖了一个坑', evaluation: '你既泄露了密码，又支付了赎金。恐惧是最昂贵的税。' },
+      scammed_ransom: { title: '勒索受害', subtitle: '你支付了比特币赎金', evaluation: '支付赎金只会鼓励更多攻击。学校IT部门可以帮你处理此类威胁。' },
+      trojan_infection: { title: '木马感染', subtitle: '你下载了伪装成安全工具的恶意软件', evaluation: '安全工具成了最不安全的工具。只从学校官方渠道下载安全软件。' },
       scammed: { title: '被骗结局', subtitle: '你输入了密码并遭到勒索', evaluation: '诈骗者利用紧迫感迫使你匆忙行动。任何索要密码的邮件都应直接删除并报告。' },
-      exhausted: { title: '能量耗尽', subtitle: '调查资源耗尽', evaluation: '合理分配AP，优先查看关键档案。' },
+      expose_social: { title: '正义者结局', subtitle: '你在社交媒体曝光了钓鱼手法', evaluation: '你的分享帮助更多人识别类似骗局。但注意保护自己的个人信息。' },
+      exhausted: { title: '能量耗尽', subtitle: '调查资源耗尽', evaluation: '连环陷阱需要连环破解，中断等于前功尽弃。' },
       submitted: { title: '调查提交', subtitle: '案件调查报告已生成', evaluation: '调查完成。希望这次经历能帮助你提高反诈意识。' }
     }
   }
@@ -2057,7 +2331,9 @@ const State = {
   isFirstPlay: true,
   currentDecisionId: null,
   highlightMode: false,
-  highlightTimer: null
+  highlightTimer: null,
+  storyStage: 0,
+  clickedLinks: {}
 };
 
 const SaveManager = {
@@ -2079,6 +2355,8 @@ const SaveManager = {
         searchHistory: State.searchHistory,
         timeline: State.timeline,
         isFirstPlay: false,
+        storyStage: State.storyStage,
+        clickedLinks: State.clickedLinks,
         timestamp: Date.now()
       }));
     } catch (e) { console.warn('Save failed', e); }
@@ -2119,6 +2397,8 @@ const Engine = {
     State.startTime = Date.now();
     State.timeline = [];
     State.currentDecisionId = null;
+    State.storyStage = 0;
+    State.clickedLinks = {};
 
     // Unlock initial evidence
     Object.values(caseData.evidence).forEach(ev => {
@@ -2164,12 +2444,60 @@ const Engine = {
     UI.pushSystemMessage('系统：解锁新证据 - ' + ev.title);
     HintSystem.recordAction();
     SaveManager.save();
+    // Trigger event-driven hint after a short delay
+    setTimeout(() => Engine.checkAndHint(), 1500);
     return true;
+  },
+
+  checkAndHint() {
+    if (State.phase !== GamePhase.PLAYING || !State.gameActive) return;
+    var hints = [];
+    var evUnlocked = State.evidenceUnlocked.length;
+    var contraFound = State.contradictionsFound.length;
+    var profilesSeen = State.profilesViewed.length;
+
+    // Stage-based hints (event-driven, complements idle timer)
+    if (evUnlocked <= 1 && contraFound === 0) {
+      hints.push('提示：点击对话中的"房东John"查看他的档案，可能会发现异常信息');
+    } else if (profilesSeen > 0 && contraFound === 0) {
+      hints.push('提示：档案中的某些信息可能与对话内容不一致，仔细对比一下');
+    } else if (contraFound >= 1 && !State.evidenceUnlocked.includes('transfer_request')) {
+      hints.push('提示：房东的IP地址有问题，留意他是否提到转账要求');
+    } else if (State.evidenceUnlocked.includes('transfer_request') && !State.profilesViewed.some(function(p) { return p && p.includes && p.includes('Li Wei'); })) {
+      hints.push('提示：转账要求中提到了Li Wei，不妨查看他的档案');
+    } else if (State.evidenceUnlocked.includes('contract') && !State.contradictionsFound.includes('deposit_clause')) {
+      hints.push('提示：你解锁了合同，仔细查看其中的定金条款');
+    } else if (evUnlocked >= 2 && contraFound >= 1 && !State.evidenceUnlocked.includes('group_chat')) {
+      hints.push('提示：尝试使用底部搜索功能，输入"学长"或"群聊"查找更多信息');
+    } else if (contraFound >= 2) {
+      hints.push('提示：已发现多个矛盾点，试着搜索更多关键词来拼凑真相');
+    }
+
+    if (hints.length > 0) {
+      var hint = hints[0];
+      if (!HintSystem.hintGiven[hint]) {
+        HintSystem.hintGiven[hint] = true;
+        setTimeout(() => UI.pushSystemMessage(hint), 3000);
+      }
+    }
   },
 
   checkSearch(keyword) {
     const caseData = CASE_DB[State.currentCase];
     if (!caseData || !caseData.searchKeywords) return [];
+    // Stage-locked keywords check
+    if (caseData.searchStageLocks) {
+      var lk = keyword.toLowerCase();
+      var lockedEntry = caseData.searchStageLocks[lk];
+      if (lockedEntry) {
+        var stageOk = !lockedEntry.stage || State.storyStage >= lockedEntry.stage;
+        var decisionOk = !lockedEntry.requiresDecision || State.decisionsMade.some(function(d) { return d.decisionId === lockedEntry.requiresDecision; });
+        if (!stageOk || !decisionOk) {
+          UI.pushSystemMessage('搜索 "' + keyword + '" 时机未到，继续调查对话中的线索。');
+          return [];
+        }
+      }
+    }
     var results = [];
     var searchTerms = [keyword.toLowerCase()];
 
@@ -2217,13 +2545,36 @@ const Engine = {
 
   triggerDecision() {
     const caseData = CASE_DB[State.currentCase];
-    if (!caseData || !caseData.decisions) return;
+    if (!caseData) return;
+    // Auto-unlock evidence triggered by contradiction count
+    if (caseData.evidence) {
+      Object.values(caseData.evidence).forEach(function(ev) {
+        if (!State.evidenceUnlocked.includes(ev.id) && ev.unlockTrigger && ev.unlockTrigger.type === 'contradiction_count') {
+          if (State.contradictionsFound.length >= ev.unlockTrigger.count) {
+            Engine.unlockEvidence(ev.id);
+          }
+        }
+      });
+    }
+    if (!caseData.decisions) return;
     Object.values(caseData.decisions).forEach(decision => {
       if (State.decisionsMade.some(d => d.decisionId === decision.id)) return;
       const trigger = decision.trigger;
+      // Dual condition: story stage + required evidence
+      if (trigger.type === 'dual') {
+        const stageOk = !trigger.triggerStage || State.storyStage >= trigger.triggerStage;
+        const evidenceOk = !trigger.requiredEvidence || trigger.requiredEvidence.every(function(eid) {
+          return State.evidenceViewed.includes(eid);
+        });
+        if (stageOk && evidenceOk) {
+          setTimeout(function() { UI.showDecision(decision.id); }, 500);
+        }
+        return;
+      }
+      // Legacy: contradiction count only (for backward compat)
       if (trigger.type === 'contradiction_count') {
         if (State.contradictionsFound.length >= trigger.count) {
-          setTimeout(() => UI.showDecision(decision.id), 500);
+          setTimeout(function() { UI.showDecision(decision.id); }, 500);
         }
       }
     });
@@ -2255,6 +2606,10 @@ const Engine = {
       case 'unlock_contract':
         Engine.unlockEvidence('contract');
         UI.showToast('房东发来了一份合同照片', 'info');
+        break;
+      case 'unlock_deed':
+        Engine.unlockEvidence('property_deed');
+        UI.showToast('房东发来了房产证照片', 'info');
         break;
       case 'unlock_agency':
         Engine.unlockEvidence('agency_record');
@@ -2327,12 +2682,56 @@ const Engine = {
       case 'scammed_ransom':
         State.gameActive = false;
         UI.showToast('你支付了比特币赎金...', 'error');
-        setTimeout(() => Engine.endGame('scammed_ransom'), 1500);
+        setTimeout(function() { Engine.endGame('scammed_ransom'); }, 1500);
+        break;
+      case 'scammed_mike':
+        State.gameActive = false;
+        UI.showToast('你相信了Mike，进入了第二层陷阱...', 'error');
+        setTimeout(function() { Engine.endGame('scammed_mike'); }, 1500);
+        break;
+      case 'expose_mike':
+        Engine.unlockEvidence('guarantee_contract');
+        if (!State.contradictionsFound.includes('mike_ip')) {
+          State.contradictionsFound.push('mike_ip');
+          UI.addNote('中介关联：Mike与Alex同IP段，担保合同无法律效力', true);
+        }
+        if (!State.contradictionsFound.includes('contract_fake')) {
+          State.contradictionsFound.push('contract_fake');
+          UI.addNote('担保合同伪造：无律所盖章，Gmail邮箱', true);
+        }
+        UI.showToast('你发现了Mike与Alex的关联！同一诈骗团伙！', 'success');
+        break;
+      case 'safe_mike':
+        UI.showToast('你避开了第二层陷阱', 'info');
+        break;
+      case 'expose_group':
+        State.gameActive = false;
+        UI.showToast('你在群里公开了骗局！', 'success');
+        setTimeout(function() { Engine.endGame('expose_group'); }, 1500);
         break;
       case 'scammed_password':
         State.gameActive = false;
         UI.showToast('你泄露了密码！', 'error');
-        setTimeout(() => Engine.endGame('scammed_password'), 1500);
+        setTimeout(function() { Engine.endGame('scammed_password'); }, 1500);
+        break;
+      case 'expose_fake_it':
+        if (!State.contradictionsFound.includes('fake_it_chat')) {
+          State.contradictionsFound.push('fake_it_chat');
+          UI.addNote('伪造IT聊天：域名非官方，索要密码，客服头像为网图', true);
+        }
+        UI.showToast('你识破了伪造的IT聊天窗口！', 'success');
+        break;
+      case 'safe_it':
+        UI.showToast('你安全地关闭了伪造聊天窗口', 'info');
+        break;
+      case 'risky_info':
+        UI.showToast('你截图保存了聊天记录，但消耗了额外AP', 'warning');
+        Engine.consumeAp(10);
+        break;
+      case 'expose_social':
+        State.gameActive = false;
+        UI.showToast('你在社交媒体上曝光了钓鱼手法！', 'success');
+        setTimeout(function() { Engine.endGame('expose_social'); }, 1500);
         break;
       case 'stall':
         UI.showToast('你选择了观望...', 'info');
@@ -2401,12 +2800,12 @@ const Engine = {
     const caseData = CASE_DB[State.currentCase];
     if (!caseData) return;
 
+    // Priority 1: check bad ending decision chains
     const hasTransferred = State.decisionsMade.some(d =>
       (d.decisionId === 'd1' && d.choice === 'a') ||
       (d.decisionId === 'e1' && d.choice === 'a') ||
       (d.decisionId === 'p1' && d.choice === 'a')
     );
-
     if (hasTransferred) {
       Engine.endGame('scammed');
       return;
@@ -2416,11 +2815,20 @@ const Engine = {
     const totalContra = caseData.totalContradictions || 5;
     const found = State.contradictionsFound.length;
 
+    // Priority 2: perfect if all contradictions found and sufficient AP
     if (found >= totalContra && State.ap >= 30) {
       outcome = 'perfect';
-    } else if (found >= Math.ceil(totalContra * 0.6)) {
+    }
+    // Priority 3: normal if at least 60% found
+    else if (found >= Math.ceil(totalContra * 0.6)) {
       outcome = 'normal';
-    } else {
+    }
+    // Priority 4: observer - found all contradictions but didn't decide
+    else if (found >= totalContra && State.decisionsMade.length === 0) {
+      outcome = 'observer';
+    }
+    // Priority 5: risk
+    else {
       outcome = 'risk';
     }
 
@@ -2572,7 +2980,8 @@ const UI = {
     const thread = this.el('chat-thread');
     if (!thread) return;
     thread.innerHTML = '';
-    caseData.storyNodes.forEach(node => {
+    State.storyStage = 0;
+    caseData.storyNodes.forEach((node, idx) => {
       if (node.type === 'system') {
         thread.appendChild(this._makeSystemMsg(node.text));
       } else if (node.type === 'other') {
@@ -2583,6 +2992,7 @@ const UI = {
       if (node.action === 'unlock_evidence' && node.target) {
         setTimeout(() => Engine.unlockEvidence(node.target), 300);
       }
+      State.storyStage = idx + 1;
     });
     thread.scrollTop = thread.scrollHeight;
   },
@@ -2769,6 +3179,13 @@ const UI = {
     body.innerHTML = `<div style="font-size:16px;font-weight:600;margin-bottom:var(--space-4);color:var(--text-primary);">${entityName}</div>${rows}`;
     this.show('modal-profile');
 
+    // Auto-unlock evidence triggered by profile view
+    Object.values(caseData.evidence).forEach(function(ev) {
+      if (!State.evidenceUnlocked.includes(ev.id) && ev.unlockTrigger && ev.unlockTrigger.type === 'profile_viewed' && ev.unlockTrigger.target === entityName) {
+        Engine.unlockEvidence(ev.id);
+      }
+    });
+
     const contradictions = Engine.checkContradictions(evidenceId, entityName, meta);
     contradictions.forEach(c => {
       if (!State.contradictionsFound.includes(c.id)) {
@@ -2777,7 +3194,7 @@ const UI = {
         Engine.rewardAp(10);
         this.showContradictionBanner('发现矛盾：' + c.text);
         document.querySelector('.modal-content') && document.querySelector('.modal-content').classList.add('edge-flash');
-        setTimeout(() => { document.querySelector('.modal-content') && document.querySelector('.modal-content').classList.remove('edge-flash'); }, 1500);
+        setTimeout(function() { document.querySelector('.modal-content') && document.querySelector('.modal-content').classList.remove('edge-flash'); }, 1500);
       }
     });
     Engine.triggerDecision();
@@ -2791,7 +3208,7 @@ const UI = {
     var bar = document.createElement('div');
     bar.id = 'selection-bar';
     bar.className = 'selection-bar';
-    bar.style.cssText = 'position:fixed;z-index:9999;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:4px;display:flex;gap:2px;transform:translateX(-50%);';
+    bar.style.cssText = 'position:fixed;z-index:150;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:4px;display:flex;gap:2px;transform:translateX(-50%);';
     bar.style.left = params.x + 'px';
     bar.style.top = (params.y - 40) + 'px';
 
@@ -2818,7 +3235,11 @@ const UI = {
           UI.addNote('标记：' + params.text, false);
           UI.showToast('已加入笔记', 'info');
         }
-        self.hideSelectionBar();
+        if (act.action === 'close') {
+          self.clearSelectionBar();
+        } else {
+          self.hideSelectionBar();
+        }
       };
       bar.appendChild(btn);
     });
@@ -2828,43 +3249,30 @@ const UI = {
   hideSelectionBar() {
     var el = document.getElementById('selection-bar');
     if (el) el.remove();
+  },
+
+  clearSelection() {
     window.getSelection().removeAllRanges();
   },
 
-  clearSelectionBar() { this.hideSelectionBar(); },
+  clearSelectionBar() {
+    this.hideSelectionBar();
+    this.clearSelection();
+  },
 
   // ===== Search =====
   showSearchPanel() {
     var input = this.el('chat-input');
     if (!input) return;
-    // Layer 1: delayed focus
-    setTimeout(function() {
+    // Ensure the input bar is visible and focused — single reliable approach
+    input.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    requestAnimationFrame(function() {
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
-      // Layer 2: trigger click event
-      try { var evt = new MouseEvent('click', { bubbles: true }); input.dispatchEvent(evt); } catch(e) {}
-      // Layer 3: mobile readonly trick
-      if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-        input.readOnly = true;
-        setTimeout(function() { input.readOnly = false; input.focus(); input.click(); }, 100);
-      }
-      // Layer 4: temp input workaround
-      if (document.activeElement !== input) {
-        var temp = document.createElement('input');
-        temp.style.cssText = 'position:fixed;opacity:0;';
-        document.body.appendChild(temp);
-        temp.focus();
-        setTimeout(function() { input.focus(); document.body.removeChild(temp); }, 50);
-      }
-    }, 300);
+    });
   },
 
   // ===== Decision =====
-  closeSearchPanel() {
-    var input = this.el('chat-input');
-    if (input) input.blur();
-  },
-
   showDecision(decisionId) {
     const caseData = CASE_DB[State.currentCase];
     if (!caseData || !caseData.decisions || !caseData.decisions[decisionId]) return;
@@ -3031,11 +3439,17 @@ const UI = {
 
   // ===== Toast =====
   showToast(message, type) {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
     const div = document.createElement('div');
     div.className = 'toast toast--' + (type || 'info');
-    div.textContent = message;
-    document.body.appendChild(div);
-    setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity 0.3s'; setTimeout(() => div.remove(), 300); }, 2500);
+    div.textContent = String(message);
+    container.insertBefore(div, container.firstChild);
+    setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity 0.3s'; setTimeout(() => { div.remove(); if (container && container.children.length === 0) container.remove(); }, 300); }, 2500);
   },
 
   showContradictionBanner(message) {
@@ -3197,6 +3611,7 @@ const Input = {
     document.body.addEventListener('click', (e) => {
       if (!State.gameActive && State.phase === GamePhase.ENDED) return;
       if (State.isProcessing) return;
+      if (e.target.closest('#selection-bar')) return;
       const actionEl = e.target.closest('[data-action]');
       if (actionEl) {
         const action = actionEl.dataset.action;
@@ -3227,18 +3642,39 @@ const Input = {
         Input.onEntityClick(entityEl);
         return;
       }
+      // Don't clear selection when interacting with input elements
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (Input._skipNextClick) { Input._skipNextClick = false; return; }
       UI.clearSelectionBar();
     });
 
-    document.addEventListener('mouseup', () => {
+    // Fallback: capture-phase click on .case-card to ensure lobby navigation works
+    document.body.addEventListener('click', (e) => {
+      const cardBtn = e.target.closest('.case-card button[data-action="start-case"]');
+      if (cardBtn) {
+        const caseId = cardBtn.dataset.case;
+        if (caseId && Engine.loadCase(caseId)) {
+          UI.renderIntro();
+        }
+      }
+    }, true);
+
+    document.addEventListener('mouseup', (e) => {
       if (!State.gameActive || State.phase === GamePhase.ENDED) return;
       if (State.isProcessing) return;
+      if (e.button === 2) return;
+      // Don't trigger text selection when clicking on input/textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      Input._skipNextClick = true;
+      setTimeout(() => { Input._skipNextClick = false; }, 150);
       setTimeout(() => Input.onTextSelect(), 50);
     });
 
     document.addEventListener('touchstart', (e) => {
       if (!State.gameActive || State.phase === GamePhase.ENDED) return;
       if (State.isProcessing) return;
+      // Don't intercept touches on input elements
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.touches.length === 1) {
         const target = e.target.closest('.chat-bubble-other, .chat-bubble-self');
         if (target && !e.target.closest('.entity') && !e.target.closest('button')) {
@@ -3252,10 +3688,17 @@ const Input = {
       }
     }, { passive: false });
 
-    document.addEventListener('touchend', () => {
+    document.addEventListener('touchend', (e) => {
       if (Input.longPressTimer) { clearTimeout(Input.longPressTimer); Input.longPressTimer = null; }
-      setTimeout(() => Input.onTextSelect(), 100);
-    });
+      if (Input.longPressTriggered) {
+        // Long press already showed the selection bar — don't re-trigger onTextSelect
+        e.preventDefault();
+        e.stopPropagation();
+        setTimeout(() => { Input.longPressTriggered = false; }, 200);
+      } else {
+        setTimeout(() => Input.onTextSelect(), 100);
+      }
+    }, { passive: false });
 
     document.addEventListener('touchmove', () => {
       if (Input.longPressTimer) { clearTimeout(Input.longPressTimer); Input.longPressTimer = null; }
@@ -3269,6 +3712,7 @@ const Input = {
     if (chatThread) {
       chatThread.addEventListener('contextmenu', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         var sel = window.getSelection();
         var text = (sel && sel.toString() || '').trim();
         if (text.length > 0 && text.length < 50) {
@@ -3353,6 +3797,12 @@ const Input = {
     }
     const range = sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
     if (!range) return;
+    // Validate that selection is within a content area
+    var container = range.commonAncestorContainer;
+    if (container && container.closest && !container.closest('.chat-thread, .evidence-detail, .contract-text-layer, .chat-bubble-other, .chat-bubble-self')) {
+      UI.clearSelectionBar();
+      return;
+    }
     const rect = range.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
     State.selectedText = text;
