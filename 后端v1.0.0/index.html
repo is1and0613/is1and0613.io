@@ -2,17 +2,12 @@
 <html lang="zh-CN">
 <head>
     <script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').then(() => console.log('SW OK'));
-    }
-    </script>
-    <script type="text/javascript" src="https://me.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=qurtY-2_WtQg5En-NOsVeur97x3j7rD4m4ZaKkA42by-RT0omnaZyd8Rw2zNHJTmVT6p1EG6m2tNckyZsFgNtgKrH_vj_iX_4Harwn8F-UyMMyDlPc9FytXSdoFy9SmyRqErM2t2O51ZnAu9ligCwtgKWFVY5re0sw6gTVEQfW2l6PX2vXWAkl1BFPqHdbVY6Ai8mGnmjO3E5OR3IZzWKhx7DQbeaUDMviPhD7D4b8_i4BlJxDJhhfITgTNEQVmP28d8QLN5dN0ZlkWZwa4ldxos2nY2V_tdgdG8Mm3XWGTR9hjaHFhsxVHGu4gS9CYQt72qkFqhfD-2cPX3kQ65o1MbqD6-N5dolBB-9UgGDwSR3rrp-r7GxHUt-DKuvG2Mjq7imBQKsZIirYDCVymxFT77CKAw3NGjHbdJRBkbWAIWL2qLm7JhF-jw38Hg6sgAwCVKfu3tzLsSevBQWPdVW1z_E8GU59tf3FkMrowAwbNdtbTkra2DBdUjpTv9fy18lDzxIuCkFCNepnxYvET0zODUs7cAsax-KAk0eB7EqhZDqxE9jg4DDhBvy-Yerb_RUhY3sr4UpJrf8XvL-xrrwV3rZYB0I1nB1yDUyqpxlnA0sHmU7seoSqWV3XpuBbrhWcc9xlmGP8bBsgzUA7KpCA" charset="UTF-8"></script><script>
         // 检查是否已登录
         // 检查是否已登录（使用 token）
         if (!sessionStorage.getItem('authToken')) {
             window.location.replace('login.html');
         }
-        console.log('index.html loaded, token:', sessionStorage.getItem('authToken'));    
+        console.log('index.html loaded, token:', sessionStorage.getItem('authToken'));
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -422,6 +417,7 @@
             scrollbar-width: none; /* 隐藏滚动条（Firefox） */
             -ms-overflow-style: none; /* 隐藏滚动条（IE） */
             -webkit-overflow-scrolling: touch; /* 关键：iOS 丝滑惯性滑动 */
+            touch-action: pan-x; /* 允许水平方向触摸 */
             cursor: grab; /* 鼠标样式提示可拖动 */
         }
         
@@ -491,6 +487,26 @@
             display: flex;
             gap: 12px;
             margin-bottom: 8px;
+        }
+        
+        .data-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .data-actions .action-btn {
+            flex: 1;
+            padding: 10px 0;
+            font-size: 13px;
+            background: #fafafa;
+            color: #666;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .data-actions .action-btn:active {
+            background: #f0f0f0;
+            transform: scale(0.96);
         }
         
         .action-btn {
@@ -591,15 +607,13 @@
         
         .modal-title { font-size: 18px; font-weight: 700; color: #333; }
         
-        /* 报告切换按钮 - 支持换行 */
+        /* 报告切换按钮 */
         .report-toggle {
             display: flex;
             background: #f0f0f0;
             border-radius: 20px;
             overflow: hidden;
             padding: 2px;
-            flex-wrap: wrap;
-            gap: 4px;
         }
         
         .report-toggle-btn {
@@ -709,9 +723,6 @@
             width: 100%;
             max-width: 320px;
             overflow: hidden;
-            max-height: 80vh;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
         }
         
         .reason-header {
@@ -1039,6 +1050,15 @@
                 <i class="fas fa-pen"></i>手动输入
             </button>
         </div>
+        <div class="data-actions">
+            <button class="action-btn secondary" onclick="exportData()">
+                <i class="fas fa-download"></i>导出数据
+            </button>
+            <button class="action-btn secondary" onclick="document.getElementById('importFile').click()">
+                <i class="fas fa-upload"></i>导入数据
+            </button>
+            <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(this)">
+        </div>
         <div class="bottom-stats" id="bottomStats">当前显示 0 人（未归 0 人，离校 0 人）</div>
     </div>
     
@@ -1051,7 +1071,6 @@
                     <button class="report-toggle-btn" id="btnPresent" onclick="switchReportMode('present')">在校版</button>
                     <button class="report-toggle-btn" id="btnVacation" onclick="switchReportMode('vacation')">假期版</button>
                     <button class="report-toggle-btn" id="btnInternship" onclick="switchReportMode('internship')">实习版</button>
-                    <button class="report-toggle-btn" id="btnInternshipVacation" onclick="switchReportMode('internshipVacation')">实习假期</button>
                 </div>
                 <button class="modal-close" onclick="closeReportModal()">
                     <i class="fas fa-times"></i>
@@ -1094,7 +1113,6 @@
                     <div class="reason-item" onclick="selectReason('运动会')" style="padding-left: 32px; font-size: 13px;">运动会 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
                     <div class="reason-item" onclick="selectReason('警乐团')" style="padding-left: 32px; font-size: 13px;">警乐团 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
                     <div class="reason-item" onclick="selectReason('羽毛球')" style="padding-left: 32px; font-size: 13px;">羽毛球 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-                    <div class="reason-item" onclick="selectReason('篮球队')" style="padding-left: 32px; font-size: 13px;">篮球队 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
                     <div class="reason-item" onclick="selectReason('其他')" style="padding-left: 32px; font-size: 13px; color: #666;">自定义其他 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
                 </div>
                 
@@ -1328,7 +1346,7 @@
         // 报告生成函数（严格遵循格式要求）
         // ============================================
         
-        // 当前报告模式：'absent' | 'present' | 'vacation' | 'internship' | 'internshipVacation'
+        // 当前报告模式：'absent' | 'present' | 'vacation'
         let currentReportMode = 'absent';
         
         function generateReportText() {
@@ -1427,7 +1445,7 @@
                 // 事假（如果有）
                 if (stats.business.length > 0) {
                     // 工作室类型数组
-                    const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '舆情', '工作室', '数据分析工作室', '数据实战工作室'];
+                    const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '工作室'];
                     // 统计事由
                     const reasonCount = {};
                     stats.business.forEach(s => {
@@ -1439,17 +1457,11 @@
                         reasonCount[r] = (reasonCount[r] || 0) + 1;
                     });
                     // 按固定顺序排列事由
-                    const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '其他'];
-                    const reasonStrParts = reasonOrder
+                    const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '其他'];
+                    const reasonStr = reasonOrder
                         .filter(r => reasonCount[r])
-                        .map(r => `${reasonCount[r]}${r}`);
-                    // 追加不在固定顺序中的自定义事由
-                    Object.keys(reasonCount).forEach(r => {
-                        if (!reasonOrder.includes(r)) {
-                            reasonStrParts.push(`${reasonCount[r]}${r}`);
-                        }
-                    });
-                    const reasonStr = reasonStrParts.join(' ');
+                        .map(r => `${reasonCount[r]}${r}`)
+                        .join(' ');
                     report += `${stats.business.length}事假（${reasonStr}）\n`;
                     report += stats.business.map(s => s.name).join(' ') + '\n';
                 }
@@ -1611,7 +1623,7 @@
         
         /**
          * 生成假期版报告文本
-         * 在校人数 = 应到 - 请假离校（leaveSchool）
+         * 在校人数 = 应到 - 请假离校（in + leaveOutside + leaveInside 都算在校）
          */
         function generateVacationReportText() {
             // 检查冲突标记（复用现有逻辑）
@@ -1711,10 +1723,7 @@
             // 获取所有学生按年级分组
             const studentsByGrade = getAllStudentsByGrade();
 
-            // 源头过滤：彻底排除2023级（大三）所有学生
-            delete studentsByGrade['2023级'];
-
-            // 年级顺序（实习版完全跳过2023级）
+            // 年级顺序（排除 2023级）
             const gradeOrderDesc = ['2025级', '2024级', '2022级'];
             const gradeOrderAsc = ['2022级', '2024级', '2025级'];
 
@@ -1787,7 +1796,7 @@
                 // 事假（如果有）
                 if (stats.business.length > 0) {
                     // 工作室类型数组
-                    const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '舆情', '工作室', '数据分析工作室', '数据实战工作室'];
+                    const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '工作室'];
                     // 统计事由
                     const reasonCount = {};
                     stats.business.forEach(s => {
@@ -1799,17 +1808,11 @@
                         reasonCount[r] = (reasonCount[r] || 0) + 1;
                     });
                     // 按固定顺序排列事由
-                    const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '其他'];
-                    const reasonStrParts = reasonOrder
+                    const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '其他'];
+                    const reasonStr = reasonOrder
                         .filter(r => reasonCount[r])
-                        .map(r => `${reasonCount[r]}${r}`);
-                    // 追加不在固定顺序中的自定义事由
-                    Object.keys(reasonCount).forEach(r => {
-                        if (!reasonOrder.includes(r)) {
-                            reasonStrParts.push(`${reasonCount[r]}${r}`);
-                        }
-                    });
-                    const reasonStr = reasonStrParts.join(' ');
+                        .map(r => `${reasonCount[r]}${r}`)
+                        .join(' ');
                     report += `${stats.business.length}事假（${reasonStr}）\n`;
                     report += stats.business.map(s => s.name).join(' ') + '\n';
                 }
@@ -1834,14 +1837,9 @@
             });
 
             // 5. 汇总行（按22→24→25顺序）
-            // 规则：如果某年级应到为0且无任何请假记录（leaveSchool+business+leaveOut=0），则不输出该年级汇总行
+            // 规则：只有人数>0的分类才显示，0的不显示
             gradeOrderAsc.forEach(grade => {
                 const stats = gradeStats[grade];
-
-                // 汇总行空值过滤：如果应到为0且无任何请假记录，不输出该行
-                if (stats.should === 0 && stats.leaveSchool.length + stats.business.length + stats.leaveOut.length === 0) {
-                    return;
-                }
 
                 // 基础信息始终显示
                 let line = `${grade}应到${stats.should} 在校${stats.inSchool} 正常就寝${stats.normalSleep}`;
@@ -1865,115 +1863,28 @@
         }
 
         /**
-         * 生成实习假期版报告文本
-         * 基于假期版，完全忽略2023级（大三）学生
-         * 在校人数 = 应到 - 请假离校（leaveSchool）
-         */
-        function generateInternshipVacationReportText() {
-            // 检查冲突标记（复用现有逻辑）
-            const conflictNames = [];
-            for (const name in state.studentStatus) {
-                const statusObj = state.studentStatus[name];
-                if (Array.isArray(statusObj.status)) {
-                    if (statusObj.status.includes('absent') && statusObj.status.includes('leaveInside')) {
-                        conflictNames.push(name);
-                    }
-                }
-            }
-            
-            if (conflictNames.length > 0) {
-                showToast(`无法生成报告：${conflictNames.join('、')} 同时标记为未归和事假`);
-                return '【错误】存在冲突标记，请先修正';
-            }
-            
-            // 获取所有学生按年级分组
-            const studentsByGrade = getAllStudentsByGrade();
-            // 实习假期版：完全排除2023级（大三）
-            delete studentsByGrade['2023级'];
-            
-            // 年级顺序（仅包含22、24、25级）
-            const gradeOrder = ['2022级', '2024级', '2025级'];
-            
-            let totalShould = 0;  // 应到总人数（排除大三）
-            let totalPresent = 0; // 在校总人数（应到 - 请假离校）
-            const gradeStats = {};
-            
-            // 统计各年级数据
-            gradeOrder.forEach(grade => {
-                const students = studentsByGrade[grade] || [];
-                const should = students.length;
-                
-                // 在校人数 = 应到 - 请假离校人数（leaveSchool）
-                const leaveSchoolCount = students.filter(s => {
-                    const st = state.studentStatus[s.name];
-                    return st && st.status === 'leaveSchool';
-                }).length;
-                
-                const present = should - leaveSchoolCount;
-                
-                gradeStats[grade] = {
-                    should: should,
-                    present: present
-                };
-                
-                totalShould += should;
-                totalPresent += present;
-            });
-            
-            // 生成报告文本
-            let report = `信息大队女生${totalShould}名，在校${totalPresent}名，正常就寝${totalPresent}名，其中：\n`;
-            
-            gradeOrder.forEach((grade, index) => {
-                const stats = gradeStats[grade];
-                const shortGrade = grade.replace('级', '').slice(-2); // "2022级" -> "22"
-                const line = `${shortGrade}级女生${stats.should}名，在校${stats.present}名，正常就寝${stats.present}名`;
-                
-                // 标点处理：前两个用分号，最后一个用句号
-                if (index < gradeOrder.length - 1) {
-                    report += line + '；\n';
-                } else {
-                    report += line + '\n';
-                }
-            });
-            
-            report += '所有就寝学生已按要求熄灯。';
-            return report;
-        }
-        
-        /**
          * 切换报告模式
-         * @param {string} type - 'absent' | 'present' | 'vacation' | 'internship' | 'internshipVacation'
+         * @param {string} type - 'absent' | 'present' | 'vacation' | 'internship'
          */
         function switchReportMode(type) {
             currentReportMode = type;
 
-            // 更新所有五个按钮的样式
+            // 更新按钮样式
             document.getElementById('btnAbsent').classList.toggle('active', type === 'absent');
             document.getElementById('btnPresent').classList.toggle('active', type === 'present');
             document.getElementById('btnVacation').classList.toggle('active', type === 'vacation');
             document.getElementById('btnInternship').classList.toggle('active', type === 'internship');
-            document.getElementById('btnInternshipVacation').classList.toggle('active', type === 'internshipVacation');
 
             // 生成对应报告
             let reportText;
-            switch (type) {
-                case 'absent':
-                    reportText = generateReportText();
-                    break;
-                case 'present':
-                    reportText = generatePresentReportText();
-                    break;
-                case 'vacation':
-                    reportText = generateVacationReportText();
-                    break;
-                case 'internship':
-                    reportText = generateInternshipReportText();
-                    break;
-                case 'internshipVacation':
-                    reportText = generateInternshipVacationReportText();
-                    break;
-                default:
-                    reportText = generateReportText();
+            if (type === 'absent') {
+                reportText = generateReportText();
+            } else if (type === 'present') {
+                reportText = generatePresentReportText();
+            } else if (type === 'vacation') {
+                reportText = generateVacationReportText();
+            } else { // internship
+                reportText = generateInternshipReportText();
             }
 
             document.getElementById('reportContent').textContent = reportText;
@@ -2113,10 +2024,8 @@
                 html += renderDormCard(dormNumber, filtered, students.length);
             });
             
-            requestAnimationFrame(() => {
-                container.innerHTML = html || '<div class="empty-state"><i class="fas fa-filter"></i><p>没有符合条件的学生</p></div>';
-                updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
-            });
+            container.innerHTML = html || '<div class="empty-state"><i class="fas fa-filter"></i><p>没有符合条件的学生</p></div>';
+            updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
         }
         
         function renderSingleDorm() {
@@ -2142,24 +2051,22 @@
                 if (st.status === 'leaveOutside') leaveOutsideCount++;
             });
             
-            requestAnimationFrame(() => {
-                container.innerHTML = `
-                    <div class="single-dorm-view">
-                        <div class="dorm-card">
-                            <div class="dorm-nav">
-                                <button class="dorm-nav-btn" ${!prevDorm ? 'disabled' : ''} onclick="goToDorm('${prevDorm || ''}')">
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <div class="dorm-nav-current" onclick="backToList()">${state.currentDorm}宿舍</div>
-                                <button class="dorm-nav-btn" ${!nextDorm ? 'disabled' : ''} onclick="goToDorm('${nextDorm || ''}')">
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                            </div>
-                            <div class="student-list">${students.map(s => renderStudentItem(s)).join('')}</div>
+            container.innerHTML = `
+                <div class="single-dorm-view">
+                    <div class="dorm-card">
+                        <div class="dorm-nav">
+                            <button class="dorm-nav-btn" ${!prevDorm ? 'disabled' : ''} onclick="goToDorm('${prevDorm || ''}')">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="dorm-nav-current" onclick="backToList()">${state.currentDorm}宿舍</div>
+                            <button class="dorm-nav-btn" ${!nextDorm ? 'disabled' : ''} onclick="goToDorm('${nextDorm || ''}')">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
                         </div>
-                    </div>`;
-                updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
-            });
+                        <div class="student-list">${students.map(s => renderStudentItem(s)).join('')}</div>
+                    </div>
+                </div>`;
+            updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
         }
         
         function renderDormCard(dormNumber, students, totalBeds) {
@@ -2501,7 +2408,6 @@
             document.getElementById('btnPresent').classList.remove('active');
             document.getElementById('btnVacation').classList.remove('active');
             document.getElementById('btnInternship').classList.remove('active');
-            document.getElementById('btnInternshipVacation').classList.remove('active');
 
             const reportText = generateReportText();
             document.getElementById('reportContent').textContent = reportText;
@@ -2582,6 +2488,63 @@
             window.location.href = 'manual-upload.html';
         }
         
+        /**
+         * 导出查寝数据为 JSON 文件
+         */
+        function exportData() {
+            const data = {
+                studentStatus: state.studentStatus,
+                exportTime: new Date().toISOString(),
+                version: '1.0'
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+            a.href = url;
+            a.download = `查寝数据_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('数据已导出');
+        }
+        
+        /**
+         * 导入查寝数据
+         */
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data && data.studentStatus) {
+                        state.studentStatus = data.studentStatus;
+                        autoSaveState();
+                        refreshView();
+                        showToast('数据导入成功');
+                    } else {
+                        showToast('文件格式错误');
+                    }
+                } catch (err) {
+                    console.error('导入失败:', err);
+                    showToast('文件解析失败');
+                }
+            };
+            reader.onerror = function() {
+                showToast('文件读取失败');
+            };
+            reader.readAsText(file);
+            
+            // 重置 input，允许重复选择同一文件
+            input.value = '';
+        }
+        
         // 打开企业微信
         function openWorkWechat() {
             // 尝试使用企业微信协议跳转（移动端）
@@ -2641,8 +2604,7 @@
 
         /**
          * 应用从 upload.html / manual-upload.html 传来的假单数据
-         * 新数据格式: { dateRange: { start, end }, records: { "姓名": { "status", "reason" } } }
-         * 兼容旧格式: { "姓名": { "status": "leaveInside", "reason": "数分" } }
+         * 数据格式: { "姓名": { "status": "leaveInside", "reason": "数分" } }
          */
         function applyPendingLeaves() {
             const pendingData = localStorage.getItem('pendingLeaveRecords');
@@ -2651,45 +2613,7 @@
             if (!pendingData) return;
             
             try {
-                let updates;
-                let dateRange = null;
-                const parsed = JSON.parse(pendingData);
-                
-                // 兼容旧格式（直接是对象）和新格式（包含 dateRange 和 records）
-                if (parsed && typeof parsed === 'object') {
-                    if (parsed.records && typeof parsed.records === 'object') {
-                        dateRange = parsed.dateRange || null;
-                        updates = parsed.records;
-                    } else {
-                        // 旧格式：直接是人员记录对象
-                        updates = parsed;
-                    }
-                } else {
-                    updates = parsed;
-                }
-                
-                // 日期二次校验
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                if (dateRange && dateRange.start && dateRange.end) {
-                    const startDate = new Date(dateRange.start);
-                    const endDate = new Date(dateRange.end);
-                    if (endDate < today) {
-                        const userConfirm = confirm('该假单已过期，确认应用？');
-                        if (!userConfirm) {
-                            localStorage.removeItem('pendingLeaveRecords');
-                            return;
-                        }
-                    }
-                    if (startDate > today) {
-                        const userConfirm = confirm('该假单尚未生效（开始日期为 ' + dateRange.start + '），是否仍要提前应用？');
-                        if (!userConfirm) {
-                            localStorage.removeItem('pendingLeaveRecords');
-                            return;
-                        }
-                    }
-                }
-                
+                const updates = JSON.parse(pendingData);
                 let count = 0;
                 
                 Object.keys(updates).forEach(name => {
@@ -2713,7 +2637,6 @@
                     if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
                     showToast(`已自动应用 ${count} 条假单记录`);
                     console.log('[applyPendingLeaves] 应用后的状态:', state.studentStatus);
-                    autoSaveState();
                     refreshView();
                 }
             } catch (e) {
