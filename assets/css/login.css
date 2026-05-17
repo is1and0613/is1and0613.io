@@ -1,0 +1,130 @@
+/* ===== Login Page ===== */
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  background: white;
+  border-radius: 16px;
+  padding: 40px 32px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 8px 24px rgba(44, 67, 111, 0.12);
+  text-align: center;
+}
+
+.login-icon {
+  width: 80px;
+  height: 80px;
+  background: #2C436F;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  color: white;
+  font-size: 36px;
+}
+
+.login-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 32px;
+}
+
+.input-group {
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.input-label {
+  display: block;
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 16px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 14px 14px 14px 44px;
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
+  font-size: 16px;
+  transition: all 0.3s;
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: #2C436F;
+  box-shadow: 0 0 0 3px rgba(44, 67, 111, 0.1);
+}
+
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: #2C436F;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login-btn:active {
+  background: #1a2d4d;
+  transform: scale(0.98);
+}
+
+.login-btn:disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.switch-mode {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #999;
+}
+
+.switch-mode a {
+  color: #2C436F;
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.switch-mode a:active {
+  opacity: 0.7;
+}

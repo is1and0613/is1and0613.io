@@ -1,0 +1,433 @@
+// assets/js/room.js — 多人查寝房间逻辑
+
+const roomState = {
+  mode: null,           // null | 'single' | 'multi'
+  room: null,           // room_info from sync
+  code: null,
+  states: [],           // room_states from sync
+  logs: [],             // room_logs from sync
+  messages: [],         // room_messages from sync
+  members: [],          // room_members from sync
+  pollingTimer: null,
+  lastMsgId: 0,
+};
+
+// ============================================
+// Mode selection
+// ============================================
+
+function showModeSelection() {
+  document.getElementById('modeOverlay').classList.add('active');
+}
+
+function selectMode(mode) {
+  roomState.mode = mode;
+  document.getElementById('modeOverlay').classList.remove('active');
+
+  if (mode === 'single') {
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    loadDormData();
+  } else {
+    showRoomLobby();
+  }
+}
+
+// ============================================
+// Room lobby
+// ============================================
+
+function showRoomLobby() {
+  document.getElementById('roomLobby').style.display = 'block';
+  document.getElementById('dormContainer').style.display = 'none';
+  document.querySelector('.bottom-bar').style.display = 'none';
+  document.querySelector('.header').style.display = 'none';
+  document.querySelector('.search-section').style.display = 'none';
+  document.querySelector('.floor-tabs').style.display = 'none';
+  document.querySelector('.filter-bar').style.display = 'none';
+  document.querySelector('.status-bar').style.display = 'none';
+}
+
+function hideRoomLobby() {
+  document.getElementById('roomLobby').style.display = 'none';
+  document.getElementById('roomView').style.display = 'none';
+  document.querySelector('.header').style.display = '';
+  document.querySelector('.search-section').style.display = '';
+  document.querySelector('.floor-tabs').style.display = '';
+  document.querySelector('.filter-bar').style.display = '';
+  document.querySelector('.status-bar').style.display = '';
+  document.querySelector('.bottom-bar').style.display = '';
+  document.getElementById('dormContainer').style.display = '';
+  document.getElementById('floatingChatBtn').classList.remove('show');
+  closeAllDrawers();
+}
+
+async function createRoom() {
+  const btn = document.getElementById('createRoomBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>创建中...';
+
+  try {
+    const data = await apiFetch('/api/room', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create' }),
+    });
+
+    if (data.success) {
+      roomState.code = data.code;
+      roomState.room = { code: data.code, expires_at: data.expires_at };
+      showRoomView();
+    }
+  } catch (e) {
+    // apiFetch handles toast
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plus-circle"></i>创建房间';
+  }
+}
+
+async function joinRoom() {
+  const codeInput = document.getElementById('roomCodeInput');
+  const code = codeInput.value.trim().toUpperCase();
+
+  if (!code || code.length !== 6) {
+    showToast('请输入6位房间码');
+    return;
+  }
+
+  const btn = document.getElementById('joinRoomBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>加入中...';
+
+  try {
+    const data = await apiFetch('/api/room', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'join', code }),
+    });
+
+    if (data.success) {
+      roomState.code = data.code;
+      roomState.room = { code: data.code, expires_at: data.expires_at };
+      showRoomView();
+    }
+  } catch (e) {
+    // apiFetch handles toast
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i>加入房间';
+  }
+}
+
+// ============================================
+// Room view
+// ============================================
+
+async function showRoomView() {
+  document.getElementById('roomLobby').style.display = 'none';
+  document.getElementById('roomView').style.display = 'flex';
+  document.getElementById('dormContainer').style.display = 'none';
+  document.querySelector('.bottom-bar').style.display = 'none';
+
+  document.getElementById('roomCodeDisplay').textContent = roomState.code;
+  document.getElementById('floatingChatBtn').classList.add('show');
+
+  await syncRoom();
+  renderRoomStates();
+  updateRoomCountdown();
+  startRoomPolling();
+}
+
+async function syncRoom() {
+  try {
+    const data = await apiFetch(`/api/room?action=sync&code=${roomState.code}`);
+
+    if (data.success) {
+      roomState.room = data.room_info;
+      roomState.states = data.states || [];
+      roomState.logs = data.logs || [];
+      roomState.messages = data.messages || [];
+      roomState.members = data.members || [];
+
+      if (data.messages && data.messages.length > 0) {
+        const newLastId = data.messages[data.messages.length - 1].id;
+        if (newLastId > roomState.lastMsgId) {
+          roomState.lastMsgId = newLastId;
+        }
+      }
+
+      renderRoomStates();
+      renderRoomMessages();
+      renderRoomLogs();
+      renderRoomMembers();
+      updateRoomCountdown();
+    }
+  } catch (e) {
+    // apiFetch handles toast
+  }
+}
+
+function startRoomPolling() {
+  stopRoomPolling();
+  roomState.pollingTimer = setInterval(() => {
+    syncRoom();
+  }, 30000); // 30s polling
+}
+
+function stopRoomPolling() {
+  if (roomState.pollingTimer) {
+    clearInterval(roomState.pollingTimer);
+    roomState.pollingTimer = null;
+  }
+}
+
+// ============================================
+// Room state updates
+// ============================================
+
+async function updateRoomStudentState(studentName, newStatus, detail) {
+  // Optimistic local update
+  const prevState = roomState.states.find(s => s.student_name === studentName);
+  const oldStatus = prevState ? prevState.status : 'present';
+  if (prevState) {
+    prevState.status = newStatus;
+    prevState.updated_at = new Date().toISOString();
+  }
+  renderRoomStates();
+
+  try {
+    await apiFetch('/api/room', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'state',
+        code: roomState.code,
+        student_name: studentName,
+        new_status: newStatus,
+        detail: detail || null,
+      }),
+    });
+  } catch (e) {
+    // Rollback on failure
+    if (prevState) prevState.status = oldStatus;
+    renderRoomStates();
+  }
+}
+
+async function sendRoomMessage() {
+  const input = document.getElementById('roomMessageInput');
+  const content = input.value.trim();
+  if (!content) return;
+
+  input.value = '';
+
+  // Optimistic local add
+  const username = sessionStorage.getItem('displayName') || sessionStorage.getItem('username') || '我';
+  roomState.messages.push({
+    id: Date.now(),
+    username,
+    content,
+    created_at: new Date().toISOString(),
+  });
+  renderRoomMessages();
+
+  try {
+    await apiFetch('/api/room', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'message', code: roomState.code, content }),
+    });
+  } catch (e) {
+    // Undo on failure
+    roomState.messages.pop();
+    renderRoomMessages();
+  }
+}
+
+// ============================================
+// UI rendering
+// ============================================
+
+function renderRoomStates() {
+  const container = document.getElementById('roomStatesList');
+  if (!roomState.states.length) {
+    container.innerHTML = '<div class="room-empty">暂无学生数据</div>';
+    return;
+  }
+
+  // Group by dorm
+  const byDorm = {};
+  roomState.states.forEach(s => {
+    if (!byDorm[s.dorm_number]) byDorm[s.dorm_number] = [];
+    byDorm[s.dorm_number].push(s);
+  });
+
+  const dormNumbers = Object.keys(byDorm).sort((a, b) => parseInt(a) - parseInt(b));
+
+  container.innerHTML = dormNumbers.map(dorm => {
+    const states = byDorm[dorm].sort((a, b) => (parseInt(a.bed_number) || 0) - (parseInt(b.bed_number) || 0));
+    return `<div class="room-dorm-card">
+      <div class="room-dorm-title">${dorm} 宿舍 (${states.length}人)</div>
+      ${states.map(s => renderRoomStudentItem(s)).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderRoomStudentItem(s) {
+  const statusLabels = { present: '在寝', absent: '未归', leave: '请假', late: '迟到' };
+  const statusLabel = statusLabels[s.status] || '在寝';
+
+  return `<div class="room-student ${s.status !== 'present' ? 'room-student-' + s.status : ''}">
+    <span class="room-student-name">${s.dorm_number}-${s.bed_number || '?'} ${s.student_name}</span>
+    <div class="room-status-actions">
+      <button class="room-status-btn present" onclick="updateRoomStudentState('${s.student_name}','present')">在寝</button>
+      <button class="room-status-btn absent" onclick="updateRoomStudentState('${s.student_name}','absent')">未归</button>
+      <button class="room-status-btn leave" onclick="updateRoomStudentState('${s.student_name}','leave')">请假</button>
+    </div>
+    <span class="room-status-badge ${s.status}">${statusLabel}</span>
+  </div>`;
+}
+
+function renderRoomMembers() {
+  const container = document.getElementById('roomMembers');
+  if (!container) return;
+  container.innerHTML = roomState.members.map(m =>
+    `<span class="room-member-tag ${m.role === 'creator' ? 'creator' : ''}">${m.display_name || m.username}${m.role === 'creator' ? ' (房主)' : ''}</span>`
+  ).join('');
+}
+
+function renderRoomMessages() {
+  const container = document.getElementById('roomMessages');
+  if (!container) return;
+  container.innerHTML = roomState.messages.length === 0
+    ? '<div class="room-chat-empty">暂无消息</div>'
+    : roomState.messages.map(m => {
+        const time = m.created_at ? new Date(m.created_at + 'Z').toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
+        return `<div class="room-msg">
+          <span class="room-msg-user">${m.username || m.display_name || '未知'}</span>
+          <span class="room-msg-text">${escapeHtml(m.content)}</span>
+          <span class="room-msg-time">${time}</span>
+        </div>`;
+      }).join('');
+  // Auto-scroll to bottom
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderRoomLogs() {
+  const container = document.getElementById('roomLogs');
+  if (!container) return;
+  container.innerHTML = roomState.logs.length === 0
+    ? '<div class="room-log-empty">暂无操作记录</div>'
+    : roomState.logs.slice(0, 20).map(l => {
+        const time = l.created_at ? new Date(l.created_at + 'Z').toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
+        let text = `[${time}] ${l.username || l.display_name || '系统'} `;
+        if (l.action_type === 'status_change') {
+          text += `将 ${l.target_student} 由 ${statusCn(l.old_status)} 更新为 ${statusCn(l.new_status)}`;
+        } else if (l.action_type === 'join') {
+          text += l.detail || '加入了房间';
+        } else {
+          text += l.detail || l.action_type;
+        }
+        return `<div class="room-log-item">${escapeHtml(text)}</div>`;
+      }).join('');
+}
+
+function statusCn(s) {
+  const map = { present: '在寝', absent: '未归', leave: '请假', late: '迟到' };
+  return map[s] || s;
+}
+
+function updateRoomCountdown() {
+  const el = document.getElementById('roomCountdown');
+  if (!el || !roomState.room || !roomState.room.expires_at) return;
+
+  const expiresAt = new Date(roomState.room.expires_at + 'Z');
+  const now = new Date();
+  const diff = expiresAt - now;
+
+  if (diff <= 0) {
+    el.textContent = '已过期';
+    el.style.color = '#e74c3c';
+    stopRoomPolling();
+    return;
+  }
+
+  const min = Math.floor(diff / 60000);
+  const sec = Math.floor((diff % 60000) / 1000);
+  el.textContent = `${min}分${sec}秒后过期`;
+  el.style.color = diff < 300000 ? '#e74c3c' : '#666';
+}
+
+function leaveRoom() {
+  if (confirm('确定要退出房间吗？')) {
+    stopRoomPolling();
+    roomState.room = null;
+    roomState.code = null;
+    roomState.states = [];
+    roomState.logs = [];
+    roomState.messages = [];
+    roomState.members = [];
+    hideRoomLobby();
+    showRoomLobby();
+  }
+}
+
+// ============================================
+// UI toggles
+// ============================================
+
+function toggleChatDrawer() {
+  const drawer = document.getElementById('chatDrawer');
+  const logDrawer = document.getElementById('logDrawer');
+  const backdrop = document.getElementById('drawerBackdrop');
+  drawer.classList.toggle('open');
+  if (drawer.classList.contains('open')) {
+    backdrop.classList.add('show');
+    logDrawer.classList.remove('open');
+    renderRoomMessages();
+  } else {
+    backdrop.classList.remove('show');
+  }
+}
+
+function toggleLogDrawer() {
+  const drawer = document.getElementById('logDrawer');
+  const chatDrawer = document.getElementById('chatDrawer');
+  const backdrop = document.getElementById('drawerBackdrop');
+  drawer.classList.toggle('open');
+  if (drawer.classList.contains('open')) {
+    backdrop.classList.add('show');
+    chatDrawer.classList.remove('open');
+    renderRoomLogs();
+  } else {
+    backdrop.classList.remove('show');
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function closeAllDrawers() {
+  document.getElementById('chatDrawer').classList.remove('open');
+  document.getElementById('logDrawer').classList.remove('open');
+  document.getElementById('drawerBackdrop').classList.remove('show');
+}
+
+function generateRoomReport() {
+  const total = roomState.states.length;
+  const present = roomState.states.filter(s => s.status === 'present').length;
+  const absent = roomState.states.filter(s => s.status === 'absent').length;
+  const leave = roomState.states.filter(s => s.status === 'leave').length;
+
+  const now = new Date();
+  const report = `${now.getMonth()+1}月${now.getDate()}日晚寝（多人查寝）\n` +
+    `应到${total}人，实到${present}人\n` +
+    `未归${absent}人，请假${leave}人`;
+
+  copyToClipboard(report);
+  showToast('报告已复制到剪贴板');
+}
+
+// Countdown ticker
+setInterval(() => {
+  if (roomState.room) updateRoomCountdown();
+}, 10000);
