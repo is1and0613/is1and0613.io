@@ -1,18 +1,12 @@
 {
   "name": "nightshift-dorm-check",
-  "version": "1.0.0",
-  "description": "晚寝查寝系统 - Vercel 后端",
+  "version": "1.1.0",
+  "description": "晚寝查寝系统 - Cloudflare Pages",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "wrangler pages dev .",
+    "deploy": "wrangler pages deploy ."
   },
-  "dependencies": {
-    "@vercel/node": "^3.0.0",
-    "formidable": "^3.5.1",
-    "jsonwebtoken": "^9.0.0",
-    "openai": "^4.77.0"
-  },
-  "devDependencies": {
-    "vercel": "^37.0.0"
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }

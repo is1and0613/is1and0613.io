@@ -1,0 +1,14 @@
+# Cloudflare Pages Headers
+# 确保浏览器频繁检查 Service Worker 更新
+/sw.js
+  Cache-Control: max-age=0, no-cache
+
+# 静态 HTML 短期缓存
+/*.html
+  Cache-Control: max-age=60
+
+# 静态资源长期缓存
+/*.js
+  Cache-Control: max-age=3600
+/*.css
+  Cache-Control: max-age=3600

@@ -1,4 +1,15 @@
+# 依赖
 node_modules/
+
+# 备份/历史版本（不推）
+纯前端备份/
+后端v1.0.0/
+后端v1.1.0/
+
+# 其他项目/调查文件夹
+investigation/
+
+# 历史/临时文件
 dormData.js
 *.bak
 *.log
@@ -6,3 +17,20 @@ output.txt
 scripts/import-data.js
 .DS_Store
 Thumbs.db
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Cloudflare
+.dev.vars
+.wrangler/
+
+# Claude Code
+.claude/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
