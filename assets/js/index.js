@@ -1369,7 +1369,19 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('loadingOverlay').classList.remove('hidden');
       loadDormData();
     } else if (savedMode === 'multi') {
-      showRoomLobby();
+      // 如果之前在房间中，尝试自动重新加入
+      const savedRoomCode = sessionStorage.getItem('roomCode');
+      if (savedRoomCode) {
+        roomState.code = savedRoomCode;
+        document.getElementById('loadingOverlay').classList.remove('hidden');
+        loadDormData().then(() => {
+          showRoomView().catch(() => {
+            showRoomLobby();
+          });
+        });
+      } else {
+        showRoomLobby();
+      }
     }
   } else {
     showModeSelection();

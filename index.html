@@ -50,13 +50,19 @@
 
   <!-- 顶部标题栏 -->
   <div class="header">
-    <h1><i class="fas fa-clipboard-check"></i> 晚寝查寝系统</h1>
-    <div style="display: flex; gap: 8px;">
-      <button class="header-action-btn" onclick="openWorkWechat()" title="打开企业微信">
+    <h1><i class="fas fa-clipboard-check"></i> <span id="headerTitle">晚寝查寝系统</span><span id="headerRoomCode" style="display:none;"></span><span id="headerCountdown" style="display:none;"></span></h1>
+    <div style="display: flex; gap: 8px;" id="headerActions">
+      <button class="header-action-btn" id="btnWorkWechat" onclick="openWorkWechat()" title="打开企业微信">
         <i class="fas fa-building"></i> 企业微信
       </button>
-      <button class="header-action-btn" onclick="resetAllStatus()" title="清空所有记录，开始新查寝">
+      <button class="header-action-btn" id="btnReset" onclick="resetAllStatus()" title="清空所有记录，开始新查寝">
         <i class="fas fa-redo"></i> 新查寝
+      </button>
+      <button class="header-action-btn" id="btnSyncRoom" onclick="syncRoom()" style="display:none;">
+        <i class="fas fa-sync-alt"></i> 刷新
+      </button>
+      <button class="header-action-btn" id="btnLeaveRoom" onclick="leaveRoom()" style="display:none;">
+        <i class="fas fa-sign-out-alt"></i> 退出
       </button>
     </div>
   </div>
@@ -142,16 +148,8 @@
     </button>
   </div>
 
-  <!-- 多人查寝：房间视图 -->
+  <!-- 多人查寝：房间成员条 -->
   <div class="room-view" id="roomView">
-    <div class="room-topbar">
-      <span class="room-code-big" id="roomCodeDisplay">------</span>
-      <span class="room-countdown" id="roomCountdown"></span>
-      <div class="room-topbar-actions">
-        <button class="room-topbar-btn" onclick="syncRoom()"><i class="fas fa-sync-alt"></i> 刷新</button>
-        <button class="room-topbar-btn" onclick="leaveRoom()"><i class="fas fa-sign-out-alt"></i> 退出</button>
-      </div>
-    </div>
     <div class="room-members-bar" id="roomMembers"></div>
   </div>
 
@@ -163,28 +161,22 @@
   <!-- 抽屉背景遮罩 -->
   <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeAllDrawers()"></div>
 
-  <!-- 聊天抽屉 -->
+  <!-- 聊天 & 日志抽屉（合并） -->
   <div class="chat-drawer" id="chatDrawer">
     <div class="drawer-handle"></div>
     <div class="drawer-header">
-      房间消息
+      <div class="drawer-tabs">
+        <button class="drawer-tab active" id="tabMessages" onclick="switchDrawerTab('messages')">消息</button>
+        <button class="drawer-tab" id="tabLogs" onclick="switchDrawerTab('logs')">日志</button>
+      </div>
       <button class="drawer-close" onclick="toggleChatDrawer()"><i class="fas fa-times"></i></button>
     </div>
     <div class="drawer-body" id="roomMessages"></div>
-    <div class="chat-input-bar">
+    <div class="drawer-body" id="roomLogs" style="display:none;"></div>
+    <div class="chat-input-bar" id="chatInputBar">
       <input type="text" class="chat-input" id="roomMessageInput" placeholder="输入消息..." onkeypress="if(event.key==='Enter')sendRoomMessage()">
       <button class="chat-send-btn" onclick="sendRoomMessage()">发送</button>
     </div>
-  </div>
-
-  <!-- 日志抽屉 -->
-  <div class="log-drawer" id="logDrawer">
-    <div class="drawer-handle"></div>
-    <div class="drawer-header">
-      操作日志
-      <button class="drawer-close" onclick="toggleLogDrawer()"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="drawer-body" id="roomLogs"></div>
   </div>
 
   <!-- 底部固定栏 -->
@@ -192,9 +184,6 @@
     <div class="bottom-actions">
       <button class="action-btn primary" onclick="showReportModal()">
         <i class="fas fa-file-alt"></i>生成报告
-      </button>
-      <button class="action-btn secondary" id="multiLogBtn" onclick="toggleLogDrawer()" style="display:none;">
-        <i class="fas fa-history"></i>日志
       </button>
       <button class="action-btn secondary" onclick="uploadLeaveNote()">
         <i class="fas fa-cloud-upload-alt"></i>上传假单
