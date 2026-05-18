@@ -220,7 +220,7 @@
         <div class="intern-toggle">
           <label class="toggle-label" onclick="toggleIntern()">
             <span class="toggle-switch" id="internSwitch"></span>
-            包含实习学生
+            包含大三学生
           </label>
         </div>
         <button class="modal-close" onclick="closeReportModal()">
@@ -244,7 +244,17 @@
     <div class="reason-panel">
       <div class="reason-header">选择事假事由</div>
       <div class="reason-list">
-        <div class="reason-item" onclick="selectReason('工作室')">工作室 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
+        <div class="reason-item has-submenu" onclick="toggleStudioSubMenu(event)">
+          <span>工作室 <i class="fas fa-chevron-down" id="studioArrow" style="color:#999; transition: transform 0.3s;"></i></span>
+        </div>
+        <div class="sub-reason-list" id="studioSubList" style="display: none; background: #f5f5f5; padding: 0 16px;">
+          <div class="reason-item" onclick="selectStudioReason('数据分析工作室')" style="padding-left: 32px; font-size: 13px;">数据分析工作室（数分）</div>
+          <div class="reason-item" onclick="selectStudioReason('数据实战工作室')" style="padding-left: 32px; font-size: 13px;">数据实战工作室（数实战）</div>
+          <div class="reason-item" onclick="selectStudioReason('网安工作室')" style="padding-left: 32px; font-size: 13px;">网安工作室</div>
+          <div class="reason-item" onclick="selectStudioReason('舆情工作室')" style="padding-left: 32px; font-size: 13px;">舆情工作室</div>
+          <div class="reason-item" onclick="selectStudioReason('网管工作室')" style="padding-left: 32px; font-size: 13px;">网管工作室</div>
+          <div class="reason-item" onclick="selectStudioReason('阿sir工作室')" style="padding-left: 32px; font-size: 13px;">阿sir工作室</div>
+        </div>
         <div class="reason-item" onclick="selectReason('备赛')">备赛 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
         <div class="reason-item" onclick="selectReason('辩论队')">辩论队 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
         <div class="reason-item" onclick="selectReason('复习')">复习 <i class="fas fa-chevron-right" style="color:#999;"></i></div>

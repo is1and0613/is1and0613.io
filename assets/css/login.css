@@ -2,58 +2,59 @@
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
 }
 
 .login-card {
   background: white;
   border-radius: 16px;
-  padding: 40px 32px;
+  padding: 28px 24px;
   width: 90%;
-  max-width: 400px;
+  max-width: 380px;
   box-shadow: 0 8px 24px rgba(44, 67, 111, 0.12);
   text-align: center;
 }
 
 .login-icon {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   background: #2C436F;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 24px;
+  margin: 0 auto 16px;
   color: white;
-  font-size: 36px;
+  font-size: 28px;
 }
 
 .login-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .login-subtitle {
-  font-size: 14px;
+  font-size: 13px;
   color: #999;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .input-group {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   text-align: left;
 }
 
 .input-label {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   font-weight: 500;
 }
 
@@ -63,19 +64,19 @@ body {
 
 .input-wrapper i {
   position: absolute;
-  left: 14px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: #999;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .input-field {
   width: 100%;
-  padding: 14px 14px 14px 44px;
+  padding: 12px 12px 12px 40px;
   border: 1px solid #d9d9d9;
   border-radius: 10px;
-  font-size: 16px;
+  font-size: 15px;
   transition: all 0.3s;
   outline: none;
 }
@@ -87,12 +88,12 @@ body {
 
 .login-btn {
   width: 100%;
-  padding: 14px;
+  padding: 12px;
   background: #2C436F;
   color: white;
   border: none;
   border-radius: 10px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
@@ -113,8 +114,8 @@ body {
 }
 
 .switch-mode {
-  margin-top: 20px;
-  font-size: 14px;
+  margin-top: 14px;
+  font-size: 13px;
   color: #999;
 }
 
