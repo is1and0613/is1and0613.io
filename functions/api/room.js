@@ -3,7 +3,7 @@
 
 import {
   jsonResponse, errorResponse, handleOptions,
-  verifyToken, dbGuard,
+  verifyToken, dbGuard, withErrorGuard,
 } from './_utils.js';
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/I/1
@@ -78,7 +78,7 @@ async function fetchDormData(env) {
 // Request handler
 // ============================================
 
-export async function onRequest(context) {
+export const onRequest = withErrorGuard(async (context) => {
   const { request, env } = context;
 
   if (request.method === 'OPTIONS') {
@@ -121,7 +121,7 @@ export async function onRequest(context) {
     default:
       return errorResponse('无效的 action，支持: create, join, sync, state, message', 400);
   }
-}
+});
 
 // ============================================
 // POST /api/room — action: create

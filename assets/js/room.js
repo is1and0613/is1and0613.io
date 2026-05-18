@@ -10,6 +10,8 @@ const roomState = {
   members: [],          // room_members from sync
   pollingTimer: null,
   lastMsgId: 0,
+  lastReadId: 0,        // last message ID user has actually seen
+  unreadCount: 0,       // unread message count for badge
 };
 
 // ============================================
@@ -141,6 +143,14 @@ async function syncRoom() {
     const data = await apiFetch(`/api/room?action=sync&code=${roomState.code}`);
 
     if (data.success) {
+      // Check if room expired during sync
+      if (data.room_info && data.room_info.status === 'expired') {
+        stopRoomPolling();
+        showToast('房间已过期（90分钟有效期）');
+        setTimeout(() => { leaveRoom(true); }, 1500);
+        return;
+      }
+
       roomState.room = data.room_info;
       roomState.states = data.states || [];
       roomState.logs = data.logs || [];
@@ -152,6 +162,14 @@ async function syncRoom() {
         if (newLastId > roomState.lastMsgId) {
           roomState.lastMsgId = newLastId;
         }
+        // Compute unread: messages newer than lastReadId
+        const chatOpen = document.getElementById('chatDrawer').classList.contains('open');
+        if (!chatOpen) {
+          roomState.unreadCount = data.messages.filter(m => m.id > roomState.lastReadId).length;
+        } else {
+          roomState.unreadCount = 0;
+          roomState.lastReadId = newLastId;
+        }
       }
 
       renderRoomStates();
@@ -159,6 +177,7 @@ async function syncRoom() {
       renderRoomLogs();
       renderRoomMembers();
       updateRoomCountdown();
+      updateChatBadge();
     }
   } catch (e) {
     // apiFetch handles toast
@@ -215,6 +234,10 @@ async function sendRoomMessage() {
   const input = document.getElementById('roomMessageInput');
   const content = input.value.trim();
   if (!content) return;
+  if (content.length > 500) {
+    showToast('消息不能超过500字');
+    return;
+  }
 
   input.value = '';
 
@@ -345,6 +368,10 @@ function updateRoomCountdown() {
     el.textContent = '已过期';
     el.style.color = '#e74c3c';
     stopRoomPolling();
+    showToast('房间已过期（90分钟有效期）');
+    setTimeout(() => {
+      leaveRoom(true);
+    }, 1500);
     return;
   }
 
@@ -354,18 +381,20 @@ function updateRoomCountdown() {
   el.style.color = diff < 300000 ? '#e74c3c' : '#666';
 }
 
-function leaveRoom() {
-  if (confirm('确定要退出房间吗？')) {
-    stopRoomPolling();
-    roomState.room = null;
-    roomState.code = null;
-    roomState.states = [];
-    roomState.logs = [];
-    roomState.messages = [];
-    roomState.members = [];
-    hideRoomLobby();
-    showRoomLobby();
-  }
+function leaveRoom(silent) {
+  if (!silent && !confirm('确定要退出房间吗？')) return;
+  stopRoomPolling();
+  roomState.room = null;
+  roomState.code = null;
+  roomState.states = [];
+  roomState.logs = [];
+  roomState.messages = [];
+  roomState.members = [];
+  roomState.lastReadId = 0;
+  roomState.unreadCount = 0;
+  updateChatBadge();
+  hideRoomLobby();
+  showRoomLobby();
 }
 
 // ============================================
@@ -380,6 +409,12 @@ function toggleChatDrawer() {
   if (drawer.classList.contains('open')) {
     backdrop.classList.add('show');
     logDrawer.classList.remove('open');
+    // Mark all as read when opening chat
+    roomState.unreadCount = 0;
+    if (roomState.messages.length > 0) {
+      roomState.lastReadId = roomState.messages[roomState.messages.length - 1].id;
+    }
+    updateChatBadge();
     renderRoomMessages();
   } else {
     backdrop.classList.remove('show');
@@ -410,6 +445,22 @@ function closeAllDrawers() {
   document.getElementById('chatDrawer').classList.remove('open');
   document.getElementById('logDrawer').classList.remove('open');
   document.getElementById('drawerBackdrop').classList.remove('show');
+}
+
+function updateChatBadge() {
+  const btn = document.getElementById('floatingChatBtn');
+  if (!btn) return;
+  let badge = btn.querySelector('.unread-badge');
+  if (roomState.unreadCount > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'unread-badge';
+      btn.appendChild(badge);
+    }
+    badge.textContent = roomState.unreadCount > 99 ? '99+' : roomState.unreadCount;
+  } else if (badge) {
+    badge.remove();
+  }
 }
 
 function generateRoomReport() {

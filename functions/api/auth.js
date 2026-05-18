@@ -4,6 +4,7 @@
 import {
   jsonResponse, errorResponse, handleOptions,
   verifyPassword, hashPassword, signJWT, dbGuard,
+  withErrorGuard,
 } from './_utils.js';
 
 const TEMP_USERNAME = 'chaqin';
@@ -21,7 +22,7 @@ async function ensureTempAccount(env) {
   ).bind(TEMP_USERNAME, hash).run();
 }
 
-export async function onRequest(context) {
+export const onRequest = withErrorGuard(async (context) => {
   const { request, env } = context;
 
   if (request.method === 'OPTIONS') {
@@ -58,7 +59,7 @@ export async function onRequest(context) {
     default:
       return errorResponse('无效的 action，请使用 login 或 register', 400);
   }
-}
+});
 
 async function handleLogin(env, username, password) {
   try {

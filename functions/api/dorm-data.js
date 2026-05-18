@@ -1,8 +1,8 @@
 // functions/api/dorm-data.js
 
-import { jsonResponse, errorResponse, handleOptions, verifyToken } from './_utils.js';
+import { jsonResponse, errorResponse, handleOptions, verifyToken, withErrorGuard } from './_utils.js';
 
-export async function onRequest(context) {
+export const onRequest = withErrorGuard(async (context) => {
   const request = context.request;
 
   if (request.method === 'OPTIONS') {
@@ -65,4 +65,4 @@ export async function onRequest(context) {
     console.error('API Error:', error);
     return errorResponse('Internal server error', 500);
   }
-}
+});
