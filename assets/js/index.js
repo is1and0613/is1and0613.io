@@ -10,27 +10,13 @@ let searchDebounceTimer = null;
 // ============================================
 const state = {
   currentFloor: 5,
-  currentFilter: 'all',
+  activeFilters: new Set(['all']),
   viewMode: 'list',
   currentDorm: null,
   studentStatus: {},
   floorDorms: {},
   pendingStudent: null
 };
-
-// ============================================
-// 从本地存储加载上次查寝状态
-// ============================================
-const savedState = localStorage.getItem('dormCheckState');
-if (savedState) {
-  try {
-    const parsed = JSON.parse(savedState);
-    state.studentStatus = parsed.studentStatus || {};
-    console.log('已从本地恢复上次查寝状态，上次保存时间：', parsed.lastSaveTime);
-  } catch (e) {
-    console.error('恢复状态失败', e);
-  }
-}
 
 // ============================================
 // 从后端 API 加载宿舍数据
@@ -82,6 +68,7 @@ function hideDormLoading() {
 }
 
 function initApp() {
+  restoreState();
   renderDormList();
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -175,6 +162,20 @@ function getAllStudentsByGrade() {
     }
   }
   return result;
+}
+
+function matchesActiveFilters(studentName) {
+  if (state.activeFilters.has('all')) return true;
+  const st = state.studentStatus[studentName] || { status: 'in' };
+  let match = false;
+  state.activeFilters.forEach(f => {
+    if (Array.isArray(st.status)) {
+      if (st.status.includes(f)) match = true;
+    } else {
+      if (st.status === f) match = true;
+    }
+  });
+  return match;
 }
 
 function getStatusDisplay(statusObj) {
@@ -567,16 +568,10 @@ function renderDormList() {
 
     const filtered = students.filter(s => {
       if (!isSearchMatch(s)) return false;
-      const st = state.studentStatus[s.name] || { status: 'in' };
-      if (state.currentFilter === 'all') return true;
-      if (Array.isArray(st.status)) {
-        return st.status.includes(state.currentFilter);
-      }
-      return st.status === state.currentFilter;
+      return matchesActiveFilters(s.name);
     });
 
-    students.forEach(s => {
-      if (!isSearchMatch(s)) return;
+    filtered.forEach(s => {
       const st = state.studentStatus[s.name] || { status: 'in' };
       totalCount++;
       if (Array.isArray(st.status)) {
@@ -610,17 +605,16 @@ function renderSingleDorm() {
   const nextDorm = currentIndex < dorms.length - 1 ? dorms[currentIndex + 1] : null;
 
   const students = getStudentsInDorm(state.currentDorm);
-  let totalCount = 0;
+  const filtered = students.filter(s => isSearchMatch(s) && matchesActiveFilters(s.name));
+  let totalCount = filtered.length;
   let absentCount = 0, leaveSchoolCount = 0, leaveInsideCount = 0, leaveOutsideCount = 0;
 
-  students.forEach(s => {
-    if (!isSearchMatch(s)) return;
+  filtered.forEach(s => {
     const st = state.studentStatus[s.name] || { status: 'in' };
-    totalCount++;
-    if (st.status === 'absent') absentCount++;
-    if (st.status === 'leaveSchool') leaveSchoolCount++;
-    if (st.status === 'leaveInside') leaveInsideCount++;
-    if (st.status === 'leaveOutside') leaveOutsideCount++;
+    if (st.status === 'absent' || (Array.isArray(st.status) && st.status.includes('absent'))) absentCount++;
+    if (st.status === 'leaveSchool' || (Array.isArray(st.status) && st.status.includes('leaveSchool'))) leaveSchoolCount++;
+    if (st.status === 'leaveInside' || (Array.isArray(st.status) && st.status.includes('leaveInside'))) leaveInsideCount++;
+    if (st.status === 'leaveOutside' || (Array.isArray(st.status) && st.status.includes('leaveOutside'))) leaveOutsideCount++;
   });
 
   requestAnimationFrame(() => {
@@ -630,7 +624,7 @@ function renderSingleDorm() {
         '<div class="dorm-nav-current" onclick="backToList()">' + state.currentDorm + '宿舍</div>' +
         '<button class="dorm-nav-btn" ' + (!nextDorm ? 'disabled' : '') + ' onclick="goToDorm(\'' + (nextDorm || '') + '\')"><i class="fas fa-chevron-right"></i></button>' +
       '</div>' +
-      '<div class="student-list">' + students.map(s => renderStudentItem(s)).join('') + '</div>' +
+      '<div class="student-list">' + filtered.map(s => renderStudentItem(s)).join('') + '</div>' +
     '</div></div>';
     updateStats(totalCount, absentCount, leaveSchoolCount, leaveInsideCount, leaveOutsideCount);
   });
@@ -651,25 +645,44 @@ function renderStudentItem(student) {
   const statusText = getStatusDisplay(st);
   const hasAbsent = st.status === 'absent' || (Array.isArray(st.status) && st.status.includes('absent'));
   const hasLeaveInside = st.status === 'leaveInside' || (Array.isArray(st.status) && st.status.includes('leaveInside'));
+  const displayName = searchKeyword ? highlightMatch(student.name, searchKeyword) : escapeHtml(student.name);
+  const safeName = student.name.replace(/'/g, "\\'");
 
   return '<div class="student-item">' +
     '<div class="student-info" style="margin-left: 0;">' +
       '<div style="display: flex; align-items: center;">' +
-        '<span class="student-name">' + student.name + '</span>' +
-        '<button class="copy-name-btn" onclick="event.stopPropagation(); copyStudentName(\'' + student.name + '\', event)" title="复制姓名">' +
+        '<span class="student-name">' + displayName + '</span>' +
+        '<button class="copy-name-btn" onclick="event.stopPropagation(); copyStudentName(\'' + safeName + '\', event)" title="复制姓名">' +
           '<i class="fas fa-copy"></i>' +
         '</button>' +
       '</div>' +
       '<span class="student-meta">' + student.grade + ' ' + student.className + ' | ' + student.bed + '号床 ' + (st.status !== 'in' ? '| ' + statusText : '') + '</span>' +
     '</div>' +
     '<div class="status-tags">' +
-      '<button class="status-tag in ' + (st.status === 'in' ? 'active' : '') + '" onclick="event.stopPropagation(); setStatus(\'' + student.name + '\', \'in\')">在寝</button>' +
-      '<button class="status-tag leaveSchool ' + (st.status === 'leaveSchool' ? 'active' : '') + '" onclick="event.stopPropagation(); setStatus(\'' + student.name + '\', \'leaveSchool\')">离校</button>' +
-      '<button class="status-tag leaveInside ' + (hasLeaveInside ? 'active' : '') + '" onclick="event.stopPropagation(); setStatus(\'' + student.name + '\', \'leaveInside\')">事假</button>' +
-      '<button class="status-tag leaveOutside ' + (st.status === 'leaveOutside' ? 'active' : '') + '" onclick="event.stopPropagation(); setStatus(\'' + student.name + '\', \'leaveOutside\')">外出</button>' +
-      '<button class="status-tag absent ' + (hasAbsent ? 'active' : '') + '" onclick="event.stopPropagation(); toggleStatus(\'' + student.name + '\', \'absent\')">未归</button>' +
+      '<button class="status-tag in ' + (st.status === 'in' ? 'active' : '') + '" onclick="event.stopPropagation(); setStatus(\'' + safeName + '\', \'in\')">在寝</button>' +
+      '<button class="status-tag leaveSchool ' + (st.status === 'leaveSchool' ? 'active' : '') + '" onclick="event.stopPropagation(); setStatus(\'' + safeName + '\', \'leaveSchool\')">离校</button>' +
+      '<button class="status-tag leaveInside ' + (hasLeaveInside ? 'active' : '') + '" onclick="event.stopPropagation(); setStatus(\'' + safeName + '\', \'leaveInside\')">事假</button>' +
+      '<button class="status-tag leaveOutside ' + (st.status === 'leaveOutside' ? 'active' : '') + '" onclick="event.stopPropagation(); setStatus(\'' + safeName + '\', \'leaveOutside\')">外出</button>' +
+      '<button class="status-tag absent ' + (hasAbsent ? 'active' : '') + '" onclick="event.stopPropagation(); toggleStatus(\'' + safeName + '\', \'absent\')">未归</button>' +
     '</div>' +
   '</div>';
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function highlightMatch(text, keyword) {
+  if (!keyword) return escapeHtml(text);
+  const escaped = escapeHtml(text);
+  const escapedKw = escapeHtml(keyword);
+  const idx = escaped.toLowerCase().indexOf(escapedKw.toLowerCase());
+  if (idx >= 0) {
+    return escaped.substring(0, idx) + '<mark class="search-highlight">' + escaped.substring(idx, idx + escapedKw.length) + '</mark>' + escaped.substring(idx + escapedKw.length);
+  }
+  return escaped;
 }
 
 function updateStats(total, absent, leaveSchool, leaveInside, leaveOutside) {
@@ -701,14 +714,34 @@ function switchFloor(floor) {
 }
 
 function switchFilter(filter) {
-  state.currentFilter = filter;
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === filter);
-  });
-  const filterText = { 'all': '全部', 'absent': '未归', 'leaveSchool': '离校', 'leaveInside': '事假', 'leaveOutside': '外出' }[filter];
-  document.getElementById('currentFilter').textContent = filterText;
+  if (filter === 'all') {
+    state.activeFilters.clear();
+  } else {
+    state.activeFilters.delete('all');
+    if (state.activeFilters.has(filter)) {
+      state.activeFilters.delete(filter);
+    } else {
+      state.activeFilters.add(filter);
+    }
+  }
+  // If no filters active, show all
+  if (state.activeFilters.size === 0) {
+    state.activeFilters.add('all');
+  }
+
+  updateFilterUI();
   if (state.viewMode === 'single' && state.currentDorm) renderSingleDorm();
   else renderDormList();
+}
+
+function updateFilterUI() {
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    const f = btn.dataset.filter;
+    btn.classList.toggle('active', state.activeFilters.has(f));
+  });
+  const names = { 'all': '全部', 'absent': '未归', 'leaveSchool': '离校', 'leaveInside': '事假', 'leaveOutside': '外出' };
+  const activeNames = Array.from(state.activeFilters).map(f => names[f] || f);
+  document.getElementById('currentFilter').textContent = activeNames.join('+') || '全部';
 }
 
 function enterDorm(dormNumber) {
@@ -751,6 +784,7 @@ function setStatus(name, status) {
 
   if (navigator.vibrate) navigator.vibrate(15);
   autoSaveState();
+  syncToRoomIfMulti(name, status);
   refreshView();
 }
 
@@ -761,6 +795,7 @@ function toggleStatus(name, status) {
     state.studentStatus[name] = { status: status };
     if (navigator.vibrate) navigator.vibrate(15);
     autoSaveState();
+    syncToRoomIfMulti(name, status);
     refreshView();
     return;
   }
@@ -784,7 +819,28 @@ function toggleStatus(name, status) {
   }
 
   autoSaveState();
+  syncToRoomIfMulti(name, status);
   refreshView();
+}
+
+function syncToRoomIfMulti(name, status) {
+  if (roomState.mode !== 'multi' || !roomState.code) return;
+  const st = state.studentStatus[name];
+  // Resolve effective status from current state
+  let effectiveStatus = status || 'in';
+  if (st) {
+    if (Array.isArray(st.status)) {
+      effectiveStatus = st.status[st.status.length - 1] || 'in';
+    } else {
+      effectiveStatus = st.status || 'in';
+    }
+  }
+  const statusMap = { in: 'present', absent: 'absent', leaveInside: 'leave', leaveSchool: 'leave', leaveOutside: 'leave' };
+  const roomStatus = statusMap[effectiveStatus] || 'present';
+  const detail = (st && st.reason) || '';
+  if (typeof updateRoomStudentState === 'function') {
+    updateRoomStudentState(name, roomStatus, detail);
+  }
 }
 
 function showLeaveInsideOptions(name) {
@@ -817,6 +873,7 @@ function selectReason(reason) {
 
   closeReasonModal();
   autoSaveState();
+  syncToRoomIfMulti(name, 'leaveInside');
   refreshView();
 }
 
@@ -838,8 +895,102 @@ function toggleSubMenu(event) {
   }
 }
 
+function toggleStudioSubMenu(event) {
+  event.stopPropagation();
+  const subList = document.getElementById('studioSubList');
+  const arrow = document.getElementById('studioArrow');
+  if (subList.style.display === 'none') {
+    subList.style.display = 'block';
+    arrow.style.transform = 'rotate(180deg)';
+  } else {
+    subList.style.display = 'none';
+    arrow.style.transform = 'rotate(0deg)';
+  }
+}
+
+function selectStudioReason(subReason) {
+  // 存储明细，但对外显示"工作室"
+  selectReasonWithSub('工作室', subReason);
+}
+
+function selectReasonWithSub(reason, subReason) {
+  if (!state.pendingStudent) return;
+
+  const name = state.pendingStudent;
+  const current = state.studentStatus[name];
+
+  const statusObj = { status: 'leaveInside', reason: reason };
+  if (subReason) {
+    statusObj.subReason = subReason;
+  }
+
+  if (current && Array.isArray(current.status)) {
+    const idx = current.status.indexOf('leaveInside');
+    if (idx > -1) {
+      current.reason = reason;
+      current.subReason = subReason || current.subReason;
+    } else {
+      current.status.push('leaveInside');
+      current.reason = reason;
+      current.subReason = subReason;
+    }
+  } else if (current && current.status === 'leaveInside') {
+    current.reason = reason;
+    current.subReason = subReason;
+  } else {
+    state.studentStatus[name] = statusObj;
+  }
+
+  closeReasonModal();
+  autoSaveState();
+  syncToRoomIfMulti(name, 'leaveInside');
+  refreshView();
+}
+
+function getStateKey() {
+  const username = sessionStorage.getItem('username') || 'default';
+  const mode = roomState.mode || sessionStorage.getItem('checkMode') || 'single';
+  return 'nightshift_state_' + username + '_' + mode;
+}
+
+function restoreState() {
+  const key = getStateKey();
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Only restore names that still exist in current dormData
+      const restored = {};
+      for (const name in parsed.studentStatus) {
+        if (window.nameIndex && window.nameIndex[name]) {
+          restored[name] = parsed.studentStatus[name];
+        }
+      }
+      state.studentStatus = restored;
+    }
+    // Also migrate old dormCheckState if exists
+    const old = localStorage.getItem('dormCheckState');
+    if (old) {
+      try {
+        const oldParsed = JSON.parse(old);
+        if (oldParsed.studentStatus) {
+          for (const name in oldParsed.studentStatus) {
+            if (window.nameIndex && window.nameIndex[name] && !state.studentStatus[name]) {
+              state.studentStatus[name] = oldParsed.studentStatus[name];
+            }
+          }
+          autoSaveState();
+        }
+      } catch (e) { /* ignore */ }
+      localStorage.removeItem('dormCheckState');
+    }
+  } catch (e) {
+    console.error('恢复状态失败', e);
+  }
+}
+
 function autoSaveState() {
-  localStorage.setItem('dormCheckState', JSON.stringify({
+  localStorage.setItem(getStateKey(), JSON.stringify({
     studentStatus: state.studentStatus,
     lastSaveTime: new Date().toLocaleString()
   }));
@@ -847,7 +998,7 @@ function autoSaveState() {
 
 function clearSavedState() {
   if (confirm('确定要清除所有查寝记录，重新开始吗？')) {
-    localStorage.removeItem('dormCheckState');
+    localStorage.removeItem(getStateKey());
     state.studentStatus = {};
     refreshView();
     showToast('已重置，可以开始新查寝');
@@ -897,15 +1048,15 @@ function renderCardView() {
   if (cardState.cardIndex < 0) cardState.cardIndex = 0;
 
   const dormNumber = dorms[cardState.cardIndex];
-  const students = getStudentsInDorm(dormNumber);
+  const allStudents = getStudentsInDorm(dormNumber);
+  const students = allStudents.filter(s => isSearchMatch(s) && matchesActiveFilters(s.name));
   const prevDorm = cardState.cardIndex > 0;
   const nextDorm = cardState.cardIndex < dorms.length - 1;
 
-  let totalCount = 0, absentCount = 0, leaveSchoolCount = 0, leaveInsideCount = 0, leaveOutsideCount = 0;
+  let totalCount = students.length;
+  let absentCount = 0, leaveSchoolCount = 0, leaveInsideCount = 0, leaveOutsideCount = 0;
   students.forEach(s => {
-    if (!isSearchMatch(s)) return;
     const st = state.studentStatus[s.name] || { status: 'in' };
-    totalCount++;
     if (Array.isArray(st.status)) {
       if (st.status.includes('absent')) absentCount++;
       if (st.status.includes('leaveSchool')) leaveSchoolCount++;
@@ -1091,7 +1242,10 @@ function openWorkWechat() {
 function resetAllStatus() {
   if (confirm('确定要重置所有查寝记录吗？此操作将清空所有请假状态，所有人恢复为"在寝"。')) {
     state.studentStatus = {};
-    localStorage.removeItem('dormCheckState');
+    // Clear both single and multi mode states for current account
+    const username = sessionStorage.getItem('username') || 'default';
+    localStorage.removeItem('nightshift_state_' + username + '_single');
+    localStorage.removeItem('nightshift_state_' + username + '_multi');
     sessionStorage.removeItem('checkMode');
     refreshView();
     showToast('已重置，请选择查寝模式');

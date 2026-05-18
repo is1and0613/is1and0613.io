@@ -126,15 +126,28 @@ async function joinRoom() {
 
 async function showRoomView() {
   document.getElementById('roomLobby').style.display = 'none';
-  document.getElementById('roomView').style.display = 'flex';
-  document.getElementById('dormContainer').style.display = 'none';
-  document.querySelector('.bottom-bar').style.display = 'none';
 
+  // Keep main UI (header, search, floor tabs, filter, dorm container, bottom bar)
+  document.querySelector('.header').style.display = '';
+  document.querySelector('.search-section').style.display = '';
+  document.querySelector('.floor-tabs').style.display = '';
+  document.querySelector('.filter-bar').style.display = '';
+  document.querySelector('.status-bar').style.display = '';
+  document.querySelector('.bottom-bar').style.display = '';
+  document.getElementById('dormContainer').style.display = '';
+
+  // Show room header bar
+  document.getElementById('roomView').style.display = 'flex';
   document.getElementById('roomCodeDisplay').textContent = roomState.code;
   document.getElementById('floatingChatBtn').classList.add('show');
 
+  // Load dorm data if not already loaded
+  if (!window.dormData) {
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    await loadDormData();
+  }
+
   await syncRoom();
-  renderRoomStates();
   updateRoomCountdown();
   startRoomPolling();
 }
@@ -158,12 +171,20 @@ async function syncRoom() {
       roomState.messages = data.messages || [];
       roomState.members = data.members || [];
 
+      // Map room states to single-mode studentStatus
+      if (roomState.states.length > 0) {
+        roomState.states.forEach(s => {
+          const statusMap = { present: 'in', absent: 'absent', leave: 'leaveInside', late: 'absent' };
+          const mappedStatus = statusMap[s.status] || 'in';
+          state.studentStatus[s.student_name] = { status: mappedStatus, reason: s.detail || '' };
+        });
+      }
+
       if (data.messages && data.messages.length > 0) {
         const newLastId = data.messages[data.messages.length - 1].id;
         if (newLastId > roomState.lastMsgId) {
           roomState.lastMsgId = newLastId;
         }
-        // Compute unread: messages newer than lastReadId
         const chatOpen = document.getElementById('chatDrawer').classList.contains('open');
         if (!chatOpen) {
           roomState.unreadCount = data.messages.filter(m => m.id > roomState.lastReadId).length;
@@ -173,7 +194,8 @@ async function syncRoom() {
         }
       }
 
-      renderRoomStates();
+      // Use single-mode renderer
+      if (typeof refreshView === 'function') refreshView();
       renderRoomMessages();
       renderRoomLogs();
       renderRoomMembers();
@@ -187,15 +209,48 @@ async function syncRoom() {
 
 function startRoomPolling() {
   stopRoomPolling();
+  // State polling: 30s
   roomState.pollingTimer = setInterval(() => {
     syncRoom();
-  }, 30000); // 30s polling
+  }, 30000);
+  // Message polling: 3s
+  roomState.msgPollingTimer = setInterval(() => {
+    syncRoomMessages();
+  }, 3000);
+}
+
+async function syncRoomMessages() {
+  try {
+    const data = await apiFetch(`/api/room?action=sync&code=${roomState.code}&messages_only=1`);
+    if (data.success && data.messages) {
+      roomState.messages = data.messages;
+      if (data.messages.length > 0) {
+        const newLastId = data.messages[data.messages.length - 1].id;
+        if (newLastId > roomState.lastMsgId) {
+          roomState.lastMsgId = newLastId;
+        }
+        const chatOpen = document.getElementById('chatDrawer').classList.contains('open');
+        if (!chatOpen) {
+          roomState.unreadCount = data.messages.filter(m => m.id > roomState.lastReadId).length;
+        } else {
+          roomState.unreadCount = 0;
+          roomState.lastReadId = newLastId;
+        }
+      }
+      renderRoomMessages();
+      updateChatBadge();
+    }
+  } catch (e) { /* silent */ }
 }
 
 function stopRoomPolling() {
   if (roomState.pollingTimer) {
     clearInterval(roomState.pollingTimer);
     roomState.pollingTimer = null;
+  }
+  if (roomState.msgPollingTimer) {
+    clearInterval(roomState.msgPollingTimer);
+    roomState.msgPollingTimer = null;
   }
 }
 
@@ -385,6 +440,7 @@ function updateRoomCountdown() {
 function leaveRoom(silent) {
   if (!silent && !confirm('确定要退出房间吗？')) return;
   stopRoomPolling();
+  roomState.mode = null;
   roomState.room = null;
   roomState.code = null;
   roomState.states = [];
@@ -393,9 +449,10 @@ function leaveRoom(silent) {
   roomState.members = [];
   roomState.lastReadId = 0;
   roomState.unreadCount = 0;
+  sessionStorage.removeItem('checkMode');
   updateChatBadge();
   hideRoomLobby();
-  showRoomLobby();
+  showModeSelection();
 }
 
 // ============================================
