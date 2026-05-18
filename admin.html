@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>管理后台 - 晚寝查寝系统</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      min-height: 100vh;
+    }
+    .header {
+      background: #2c3e50;
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header a { color: #aaa; text-decoration: none; font-size: 13px; }
+    .container { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card h2 { font-size: 16px; margin-bottom: 16px; color: #2c3e50; }
+    .card p { font-size: 13px; color: #888; margin-bottom: 12px; line-height: 1.6; }
+    .file-input-wrap {
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      margin-bottom: 16px;
+    }
+    .file-input-wrap:hover { border-color: #3498db; }
+    .file-input-wrap.active { border-color: #3498db; background: #f0f7ff; }
+    .file-input-wrap i { font-size: 36px; color: #bbb; display: block; margin-bottom: 8px; }
+    .file-input-wrap .filename { font-size: 14px; color: #333; word-break: break-all; }
+    .file-input-wrap .hint { font-size: 12px; color: #999; margin-top: 4px; }
+    input[type="file"] { display: none; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #2980b9; }
+    .btn-secondary { background: #eee; color: #666; margin-top: 8px; }
+    .status { margin-top: 12px; padding: 12px; border-radius: 8px; font-size: 14px; display: none; }
+    .status.show { display: block; }
+    .status.success { background: #e8f8e8; color: #27ae60; }
+    .status.error { background: #fde8e8; color: #e74c3c; }
+    .status.loading { background: #e8f0fe; color: #2980b9; }
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 16px; }
+    .stat-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-card .num { font-size: 24px; font-weight: 700; color: #2c3e50; }
+    .stat-card .label { font-size: 12px; color: #888; margin-top: 4px; }
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .login-overlay.hidden { display: none; }
+    .login-card {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      width: 320px;
+      text-align: center;
+    }
+    .login-card h2 { margin-bottom: 20px; }
+    .login-card input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+    .login-card input:focus { border-color: #3498db; }
+  </style>
+</head>
+<body>
+
+<div class="login-overlay hidden" id="loginOverlay">
+  <div class="login-card">
+    <h2>管理员登录</h2>
+    <input type="text" id="loginUsername" placeholder="用户名">
+    <input type="password" id="loginPassword" placeholder="密码">
+    <button class="btn btn-primary" onclick="adminLogin()">登录</button>
+    <p id="loginError" style="color:#e74c3c;font-size:13px;margin-top:8px;display:none;"></p>
+  </div>
+</div>
+
+<div class="header">
+  <h1>管理后台</h1>
+  <a href="index.html">返回主页</a>
+</div>
+
+<div class="container">
+  <div class="card">
+    <h2>更新宿舍数据</h2>
+    <p>上传固定格式的 .xlsx 文件（列：宿舍号、班级、姓名、床号），将全量替换当前宿舍数据。</p>
+
+    <div class="file-input-wrap" id="dropZone" onclick="document.getElementById('xlsxFile').click()">
+      <i>&#128196;</i>
+      <div class="filename" id="fileName">点击选择 .xlsx 文件</div>
+      <div class="hint">或拖拽文件到此处</div>
+    </div>
+    <input type="file" id="xlsxFile" accept=".xlsx" onchange="onFileSelected(this.files[0])">
+
+    <button class="btn btn-primary" id="uploadBtn" disabled onclick="uploadDormData()">
+      上传并更新数据
+    </button>
+    <button class="btn btn-secondary" onclick="previewData()" id="previewBtn" disabled>
+      预览数据
+    </button>
+
+    <div class="status" id="uploadStatus"></div>
+  </div>
+
+  <div class="card" id="previewCard" style="display:none;">
+    <h2>预览结果</h2>
+    <div class="stats" id="previewStats"></div>
+    <div style="max-height:300px;overflow-y:auto;margin-top:12px;font-size:12px;background:#f8f9fa;border-radius:8px;padding:12px;">
+      <pre id="previewContent" style="white-space:pre-wrap;word-break:break-all;"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+let parsedRecords = [];
+let authToken = null;
+const USERNAME_KEY = 'admin_username';
+
+// Check auth on load
+function init() {
+  const token = sessionStorage.getItem('authToken');
+  const username = sessionStorage.getItem(USERNAME_KEY);
+  if (!token || username !== 'chaqin') {
+    document.getElementById('loginOverlay').classList.remove('hidden');
+  } else {
+    authToken = token;
+  }
+}
+
+async function adminLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+
+  if (!username || !password) {
+    errEl.textContent = '请输入用户名和密码';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'login', username, password })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      errEl.textContent = data.message || '登录失败';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    if (username !== 'chaqin') {
+      errEl.textContent = '仅管理员可访问此页面';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    sessionStorage.setItem('authToken', data.token);
+    sessionStorage.setItem(USERNAME_KEY, username);
+    authToken = data.token;
+    document.getElementById('loginOverlay').classList.add('hidden');
+  } catch (e) {
+    errEl.textContent = '网络错误，请重试';
+    errEl.style.display = 'block';
+  }
+}
+
+// Drag & drop
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
+dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('active'); });
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('active');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    document.getElementById('xlsxFile').files = e.dataTransfer.files;
+    onFileSelected(file);
+  }
+});
+
+function onFileSelected(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+      parsedRecords = [];
+      let currentDorm = '';
+      let currentFloor = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length < 4) continue;
+
+        const dormCell = String(row[0] || '').trim();
+        const classCell = String(row[1] || '').trim().replace(/\s+/g, '');
+        const nameCell = String(row[2] || '').trim();
+        const bedCell = parseInt(row[3]);
+
+        if (!classCell && !nameCell && !bedCell) continue;
+
+        if (dormCell) {
+          currentDorm = dormCell;
+          currentFloor = parseInt(currentDorm[0]) || 0;
+        }
+
+        const yearMatch = classCell.match(/(\d{2})/);
+        const yearCode = yearMatch ? yearMatch[1] : null;
+
+        parsedRecords.push({
+          dorm_name: currentDorm,
+          floor: currentFloor,
+          class_name: classCell || null,
+          student_name: nameCell || null,
+          bed: bedCell || null,
+          year_code: yearCode,
+          grade_name: '',
+          status: nameCell ? '在校' : '空床'
+        });
+      }
+
+      document.getElementById('fileName').textContent = file.name + ' (' + parsedRecords.length + ' 条记录)';
+      document.getElementById('uploadBtn').disabled = false;
+      document.getElementById('previewBtn').disabled = false;
+      document.getElementById('uploadStatus').className = 'status';
+    } catch (err) {
+      showStatus('解析失败: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function previewData() {
+  if (!parsedRecords.length) return;
+
+  const inSchool = parsedRecords.filter(r => r.status === '在校').length;
+  const emptyBeds = parsedRecords.filter(r => r.status === '空床').length;
+  const grades = {};
+  parsedRecords.forEach(r => {
+    if (r.year_code) {
+      grades[r.year_code] = (grades[r.year_code] || 0) + 1;
+    }
+  });
+
+  document.getElementById('previewStats').innerHTML =
+    '<div class="stat-card"><div class="num">' + inSchool + '</div><div class="label">在校学生</div></div>' +
+    '<div class="stat-card"><div class="num">' + emptyBeds + '</div><div class="label">空床位</div></div>' +
+    '<div class="stat-card"><div class="num">' + parsedRecords.length + '</div><div class="label">总记录</div></div>' +
+    '<div class="stat-card"><div class="num">' + Object.keys(grades).length + '</div><div class="label">年级数</div></div>';
+
+  document.getElementById('previewContent').textContent = JSON.stringify(parsedRecords.slice(0, 10), null, 2)
+    + (parsedRecords.length > 10 ? '\n... 还有 ' + (parsedRecords.length - 10) + ' 条' : '');
+
+  document.getElementById('previewCard').style.display = 'block';
+}
+
+async function uploadDormData() {
+  if (!parsedRecords.length) return;
+  if (!confirm('确认全量替换宿舍数据？（将删除现有 ' + parsedRecords.length + ' 条并导入新数据）')) return;
+
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  btn.textContent = '上传中...';
+  showStatus('正在上传数据...', 'loading');
+
+  try {
+    const res = await fetch('/api/admin/dorm-upload-json', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + authToken
+      },
+      body: JSON.stringify({ records: parsedRecords })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      showStatus('成功导入 ' + data.imported + ' 条记录！宿舍数据已更新。', 'success');
+    } else {
+      showStatus('导入失败: ' + (data.message || data.error || '未知错误'), 'error');
+    }
+  } catch (err) {
+    showStatus('网络错误: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '上传并更新数据';
+  }
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('uploadStatus');
+  el.textContent = msg;
+  el.className = 'status show ' + type;
+}
+
+init();
+</script>
+
+</body>
+</html>

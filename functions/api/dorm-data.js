@@ -1,4 +1,5 @@
 // functions/api/dorm-data.js
+// 宿舍数据查询（D1）
 
 import { jsonResponse, errorResponse, handleOptions, verifyToken, withErrorGuard } from './_utils.js';
 
@@ -13,56 +14,51 @@ export const onRequest = withErrorGuard(async (context) => {
     return errorResponse('Method not allowed', 405);
   }
 
-  // JWT 校验
-  try {
-    await verifyToken(request, context.env);
-  } catch (e) {
-    return e;
-  }
+  await verifyToken(request, context.env);
 
-  const supabaseUrl = context.env.SUPABASE_URL;
-  const supabaseKey = context.env.SUPABASE_ANON_KEY;
+  const { results: students } = await context.env.DB.prepare(`
+    SELECT
+      ds.dorm_name,
+      ds.floor,
+      ds.class_name,
+      ds.student_name,
+      ds.bed,
+      ds.year_code,
+      ds.grade_name,
+      ds.status,
+      gm.display_order
+    FROM dorm_students ds
+    LEFT JOIN grade_mapping gm ON ds.year_code = gm.year_code
+    WHERE ds.status = '在校' OR ds.status = '空床'
+    ORDER BY gm.display_order, ds.dorm_name, ds.bed
+  `).all();
 
-  if (!supabaseUrl || !supabaseKey) {
-    return errorResponse('Server configuration error', 500);
-  }
+  const dormData = {};
+  const nameIndex = {};
 
-  try {
-    const response = await fetch(`${supabaseUrl}/rest/v1/students?select=*`, {
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-      },
-    });
+  for (const student of students) {
+    const grade = student.grade_name || '其他';
+    const className = student.class_name || '';
+    const dorm = student.dorm_name;
+    const bed = student.bed;
+    const name = student.student_name;
 
-    if (!response.ok) {
-      throw new Error(`Supabase API error: ${response.status}`);
+    if (!dormData[grade]) dormData[grade] = {};
+    if (!dormData[grade][className]) dormData[grade][className] = {};
+    if (!dormData[grade][className][dorm]) {
+      dormData[grade][className][dorm] = [null, null, null, null];
     }
 
-    const students = await response.json();
-
-    const dormData = {};
-    const nameIndex = {};
-
-    students.forEach((student) => {
-      if (!dormData[student.grade]) dormData[student.grade] = {};
-      if (!dormData[student.grade][student.class_name]) dormData[student.grade][student.class_name] = {};
-      if (!dormData[student.grade][student.class_name][student.dorm]) {
-        dormData[student.grade][student.class_name][student.dorm] = [null, null, null, null];
-      }
-      dormData[student.grade][student.class_name][student.dorm][student.bed - 1] = student.name;
-
-      nameIndex[student.name] = {
-        grade: student.grade,
-        className: student.class_name,
-        dorm: student.dorm,
-        bed: student.bed,
+    if (name && bed && bed >= 1 && bed <= 4) {
+      dormData[grade][className][dorm][bed - 1] = name;
+      nameIndex[name] = {
+        grade,
+        className,
+        dorm,
+        bed,
       };
-    });
-
-    return jsonResponse({ dormData, nameIndex });
-  } catch (error) {
-    console.error('API Error:', error);
-    return errorResponse('Internal server error', 500);
+    }
   }
+
+  return jsonResponse({ dormData, nameIndex });
 });
