@@ -136,11 +136,22 @@ async function showRoomView() {
   document.querySelector('.bottom-bar').style.display = '';
   document.getElementById('dormContainer').style.display = '';
 
-  // Show room header bar
+  // Switch header: show room code, hide title
+  document.getElementById('headerTitle').style.display = 'none';
+  document.getElementById('headerRoomCode').style.display = '';
+  document.getElementById('headerRoomCode').textContent = roomState.code;
+  document.getElementById('headerCountdown').style.display = '';
+  document.getElementById('btnWorkWechat').style.display = 'none';
+  document.getElementById('btnReset').style.display = 'none';
+  document.getElementById('btnSyncRoom').style.display = '';
+  document.getElementById('btnLeaveRoom').style.display = '';
+
+  // Show room members bar
   document.getElementById('roomView').style.display = 'flex';
-  document.getElementById('roomCodeDisplay').textContent = roomState.code;
   document.getElementById('floatingChatBtn').classList.add('show');
-  document.getElementById('multiLogBtn').style.display = '';
+
+  // Persist room code for refresh recovery
+  sessionStorage.setItem('roomCode', roomState.code);
 
   // Load dorm data if not already loaded
   if (!window.dormData) {
@@ -372,7 +383,7 @@ function statusCn(s) {
 }
 
 function updateRoomCountdown() {
-  const el = document.getElementById('roomCountdown');
+  const el = document.getElementById('headerCountdown');
   if (!el || !roomState.room || !roomState.room.expires_at) return;
 
   const expiresAt = new Date(roomState.room.expires_at + 'Z');
@@ -380,20 +391,18 @@ function updateRoomCountdown() {
   const diff = expiresAt - now;
 
   if (diff <= 0) {
-    el.textContent = '已过期';
+    el.textContent = ' · 已过期';
     el.style.color = '#e74c3c';
     stopRoomPolling();
     showToast('房间已过期（90分钟有效期）');
-    setTimeout(() => {
-      leaveRoom(true);
-    }, 1500);
+    setTimeout(() => { leaveRoom(true); }, 1500);
     return;
   }
 
   const min = Math.floor(diff / 60000);
   const sec = Math.floor((diff % 60000) / 1000);
-  el.textContent = `${min}分${sec}秒后过期`;
-  el.style.color = diff < 300000 ? '#e74c3c' : '#666';
+  el.textContent = ` · ${min}分${sec}秒后过期`;
+  el.style.color = diff < 300000 ? '#e74c3c' : '#999';
 }
 
 function leaveRoom(silent) {
@@ -402,6 +411,7 @@ function leaveRoom(silent) {
   // Switch to single mode
   roomState.mode = 'single';
   sessionStorage.setItem('checkMode', 'single');
+  sessionStorage.removeItem('roomCode');
   roomState.room = null;
   roomState.code = null;
   roomState.states = [];
@@ -411,11 +421,18 @@ function leaveRoom(silent) {
   roomState.lastReadId = 0;
   roomState.unreadCount = 0;
   updateChatBadge();
+  // Restore header
+  document.getElementById('headerTitle').style.display = '';
+  document.getElementById('headerRoomCode').style.display = 'none';
+  document.getElementById('headerCountdown').style.display = 'none';
+  document.getElementById('btnWorkWechat').style.display = '';
+  document.getElementById('btnReset').style.display = '';
+  document.getElementById('btnSyncRoom').style.display = 'none';
+  document.getElementById('btnLeaveRoom').style.display = 'none';
   // Hide room-specific elements, show main UI
   hideRoomLobby();
   closeAllDrawers();
   document.getElementById('floatingChatBtn').classList.remove('show');
-  document.getElementById('multiLogBtn').style.display = 'none';
   // Clear room-mapped student status, restore single-player state
   if (typeof restoreState === 'function') restoreState();
   if (typeof refreshView === 'function') refreshView();
@@ -427,35 +444,44 @@ function leaveRoom(silent) {
 
 function toggleChatDrawer() {
   const drawer = document.getElementById('chatDrawer');
-  const logDrawer = document.getElementById('logDrawer');
   const backdrop = document.getElementById('drawerBackdrop');
-  drawer.classList.toggle('open');
-  if (drawer.classList.contains('open')) {
+  const isOpen = drawer.classList.toggle('open');
+  if (isOpen) {
     backdrop.classList.add('show');
-    logDrawer.classList.remove('open');
-    // Mark all as read when opening chat
+    // Default to messages tab
+    switchDrawerTab('messages');
+    // Mark all as read
     roomState.unreadCount = 0;
     if (roomState.messages.length > 0) {
       roomState.lastReadId = roomState.messages[roomState.messages.length - 1].id;
     }
     updateChatBadge();
-    renderRoomMessages();
   } else {
     backdrop.classList.remove('show');
   }
 }
 
-function toggleLogDrawer() {
-  const drawer = document.getElementById('logDrawer');
-  const chatDrawer = document.getElementById('chatDrawer');
-  const backdrop = document.getElementById('drawerBackdrop');
-  drawer.classList.toggle('open');
-  if (drawer.classList.contains('open')) {
-    backdrop.classList.add('show');
-    chatDrawer.classList.remove('open');
-    renderRoomLogs();
+function switchDrawerTab(tab) {
+  const tabMessages = document.getElementById('tabMessages');
+  const tabLogs = document.getElementById('tabLogs');
+  const msgBody = document.getElementById('roomMessages');
+  const logBody = document.getElementById('roomLogs');
+  const inputBar = document.getElementById('chatInputBar');
+
+  if (tab === 'messages') {
+    tabMessages.classList.add('active');
+    tabLogs.classList.remove('active');
+    msgBody.style.display = '';
+    logBody.style.display = 'none';
+    inputBar.style.display = '';
+    renderRoomMessages();
   } else {
-    backdrop.classList.remove('show');
+    tabLogs.classList.add('active');
+    tabMessages.classList.remove('active');
+    logBody.style.display = '';
+    msgBody.style.display = 'none';
+    inputBar.style.display = 'none';
+    renderRoomLogs();
   }
 }
 
@@ -467,7 +493,6 @@ function escapeHtml(text) {
 
 function closeAllDrawers() {
   document.getElementById('chatDrawer').classList.remove('open');
-  document.getElementById('logDrawer').classList.remove('open');
   document.getElementById('drawerBackdrop').classList.remove('show');
 }
 
