@@ -5,6 +5,11 @@
   if (!sessionStorage.getItem('authToken')) {
     window.location.replace('login.html');
   }
+  // 兜底同步到 localStorage，防止旧代码从 localStorage 读 token
+  const token = sessionStorage.getItem('authToken');
+  if (token) {
+    localStorage.setItem('token', token);
+  }
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -34,7 +39,7 @@
   </div>
 
   <!-- 全局加载遮罩 -->
-  <div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-overlay hidden" id="loadingOverlay">
     <div class="loading-spinner-large"></div>
     <div class="loading-text">正在加载宿舍数据...</div>
     <div class="loading-error" id="loadingError">

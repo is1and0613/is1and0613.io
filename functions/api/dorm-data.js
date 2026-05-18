@@ -1,7 +1,7 @@
 // functions/api/dorm-data.js
 // 宿舍数据查询（D1）
 
-import { jsonResponse, errorResponse, handleOptions, verifyToken, withErrorGuard } from './_utils.js';
+import { jsonResponse, errorResponse, handleOptions, verifyToken, dbGuard, withErrorGuard } from './_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
   const request = context.request;
@@ -15,6 +15,7 @@ export const onRequest = withErrorGuard(async (context) => {
   }
 
   await verifyToken(request, context.env);
+  dbGuard(context.env);
 
   const { results: students } = await context.env.DB.prepare(`
     SELECT
@@ -37,7 +38,10 @@ export const onRequest = withErrorGuard(async (context) => {
   const nameIndex = {};
 
   for (const student of students) {
-    const grade = student.grade_name || '其他';
+    // 构造 grade key：前端期望 "2022级" 格式
+    const grade = student.year_code
+      ? '20' + student.year_code + '级'
+      : (student.grade_name ? student.grade_name : '其他');
     const className = student.class_name || '';
     const dorm = student.dorm_name;
     const bed = student.bed;

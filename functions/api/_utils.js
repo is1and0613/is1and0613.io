@@ -97,7 +97,13 @@ export async function signJWT(payload, secret) {
 
   const data = encoder.encode(`${headerB64}.${payloadB64}`);
   const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
-  const signatureB64 = base64UrlEncode(String.fromCharCode(...new Uint8Array(signature)));
+
+  // 对二进制签名直接 btoa，不走 base64UrlEncode（避免 TextEncoder UTF-8 二次编码膨胀）
+  const signatureBytes = new Uint8Array(signature);
+  const signatureB64 = btoa(String.fromCharCode(...signatureBytes))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
 
   return `${headerB64}.${payloadB64}.${signatureB64}`;
 }

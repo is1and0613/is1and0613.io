@@ -81,7 +81,8 @@ function goBack(fallbackUrl = 'index.html') {
 function requireAuth() {
   const token = sessionStorage.getItem('authToken');
   if (!token) {
-    window.location.replace('login.html');
+    showToast('未登录，请重新登录');
+    setTimeout(() => { window.location.replace('login.html'); }, 1000);
     return null;
   }
   return token;
@@ -112,7 +113,8 @@ async function apiFetch(url, options = {}) {
   if (response.status === 401) {
     sessionStorage.removeItem('authToken');
     sessionStorage.removeItem('loggedIn');
-    window.location.replace('login.html');
+    showToast('登录已过期，请重新登录');
+    setTimeout(() => { window.location.replace('login.html'); }, 1500);
     throw new Error('Unauthorized');
   }
 
