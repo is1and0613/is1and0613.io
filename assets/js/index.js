@@ -39,7 +39,8 @@ async function loadDormData() {
   try {
     const token = sessionStorage.getItem('authToken');
     if (!token) {
-      window.location.replace('login.html');
+      showToast('未登录，请重新登录');
+      setTimeout(() => { window.location.replace('login.html'); }, 1000);
       return;
     }
 
@@ -50,7 +51,9 @@ async function loadDormData() {
     if (response.status === 401) {
       sessionStorage.removeItem('authToken');
       sessionStorage.removeItem('loggedIn');
-      window.location.replace('login.html');
+      showToast('登录已过期，请重新登录');
+      hideDormLoading();
+      setTimeout(() => { window.location.replace('login.html'); }, 1500);
       return;
     }
 
@@ -66,10 +69,16 @@ async function loadDormData() {
     initApp();
   } catch (error) {
     console.error('加载宿舍数据失败:', error);
-    document.querySelector('.loading-spinner-large').style.display = 'none';
-    document.querySelector('.loading-text').style.display = 'none';
+    hideDormLoading();
     document.getElementById('loadingError').classList.add('show');
   }
+}
+
+function hideDormLoading() {
+  const spinner = document.querySelector('.loading-spinner-large');
+  const text = document.querySelector('.loading-text');
+  if (spinner) spinner.style.display = 'none';
+  if (text) text.style.display = 'none';
 }
 
 function initApp() {
