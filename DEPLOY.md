@@ -30,8 +30,6 @@ wrangler login
 |--------|------|------|
 | `JWT_SECRET` | JWT 签名密钥（任意长字符串） | `your-random-secret-key-123` |
 | `ADMIN_PASSWORD` | 管理员登录密码 | `your-admin-password` |
-| `SUPABASE_URL` | Supabase 项目 URL | `https://xxxxxx.supabase.co` |
-| `SUPABASE_ANON_KEY` | Supabase 匿名/服务角色 Key | `eyJhbGciOiJIUzI1NiIs...` |
 | `BAIDU_OCR_API_KEY` | 百度 OCR API Key | `your-baidu-api-key` |
 | `BAIDU_OCR_SECRET_KEY` | 百度 OCR Secret Key | `your-baidu-secret-key` |
 | `DEEPSEEK_API_KEY` | DeepSeek API Key | `sk-xxxxxxxxxxxxxxxx` |
@@ -118,8 +116,10 @@ wrangler d1 execute nightshift-db --file=schema.sql
 ├── functions/api/          # Cloudflare Pages Functions（后端 API）
 │   ├── _utils.js           # 共享工具（JWT/密码/响应模板）
 │   ├── auth.js             # 登录/注册（D1 账户系统）
+│   ├── admin/              # 管理员 API
+│   │   └── dorm-upload-json.js  # 宿舍数据上传（全量替换）
 │   ├── room.js             # 多人查寝房间（创建/加入/同步/状态/消息）
-│   ├── dorm-data.js        # 宿舍数据查询（Supabase）
+│   ├── dorm-data.js        # 宿舍数据查询（D1）
 │   ├── baidu-ocr.js        # 百度 OCR（文件上传版）
 │   ├── ocr.js              # 百度 OCR（主入口）
 │   ├── deepseek-clean.js   # DeepSeek 文本清洗
@@ -129,6 +129,7 @@ wrangler d1 execute nightshift-db --file=schema.sql
 ├── login.html              # 登录/注册页
 ├── upload.html             # 上传假单页
 ├── manual-upload.html      # 手动输入假单页
+├── admin.html              # 管理后台（宿舍数据上传）
 ├── sw.js                   # Service Worker
 └── package.json
 ```
@@ -159,8 +160,6 @@ wrangler d1 execute nightshift-db --file=schema.sql
 ```
 JWT_SECRET=dev-secret
 ADMIN_PASSWORD=dev-password
-SUPABASE_URL=https://xxxxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
 BAIDU_OCR_API_KEY=your-key
 BAIDU_OCR_SECRET_KEY=your-secret
 DEEPSEEK_API_KEY=sk-...

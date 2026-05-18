@@ -31,47 +31,16 @@ async function generateUniqueCode(env) {
   throw new Error('Failed to generate unique room code after 10 attempts');
 }
 
-// Fetch dorm data from Supabase (shared logic with dorm-data.js)
+// Fetch dorm data from D1 for room state initialization
 async function fetchDormData(env) {
-  const supabaseUrl = env.SUPABASE_URL;
-  const supabaseKey = env.SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase 未配置');
-  }
+  const { results: students } = await env.DB.prepare(
+    `SELECT student_name as name, dorm_name as dorm, bed
+     FROM dorm_students
+     WHERE status = '在校' AND student_name IS NOT NULL
+     ORDER BY dorm_name, bed`
+  ).all();
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/students?select=*`, {
-    headers: {
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Supabase API error: ${response.status}`);
-  }
-
-  const students = await response.json();
-
-  const dormData = {};
-  const nameIndex = {};
-
-  students.forEach((student) => {
-    if (!dormData[student.grade]) dormData[student.grade] = {};
-    if (!dormData[student.grade][student.class_name]) dormData[student.grade][student.class_name] = {};
-    if (!dormData[student.grade][student.class_name][student.dorm]) {
-      dormData[student.grade][student.class_name][student.dorm] = [null, null, null, null];
-    }
-    dormData[student.grade][student.class_name][student.dorm][student.bed - 1] = student.name;
-
-    nameIndex[student.name] = {
-      grade: student.grade,
-      className: student.class_name,
-      dorm: student.dorm,
-      bed: student.bed,
-    };
-  });
-
-  return { dormData, nameIndex, students };
+  return { students };
 }
 
 // ============================================
@@ -128,12 +97,7 @@ export const onRequest = withErrorGuard(async (context) => {
 // ============================================
 
 async function handleCreate(request, env) {
-  let payload;
-  try {
-    payload = await verifyToken(request, env);
-  } catch (e) {
-    return e;
-  }
+  const payload = await verifyToken(request, env);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -154,7 +118,7 @@ async function handleCreate(request, env) {
     "INSERT INTO room_members (room_id, user_id, role) VALUES (?, ?, 'creator')"
   ).bind(room.id, userId).run();
 
-  // Initialize room_states from Supabase dorm data
+  // Initialize room_states from D1 dorm data
   try {
     const { students } = await fetchDormData(env);
 
@@ -172,9 +136,9 @@ async function handleCreate(request, env) {
       await env.DB.batch(chunk);
     }
   } catch (e) {
-    // If Supabase fetch fails, room is created but states are empty
+    // If D1 query fails, room is created but states are empty
     // Frontend can retry or use local data
-    console.error('Failed to init room states from Supabase:', e);
+    console.error('Failed to init room states from D1:', e);
   }
 
   // Log room creation
@@ -196,12 +160,7 @@ async function handleCreate(request, env) {
 // ============================================
 
 async function handleJoin(request, env, body) {
-  let payload;
-  try {
-    payload = await verifyToken(request, env);
-  } catch (e) {
-    return e;
-  }
+  const payload = await verifyToken(request, env);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -269,12 +228,7 @@ async function handleJoin(request, env, body) {
 // ============================================
 
 async function handleSync(request, env, code) {
-  let payload;
-  try {
-    payload = await verifyToken(request, env);
-  } catch (e) {
-    return e;
-  }
+  const payload = await verifyToken(request, env);
 
   const room = await env.DB.prepare(
     'SELECT * FROM rooms WHERE code = ?'
@@ -360,12 +314,7 @@ async function handleSync(request, env, code) {
 // ============================================
 
 async function handleState(request, env, body) {
-  let payload;
-  try {
-    payload = await verifyToken(request, env);
-  } catch (e) {
-    return e;
-  }
+  const payload = await verifyToken(request, env);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -426,12 +375,7 @@ async function handleState(request, env, body) {
 // ============================================
 
 async function handleMessage(request, env, body) {
-  let payload;
-  try {
-    payload = await verifyToken(request, env);
-  } catch (e) {
-    return e;
-  }
+  const payload = await verifyToken(request, env);
 
   const userId = payload.user_id;
   const { code, content } = body;
