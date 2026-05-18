@@ -876,8 +876,6 @@ function toggleViewMode() {
     cardState.dorms = getDormsOnFloor(state.currentFloor);
     cardState.cardIndex = Math.max(0, cardState.dorms.indexOf(state.currentDorm));
   }
-  document.getElementById('viewListBtn').classList.toggle('active', state.viewMode === 'list');
-  document.getElementById('viewCardBtn').classList.toggle('active', state.viewMode === 'card');
   refreshView();
 }
 
@@ -1026,6 +1024,10 @@ function goToNextCard() {
 // ============================================
 
 function showReportModal() {
+  if (!window.dormData) {
+    showToast('宿舍数据尚未加载，请稍后重试');
+    return;
+  }
   currentReportMode = 'absent';
   document.getElementById('btnAbsent').classList.add('active');
   document.getElementById('btnPresent').classList.remove('active');
@@ -1085,8 +1087,10 @@ function resetAllStatus() {
   if (confirm('确定要重置所有查寝记录吗？此操作将清空所有请假状态，所有人恢复为"在寝"。')) {
     state.studentStatus = {};
     localStorage.removeItem('dormCheckState');
+    sessionStorage.removeItem('checkMode');
     refreshView();
-    showToast('已重置，所有人恢复为在寝状态');
+    showToast('已重置，请选择查寝模式');
+    showModeSelection();
   }
 }
 
@@ -1189,5 +1193,26 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.target === this) closeReasonModal();
   });
 
-  showModeSelection();
+  // 点击列表空白处切换到卡片视图
+  document.getElementById('dormContainer').addEventListener('click', function(e) {
+    if (state.viewMode !== 'list') return;
+    if (e.target === this || !e.target.closest('.dorm-card')) {
+      toggleViewMode();
+    }
+  });
+
+  // 模式记忆：刷新后直接进入上次选择的模式
+  const savedMode = sessionStorage.getItem('checkMode');
+  if (savedMode) {
+    roomState.mode = savedMode;
+    document.getElementById('modeOverlay').classList.remove('active');
+    if (savedMode === 'single') {
+      document.getElementById('loadingOverlay').classList.remove('hidden');
+      loadDormData();
+    } else if (savedMode === 'multi') {
+      showRoomLobby();
+    }
+  } else {
+    showModeSelection();
+  }
 });
