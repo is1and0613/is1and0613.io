@@ -276,7 +276,9 @@ function generateReportText() {
   report += '合:' + totalLeaveSchool + '人请假离校 ' + totalBusiness + '人事假 ' + totalNotReturn + '人未返校 ' + totalLeaveOut + '人请假外出\n';
 
   gradeOrderDesc.forEach(grade => {
+    if (!internIncluded && grade === '2023级') return;
     const stats = gradeStats[grade];
+    if (!stats) return;
     const shortGrade = getShortGrade(grade);
 
     report += shortGrade + '级应到' + stats.should + ' 实到' + stats.actual + '\n';
@@ -317,6 +319,7 @@ function generateReportText() {
   gradeOrderAsc.forEach(grade => {
     if (!internIncluded && grade === '2023级') return;
     const stats = gradeStats[grade];
+    if (!stats) return;
     let line = grade + '应到' + stats.should + ' 在校' + stats.inSchool + ' 正常就寝' + stats.normalSleep;
     if (stats.leaveSchool.length > 0) { line += ' ' + stats.leaveSchool.length + '人请假离校'; }
     if (stats.business.length > 0) { line += ' ' + stats.business.length + '人事假'; }
@@ -384,6 +387,7 @@ function generatePresentReportText() {
   gradeOrderDesc.forEach(grade => {
     if (!internIncluded && grade === '2023级') return;
     const stats = gradeStats[grade];
+    if (!stats) return;
     const shortGrade = getShortGrade(grade);
     report += shortGrade + '级应到' + stats.should + ' 实到' + stats.presentCount + '\n';
     report += stats.presentCount + '在校\n';
@@ -433,6 +437,7 @@ function generateVacationReportText() {
   gradeOrder.forEach((grade, index) => {
     if (!internIncluded && grade === '2023级') return;
     const stats = gradeStats[grade];
+    if (!stats) return;
     const shortGrade = grade.replace('级', '').slice(-2);
     const line = shortGrade + '级女生' + stats.should + '名，在校' + stats.present + '名，正常就寝' + stats.present + '名';
     if (index < gradeOrder.length - 1) {
