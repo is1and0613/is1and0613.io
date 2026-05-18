@@ -703,39 +703,6 @@ body {
   font-weight: 500;
 }
 
-/* ===== View Toggle Bar ===== */
-
-.view-toggle-bar {
-  display: flex;
-  background: #f0f0f0;
-  border-radius: 10px;
-  padding: 3px;
-  margin: 0 8px 8px;
-  gap: 2px;
-}
-
-.view-toggle-btn {
-  flex: 1;
-  padding: 8px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 500;
-  color: #666;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  transition: all 0.2s;
-}
-
-.view-toggle-btn.active {
-  background: #2C436F;
-  color: white;
-}
-
 /* ===== Card View ===== */
 
 .card-view-container {

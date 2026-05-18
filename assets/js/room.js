@@ -24,6 +24,7 @@ function showModeSelection() {
 
 function selectMode(mode) {
   roomState.mode = mode;
+  sessionStorage.setItem('checkMode', mode);
   document.getElementById('modeOverlay').classList.remove('active');
 
   if (mode === 'single') {
