@@ -153,11 +153,6 @@
       </div>
     </div>
     <div class="room-members-bar" id="roomMembers"></div>
-    <div class="room-states-list" id="roomStatesList"></div>
-    <div class="room-bottom-bar">
-      <button class="room-bottom-btn secondary" onclick="toggleLogDrawer()"><i class="fas fa-history"></i> 日志</button>
-      <button class="room-bottom-btn primary" onclick="generateRoomReport()"><i class="fas fa-file-alt"></i> 报告</button>
-    </div>
   </div>
 
   <!-- 浮动聊天按钮 -->
@@ -197,6 +192,9 @@
     <div class="bottom-actions">
       <button class="action-btn primary" onclick="showReportModal()">
         <i class="fas fa-file-alt"></i>生成报告
+      </button>
+      <button class="action-btn secondary" id="multiLogBtn" onclick="toggleLogDrawer()" style="display:none;">
+        <i class="fas fa-history"></i>日志
       </button>
       <button class="action-btn secondary" onclick="uploadLeaveNote()">
         <i class="fas fa-cloud-upload-alt"></i>上传假单
