@@ -140,6 +140,7 @@ async function showRoomView() {
   document.getElementById('roomView').style.display = 'flex';
   document.getElementById('roomCodeDisplay').textContent = roomState.code;
   document.getElementById('floatingChatBtn').classList.add('show');
+  document.getElementById('multiLogBtn').style.display = '';
 
   // Load dorm data if not already loaded
   if (!window.dormData) {
@@ -259,14 +260,12 @@ function stopRoomPolling() {
 // ============================================
 
 async function updateRoomStudentState(studentName, newStatus, detail) {
-  // Optimistic local update
   const prevState = roomState.states.find(s => s.student_name === studentName);
   const oldStatus = prevState ? prevState.status : 'present';
   if (prevState) {
     prevState.status = newStatus;
     prevState.updated_at = new Date().toISOString();
   }
-  renderRoomStates();
 
   try {
     await apiFetch('/api/room', {
@@ -282,7 +281,7 @@ async function updateRoomStudentState(studentName, newStatus, detail) {
   } catch (e) {
     // Rollback on failure
     if (prevState) prevState.status = oldStatus;
-    renderRoomStates();
+    if (typeof refreshView === 'function') refreshView();
   }
 }
 
@@ -322,46 +321,6 @@ async function sendRoomMessage() {
 // ============================================
 // UI rendering
 // ============================================
-
-function renderRoomStates() {
-  const container = document.getElementById('roomStatesList');
-  if (!roomState.states.length) {
-    container.innerHTML = '<div class="room-empty">暂无学生数据</div>';
-    return;
-  }
-
-  // Group by dorm
-  const byDorm = {};
-  roomState.states.forEach(s => {
-    if (!byDorm[s.dorm_number]) byDorm[s.dorm_number] = [];
-    byDorm[s.dorm_number].push(s);
-  });
-
-  const dormNumbers = Object.keys(byDorm).sort((a, b) => parseInt(a) - parseInt(b));
-
-  container.innerHTML = dormNumbers.map(dorm => {
-    const states = byDorm[dorm].sort((a, b) => (parseInt(a.bed_number) || 0) - (parseInt(b.bed_number) || 0));
-    return `<div class="room-dorm-card">
-      <div class="room-dorm-title">${dorm} 宿舍 (${states.length}人)</div>
-      ${states.map(s => renderRoomStudentItem(s)).join('')}
-    </div>`;
-  }).join('');
-}
-
-function renderRoomStudentItem(s) {
-  const statusLabels = { present: '在寝', absent: '未归', leave: '请假', late: '迟到' };
-  const statusLabel = statusLabels[s.status] || '在寝';
-
-  return `<div class="room-student ${s.status !== 'present' ? 'room-student-' + s.status : ''}">
-    <span class="room-student-name">${s.dorm_number}-${s.bed_number || '?'} ${s.student_name}</span>
-    <div class="room-status-actions">
-      <button class="room-status-btn present" onclick="updateRoomStudentState('${s.student_name}','present')">在寝</button>
-      <button class="room-status-btn absent" onclick="updateRoomStudentState('${s.student_name}','absent')">未归</button>
-      <button class="room-status-btn leave" onclick="updateRoomStudentState('${s.student_name}','leave')">请假</button>
-    </div>
-    <span class="room-status-badge ${s.status}">${statusLabel}</span>
-  </div>`;
-}
 
 function renderRoomMembers() {
   const container = document.getElementById('roomMembers');
@@ -440,7 +399,9 @@ function updateRoomCountdown() {
 function leaveRoom(silent) {
   if (!silent && !confirm('确定要退出房间吗？')) return;
   stopRoomPolling();
-  roomState.mode = null;
+  // Switch to single mode
+  roomState.mode = 'single';
+  sessionStorage.setItem('checkMode', 'single');
   roomState.room = null;
   roomState.code = null;
   roomState.states = [];
@@ -449,10 +410,15 @@ function leaveRoom(silent) {
   roomState.members = [];
   roomState.lastReadId = 0;
   roomState.unreadCount = 0;
-  sessionStorage.removeItem('checkMode');
   updateChatBadge();
+  // Hide room-specific elements, show main UI
   hideRoomLobby();
-  showModeSelection();
+  closeAllDrawers();
+  document.getElementById('floatingChatBtn').classList.remove('show');
+  document.getElementById('multiLogBtn').style.display = 'none';
+  // Clear room-mapped student status, restore single-player state
+  if (typeof restoreState === 'function') restoreState();
+  if (typeof refreshView === 'function') refreshView();
 }
 
 // ============================================
@@ -522,18 +488,9 @@ function updateChatBadge() {
 }
 
 function generateRoomReport() {
-  const total = roomState.states.length;
-  const present = roomState.states.filter(s => s.status === 'present').length;
-  const absent = roomState.states.filter(s => s.status === 'absent').length;
-  const leave = roomState.states.filter(s => s.status === 'leave').length;
-
-  const now = new Date();
-  const report = `${now.getMonth()+1}月${now.getDate()}日晚寝（多人查寝）\n` +
-    `应到${total}人，实到${present}人\n` +
-    `未归${absent}人，请假${leave}人`;
-
-  copyToClipboard(report);
-  showToast('报告已复制到剪贴板');
+  if (typeof showReportModal === 'function') {
+    showReportModal();
+  }
 }
 
 // Countdown ticker
