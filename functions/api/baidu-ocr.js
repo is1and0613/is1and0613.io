@@ -1,7 +1,7 @@
 // functions/api/baidu-ocr.js
 // 已移除 formidable/fs 依赖，改用原生 FormData + ArrayBuffer，兼容 Cloudflare Workers
 
-import { jsonResponse, errorResponse, handleOptions } from './_utils.js';
+import { jsonResponse, errorResponse, handleOptions, withErrorGuard } from './_utils.js';
 
 async function getAccessToken(apiKey, secretKey) {
   const response = await fetch(
@@ -12,7 +12,7 @@ async function getAccessToken(apiKey, secretKey) {
   return data.access_token;
 }
 
-export async function onRequest(context) {
+export const onRequest = withErrorGuard(async (context) => {
   const request = context.request;
 
   if (request.method === 'OPTIONS') {
@@ -64,4 +64,4 @@ export async function onRequest(context) {
     console.error('Baidu OCR error:', error);
     return errorResponse(error.message, 500);
   }
-}
+});

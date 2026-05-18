@@ -1021,6 +1021,8 @@ function showReportModal() {
   document.getElementById('btnAbsent').classList.add('active');
   document.getElementById('btnPresent').classList.remove('active');
   document.getElementById('btnVacation').classList.remove('active');
+  // Sync intern switch visual with current state
+  document.getElementById('internSwitch').classList.toggle('on', internIncluded);
 
   const reportText = generateReportText();
   document.getElementById('reportContent').textContent = reportText;

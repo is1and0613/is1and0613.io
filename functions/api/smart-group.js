@@ -1,9 +1,9 @@
 // functions/api/smart-group.js
 // 已移除 openai 依赖，改用原生 fetch 调用 DeepSeek API，兼容 Cloudflare Workers
 
-import { jsonResponse, errorResponse, handleOptions } from './_utils.js';
+import { jsonResponse, errorResponse, handleOptions, withErrorGuard } from './_utils.js';
 
-export async function onRequest(context) {
+export const onRequest = withErrorGuard(async (context) => {
   const request = context.request;
 
   if (request.method === 'OPTIONS') {
@@ -106,4 +106,4 @@ export async function onRequest(context) {
     console.error('Smart group error:', error);
     return errorResponse(error.message || '智能分组失败', 500);
   }
-}
+});

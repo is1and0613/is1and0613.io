@@ -10,6 +10,12 @@ export const corsHeaders = {
 // JWT
 // ============================================
 
+function throwError(message, status) {
+  const err = new Error(message);
+  err.status = status;
+  throw err;
+}
+
 export async function verifyToken(request, env) {
   const authHeader = request.headers.get('Authorization');
   const token = authHeader && authHeader.startsWith('Bearer ')
@@ -17,17 +23,17 @@ export async function verifyToken(request, env) {
     : null;
 
   if (!token) {
-    throw errorResponse('未授权，请重新登录', 401);
+    throwError('未授权，请重新登录', 401);
   }
 
   const JWT_SECRET = env.JWT_SECRET;
   if (!JWT_SECRET) {
-    throw errorResponse('服务器配置错误', 500);
+    throwError('服务器配置错误', 500);
   }
 
   const parts = token.split('.');
   if (parts.length !== 3) {
-    throw errorResponse('Token 格式无效', 401);
+    throwError('Token 格式无效', 401);
   }
 
   const [headerB64, payloadB64, signatureB64] = parts;
@@ -45,20 +51,20 @@ export async function verifyToken(request, env) {
 
     const valid = await crypto.subtle.verify('HMAC', cryptoKey, signature, data);
     if (!valid) {
-      throw errorResponse('Token 签名无效', 401);
+      throwError('Token 签名无效', 401);
     }
 
     const payloadStr = base64UrlDecode(payloadB64);
     const payload = JSON.parse(payloadStr);
 
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      throw errorResponse('Token 已过期，请重新登录', 401);
+      throwError('Token 已过期，请重新登录', 401);
     }
 
     return payload;
   } catch (e) {
-    if (e instanceof Response) throw e;
-    throw errorResponse('Token 验证失败', 401);
+    if (e.status) throw e;
+    throwError('Token 验证失败', 401);
   }
 }
 
@@ -140,7 +146,9 @@ export async function verifyPassword(password, stored) {
 
 export function dbGuard(env) {
   if (!env || !env.DB) {
-    throw errorResponse('数据库服务暂未开通，请联系管理员在 Cloudflare Dashboard 绑定 D1', 503);
+    const err = new Error('数据库服务暂未开通，请稍后重试');
+    err.status = 503;
+    throw err;
   }
 }
 
@@ -171,4 +179,18 @@ export function handleOptions(allowedMethods = 'GET, POST, OPTIONS') {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
+}
+
+// 包装器：将 throw Error (with .status) 转换为 JSON error response
+export function withErrorGuard(handler) {
+  return async function(context) {
+    try {
+      return await handler(context);
+    } catch (e) {
+      if (e instanceof Response) return e;
+      const status = e.status || 500;
+      const message = e.message || '服务器内部错误';
+      return errorResponse(message, status);
+    }
+  };
 }
