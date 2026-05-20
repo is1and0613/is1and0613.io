@@ -237,6 +237,11 @@ body {
   animation: fadeIn 0.3s ease-out;
 }
 
+.dorm-card.search-matched {
+  border: 2px solid #DAA520;
+  box-shadow: 0 4px 16px rgba(218, 165, 32, 0.2);
+}
+
 /* Dorm Navigation */
 .dorm-nav {
   display: flex;
