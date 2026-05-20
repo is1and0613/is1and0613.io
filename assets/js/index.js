@@ -225,7 +225,7 @@ function generateReportText() {
 
   if (conflictNames.length > 0) {
     showToast('无法生成报告：' + conflictNames.join('、') + ' 同时标记为未归和事假');
-    return '【错误】存在冲突标记，请先修正';
+    return { overview: '【错误】存在冲突标记，请先修正', summary: '' };
   }
 
   const now = new Date();
@@ -271,10 +271,10 @@ function generateReportText() {
     totalLeaveOut += leaveOut.length;
   });
 
-  let report = '';
-  report += month + '月' + date + '日晚寝\n';
-  report += '女生情况:应到' + totalShould + ' 实到' + totalActual + '\n';
-  report += '合:' + totalLeaveSchool + '人请假离校 ' + totalBusiness + '人事假 ' + totalNotReturn + '人未返校 ' + totalLeaveOut + '人请假外出\n';
+  let overview = '';
+  overview += month + '月' + date + '日晚寝\n';
+  overview += '女生情况:应到' + totalShould + ' 实到' + totalActual + '\n';
+  overview += '合:' + totalLeaveSchool + '人请假离校 ' + totalBusiness + '人事假 ' + totalNotReturn + '人未返校 ' + totalLeaveOut + '人请假外出\n';
 
   gradeOrderDesc.forEach(grade => {
     if (!internIncluded && grade === '2023级') return;
@@ -282,7 +282,7 @@ function generateReportText() {
     if (!stats) return;
     const shortGrade = getShortGrade(grade);
 
-    report += shortGrade + '级应到' + stats.should + ' 实到' + stats.actual + '\n';
+    overview += shortGrade + '级应到' + stats.should + ' 实到' + stats.actual + '\n';
 
     if (stats.business.length > 0) {
       const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '舆情', '工作室', '数据分析工作室', '数据实战工作室'];
@@ -297,26 +297,27 @@ function generateReportText() {
       Object.keys(reasonCount).forEach(r => {
         if (!reasonOrder.includes(r)) { reasonStrParts.push(reasonCount[r] + r); }
       });
-      report += stats.business.length + '事假（' + reasonStrParts.join(' ') + '）\n';
-      report += stats.business.map(s => s.name).join(' ') + '\n';
+      overview += stats.business.length + '事假（' + reasonStrParts.join(' ') + '）\n';
+      overview += stats.business.map(s => s.name).join(' ') + '\n';
     }
 
     if (stats.leaveSchool.length > 0) {
-      report += stats.leaveSchool.length + '请假离校\n';
-      report += stats.leaveSchool.map(s => s.name).join(' ') + '\n';
+      overview += stats.leaveSchool.length + '请假离校\n';
+      overview += stats.leaveSchool.map(s => s.name).join(' ') + '\n';
     }
 
     if (stats.leaveOut.length > 0) {
-      report += stats.leaveOut.length + '请假外出\n';
-      report += stats.leaveOut.map(s => s.name).join(' ') + '\n';
+      overview += stats.leaveOut.length + '请假外出\n';
+      overview += stats.leaveOut.map(s => s.name).join(' ') + '\n';
     }
 
     if (stats.notReturn.length > 0) {
-      report += stats.notReturn.length + '未返校\n';
-      report += stats.notReturn.map(s => s.name).join(' ') + '\n';
+      overview += stats.notReturn.length + '未返校\n';
+      overview += stats.notReturn.map(s => s.name).join(' ') + '\n';
     }
   });
 
+  let summary = '';
   gradeOrderAsc.forEach(grade => {
     if (!internIncluded && grade === '2023级') return;
     const stats = gradeStats[grade];
@@ -325,10 +326,10 @@ function generateReportText() {
     if (stats.leaveSchool.length > 0) { line += ' ' + stats.leaveSchool.length + '人请假离校'; }
     if (stats.business.length > 0) { line += ' ' + stats.business.length + '人事假'; }
     if (stats.leaveOut.length > 0) { line += ' ' + stats.leaveOut.length + '人请假外出'; }
-    report += line + '\n';
+    summary += line + '\n';
   });
 
-  return report;
+  return { overview, summary };
 }
 
 function generatePresentReportText() {
@@ -343,7 +344,7 @@ function generatePresentReportText() {
   }
   if (conflictNames.length > 0) {
     showToast('无法生成报告：' + conflictNames.join('、') + ' 同时标记为未归和事假');
-    return '【错误】存在冲突标记，请先修正';
+    return { overview: '【错误】存在冲突标记，请先修正', summary: '' };
   }
 
   const now = new Date();
@@ -380,24 +381,38 @@ function generatePresentReportText() {
     totalLeaveOut += leaveOut.length;
   });
 
-  let report = '';
-  report += month + '月' + date + '日晚寝\n';
-  report += '女生情况:应到' + totalShould + ' 实到' + totalPresent + '\n';
-  report += '合:' + totalLeaveSchool + '人请假离校 ' + totalBusiness + '人事假 ' + totalNotReturn + '人未返校 ' + totalLeaveOut + '人请假外出\n';
+  let overview = '';
+  overview += month + '月' + date + '日晚寝\n';
+  overview += '女生情况:应到' + totalShould + ' 实到' + totalPresent + '\n';
+  overview += '合:' + totalLeaveSchool + '人请假离校 ' + totalBusiness + '人事假 ' + totalNotReturn + '人未返校 ' + totalLeaveOut + '人请假外出\n';
 
   gradeOrderDesc.forEach(grade => {
     if (!internIncluded && grade === '2023级') return;
     const stats = gradeStats[grade];
     if (!stats) return;
     const shortGrade = getShortGrade(grade);
-    report += shortGrade + '级应到' + stats.should + ' 实到' + stats.presentCount + '\n';
-    report += stats.presentCount + '在校\n';
+    overview += shortGrade + '级应到' + stats.should + ' 实到' + stats.presentCount + '\n';
+    overview += stats.presentCount + '在校\n';
     if (stats.present.length > 0) {
-      report += stats.present.map(s => s.name).join(' ') + '\n';
+      overview += stats.present.map(s => s.name).join(' ') + '\n';
     }
   });
 
-  return report;
+  let summary = '';
+  gradeOrderDesc.forEach(grade => {
+    if (!internIncluded && grade === '2023级') return;
+    const stats = gradeStats[grade];
+    if (!stats) return;
+    const inSchool = stats.should - stats.leaveSchool.length;
+    const normalSleep = inSchool - stats.business.length - stats.leaveOut.length;
+    let line = grade + '应到' + stats.should + ' 在校' + inSchool + ' 正常就寝' + normalSleep;
+    if (stats.leaveSchool.length > 0) { line += ' ' + stats.leaveSchool.length + '人请假离校'; }
+    if (stats.business.length > 0) { line += ' ' + stats.business.length + '人事假'; }
+    if (stats.leaveOut.length > 0) { line += ' ' + stats.leaveOut.length + '人请假外出'; }
+    summary += line + '\n';
+  });
+
+  return { overview, summary };
 }
 
 function generateVacationReportText() {
@@ -412,7 +427,7 @@ function generateVacationReportText() {
   }
   if (conflictNames.length > 0) {
     showToast('无法生成报告：' + conflictNames.join('、') + ' 同时标记为未归和事假');
-    return '【错误】存在冲突标记，请先修正';
+    return { overview: '【错误】存在冲突标记，请先修正', summary: '' };
   }
 
   const studentsByGrade = getAllStudentsByGrade();
@@ -434,7 +449,7 @@ function generateVacationReportText() {
     totalPresent += present;
   });
 
-  let report = '信息大队女生' + totalShould + '名，在校' + totalPresent + '名，正常就寝' + totalPresent + '名，其中：\n';
+  let overview = '信息大队女生' + totalShould + '名，在校' + totalPresent + '名，正常就寝' + totalPresent + '名，其中：\n';
   gradeOrder.forEach((grade, index) => {
     if (!internIncluded && grade === '2023级') return;
     const stats = gradeStats[grade];
@@ -442,13 +457,20 @@ function generateVacationReportText() {
     const shortGrade = grade.replace('级', '').slice(-2);
     const line = shortGrade + '级女生' + stats.should + '名，在校' + stats.present + '名，正常就寝' + stats.present + '名';
     if (index < gradeOrder.length - 1) {
-      report += line + '；\n';
+      overview += line + '；\n';
     } else {
-      report += line + '\n';
+      overview += line + '\n';
     }
   });
-  report += '所有就寝学生已按要求熄灯。';
-  return report;
+  overview += '所有就寝学生已按要求熄灯。';
+  let summary = '';
+  gradeOrder.forEach(grade => {
+    if (!internIncluded && grade === '2023级') return;
+    const stats = gradeStats[grade];
+    if (!stats) return;
+    summary += grade + '应到' + stats.should + ' 在校' + stats.present + ' 正常就寝' + stats.present + '\n';
+  });
+  return { overview, summary };
 }
 
 function switchReportMode(type) {
@@ -457,14 +479,15 @@ function switchReportMode(type) {
   document.getElementById('btnPresent').classList.toggle('active', type === 'present');
   document.getElementById('btnVacation').classList.toggle('active', type === 'vacation');
 
-  let reportText;
+  let result;
   switch (type) {
-    case 'absent': reportText = generateReportText(); break;
-    case 'present': reportText = generatePresentReportText(); break;
-    case 'vacation': reportText = generateVacationReportText(); break;
-    default: reportText = generateReportText();
+    case 'absent': result = generateReportText(); break;
+    case 'present': result = generatePresentReportText(); break;
+    case 'vacation': result = generateVacationReportText(); break;
+    default: result = generateReportText();
   }
-  document.getElementById('reportContent').textContent = reportText;
+  document.getElementById('reportOverview').textContent = result.overview;
+  document.getElementById('reportSummary').textContent = result.summary || '';
 }
 
 function toggleIntern() {
@@ -730,7 +753,7 @@ function switchFilter(filter) {
   }
 
   updateFilterUI();
-  if (state.viewMode === 'single' && state.currentDorm) renderSingleDorm();
+  if (state.viewMode === 'single' && state.currentDorm) renderSwipeDorm(state.currentDorm);
   else renderDormList();
 }
 
@@ -747,7 +770,7 @@ function updateFilterUI() {
 function enterDorm(dormNumber) {
   state.viewMode = 'single';
   state.currentDorm = dormNumber;
-  renderSingleDorm();
+  renderSwipeDorm(dormNumber);
 }
 
 function backToList() {
@@ -758,34 +781,67 @@ function backToList() {
 
 function goToDorm(dormNumber) {
   if (!dormNumber) return;
+  state.viewMode = 'single';
   state.currentDorm = dormNumber;
-  renderSingleDorm();
+  renderSwipeDorm(dormNumber);
 }
 
 function setStatus(name, status) {
+  const current = state.studentStatus[name] || { status: 'in' };
+  const oldEffective = Array.isArray(current.status)
+    ? (current.status.length === 1 ? current.status[0] : current.status[current.status.length - 1])
+    : current.status;
+
   if (status === 'leaveInside') {
-    const current = state.studentStatus[name];
-    if (current) {
-      if (Array.isArray(current.status)) {
-        if (current.status.includes('leaveInside') && current.reason) {
-          // 已有事由，重新选择
-        }
-      } else {
-        if (current.status === 'leaveInside' && current.reason) {
-          // 已有事由，直接设置
-        }
-      }
+    // 已有事由时再次点击事假 → 取消标记
+    if (oldEffective === 'leaveInside' && current.reason) {
+      state.studentStatus[name] = { status: 'in' };
+      if (navigator.vibrate) navigator.vibrate(15);
+      autoSaveState();
+      syncToRoomIfMulti(name, 'in');
+      showStatusChangeToast(name, 'leaveInside', 'in');
+      refreshView();
+      return;
     }
     showLeaveInsideOptions(name);
     return;
-  } else {
-    state.studentStatus[name] = { status: status };
   }
 
+  // 点击已激活状态 → 取消标记
+  if (oldEffective === status && status !== 'in') {
+    state.studentStatus[name] = { status: 'in' };
+    if (navigator.vibrate) navigator.vibrate(15);
+    autoSaveState();
+    syncToRoomIfMulti(name, 'in');
+    showStatusChangeToast(name, status, 'in');
+    refreshView();
+    return;
+  }
+
+  state.studentStatus[name] = { status: status };
   if (navigator.vibrate) navigator.vibrate(15);
+  showStatusChangeToast(name, oldEffective, status);
   autoSaveState();
   syncToRoomIfMulti(name, status);
   refreshView();
+}
+
+function showStatusChangeToast(studentName, oldStatus, newStatus) {
+  const statusMap = {
+    'in': '在寝', 'absent': '未归', 'leaveSchool': '离校',
+    'leaveInside': '事假', 'leaveOutside': '外出',
+    null: '未确认', '': '未确认',
+  };
+  const oldLabel = statusMap[oldStatus] || '未确认';
+  const newLabel = statusMap[newStatus] || '未确认';
+
+  if (oldStatus === 'in' || oldStatus === null || oldStatus === '') {
+    showToast(`已将 ${studentName} 标记为 ${newLabel}`, 'info', 2500);
+  } else if (newStatus === 'in' || newStatus === null || newStatus === '') {
+    showToast(`已取消 ${studentName} 的 ${oldLabel} 标记`, 'info', 2000);
+  } else {
+    showToast(`已将 ${studentName} 由 ${oldLabel} 更新为 ${newLabel}`, 'info', 2500);
+  }
 }
 
 function toggleStatus(name, status) {
@@ -796,6 +852,7 @@ function toggleStatus(name, status) {
     if (navigator.vibrate) navigator.vibrate(15);
     autoSaveState();
     syncToRoomIfMulti(name, status);
+    showStatusChangeToast(name, 'in', status);
     refreshView();
     return;
   }
@@ -835,7 +892,7 @@ function syncToRoomIfMulti(name, status) {
       effectiveStatus = st.status || 'in';
     }
   }
-  const statusMap = { in: 'present', absent: 'absent', leaveInside: 'leave', leaveSchool: 'leave', leaveOutside: 'leave' };
+  const statusMap = { in: 'present', absent: 'absent', leaveInside: 'leaveInside', leaveSchool: 'leaveSchool', leaveOutside: 'leaveOutside' };
   const roomStatus = statusMap[effectiveStatus] || 'present';
   const detail = (st && st.reason) || '';
   if (typeof updateRoomStudentState === 'function') {
@@ -950,7 +1007,11 @@ function selectReasonWithSub(reason, subReason) {
 function getStateKey() {
   const username = sessionStorage.getItem('username') || 'default';
   const mode = roomState.mode || sessionStorage.getItem('checkMode') || 'single';
-  return 'nightshift_state_' + username + '_' + mode;
+  let key = 'nightshift_state_' + username + '_' + mode;
+  if (mode === 'multi' && roomState.code) {
+    key += '_' + roomState.code;
+  }
+  return key;
 }
 
 function restoreState() {
@@ -1006,7 +1067,7 @@ function clearSavedState() {
 }
 
 function refreshView() {
-  if (state.viewMode === 'single' && state.currentDorm) renderSingleDorm();
+  if (state.viewMode === 'single' && state.currentDorm) renderSwipeDorm(state.currentDorm);
   else if (state.viewMode === 'card') renderCardView();
   else renderDormList();
 }
@@ -1191,8 +1252,9 @@ function showReportModal() {
   // Sync intern switch visual with current state
   document.getElementById('internSwitch').classList.toggle('on', internIncluded);
 
-  const reportText = generateReportText();
-  document.getElementById('reportContent').textContent = reportText;
+  const result = generateReportText();
+  document.getElementById('reportOverview').textContent = result.overview;
+  document.getElementById('reportSummary').textContent = result.summary || '';
   document.getElementById('reportModal').classList.add('active');
 }
 
@@ -1200,9 +1262,14 @@ function closeReportModal() {
   document.getElementById('reportModal').classList.remove('active');
 }
 
-function copyReport() {
-  const reportText = document.getElementById('reportContent').textContent;
-  copyToClipboard(reportText);
+function copyReportOverview() {
+  const text = document.getElementById('reportOverview').textContent;
+  copyToClipboard(text);
+}
+
+function copyReportSummary() {
+  const text = document.getElementById('reportSummary').textContent;
+  copyToClipboard(text);
 }
 
 function copyStudentName(name, event) {
@@ -1323,6 +1390,40 @@ function applyPendingLeaves() {
     }
   } catch (e) {
     console.error('应用假单数据失败:', e);
+  }
+}
+
+// ============================================
+// ============================================
+// 主题切换
+// ============================================
+
+(function initTheme() {
+  const saved = localStorage.getItem('nightshift_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  if (!localStorage.getItem('nightshift_theme')) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    if (mq.matches) document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  // Set initial icon on DOM ready
+  document.addEventListener('DOMContentLoaded', function() {
+    const theme = document.documentElement.getAttribute('data-theme');
+    const icon = document.querySelector('#btnTheme i');
+    if (icon) {
+      icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+  });
+})();
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('nightshift_theme', next);
+  const icon = document.querySelector('#btnTheme i');
+  if (icon) {
+    icon.className = next === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
   }
 }
 

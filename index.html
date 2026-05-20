@@ -52,6 +52,9 @@
   <div class="header">
     <h1><i class="fas fa-clipboard-check"></i> <span id="headerTitle">晚寝查寝系统</span><span id="headerRoomCode" style="display:none;"></span><span id="headerCountdown" style="display:none;"></span></h1>
     <div style="display: flex; gap: 8px;" id="headerActions">
+      <button class="header-action-btn" id="btnTheme" onclick="toggleTheme()" title="切换日间/夜间模式">
+        <i class="fas fa-moon"></i>
+      </button>
       <button class="header-action-btn" id="btnWorkWechat" onclick="openWorkWechat()" title="打开企业微信">
         <i class="fas fa-building"></i> 企业微信
       </button>
@@ -215,13 +218,27 @@
         </button>
       </div>
       <div class="modal-body">
-        <pre class="report-content" id="reportContent"></pre>
+        <div class="report-section">
+          <div class="report-section-header">
+            <span class="report-section-label">明细</span>
+            <button class="report-copy-btn" onclick="copyReportOverview()">
+              <i class="fas fa-copy"></i> 复制
+            </button>
+          </div>
+          <pre class="report-content" id="reportOverview"></pre>
+        </div>
+        <div class="report-section">
+          <div class="report-section-header">
+            <span class="report-section-label">汇总</span>
+            <button class="report-copy-btn" onclick="copyReportSummary()">
+              <i class="fas fa-copy"></i> 复制
+            </button>
+          </div>
+          <pre class="report-content" id="reportSummary"></pre>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="modal-btn secondary" onclick="closeReportModal()">关闭</button>
-        <button class="modal-btn primary" onclick="copyReport()">
-          <i class="fas fa-copy"></i> 复制文本
-        </button>
       </div>
     </div>
   </div>
@@ -272,5 +289,6 @@
   <script src="assets/js/name-matcher.js"></script>
   <script src="assets/js/index.js"></script>
   <script src="assets/js/room.js"></script>
+  <script src="assets/js/dorm-swipe.js"></script>
 </body>
 </html>
