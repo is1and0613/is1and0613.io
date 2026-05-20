@@ -252,14 +252,16 @@ function generateReportText() {
 
     students.forEach(s => {
       const st = state.studentStatus[s.name] || { status: 'in' };
-      if (st.status === 'leaveSchool') leaveSchool.push({...s, reason: st.reason});
-      else if (st.status === 'leaveInside') business.push({...s, reason: st.reason || '其他'});
-      else if (st.status === 'leaveOutside') leaveOut.push({...s, reason: st.reason});
+      const statuses = Array.isArray(st.status) ? st.status : [st.status];
+      if (statuses.includes('leaveSchool')) leaveSchool.push({...s, reason: st.reason});
+      if (statuses.includes('leaveInside')) business.push({...s, reason: st.reason || '其他'});
+      if (statuses.includes('leaveOutside')) leaveOut.push({...s, reason: st.reason});
+      if (statuses.includes('absent')) notReturn.push({...s});
     });
 
     const inSchool = should - leaveSchool.length;
     const normalSleep = inSchool - business.length - leaveOut.length;
-    const actual = normalSleep;
+    const actual = normalSleep - notReturn.length;
 
     gradeStats[grade] = { should, actual, inSchool, normalSleep, leaveSchool, business, notReturn, leaveOut };
 
@@ -365,11 +367,12 @@ function generatePresentReportText() {
 
     students.forEach(s => {
       const st = state.studentStatus[s.name] || { status: 'in' };
-      if (st.status === 'leaveSchool') leaveSchool.push({...s, reason: st.reason});
-      else if (st.status === 'leaveInside') business.push({...s, reason: st.reason || '其他'});
-      else if (st.status === 'leaveOutside') leaveOut.push({...s, reason: st.reason});
-      else if (st.status === 'absent') notReturn.push({...s});
-      else present.push({...s});
+      const statuses = Array.isArray(st.status) ? st.status : [st.status];
+      if (statuses.includes('leaveSchool')) leaveSchool.push({...s, reason: st.reason});
+      if (statuses.includes('leaveInside')) business.push({...s, reason: st.reason || '其他'});
+      if (statuses.includes('leaveOutside')) leaveOut.push({...s, reason: st.reason});
+      if (statuses.includes('absent')) notReturn.push({...s});
+      if (statuses[0] === 'in') present.push({...s});
     });
 
     gradeStats[grade] = { should, presentCount: present.length, present, leaveSchool, business, notReturn, leaveOut };
@@ -441,7 +444,9 @@ function generateVacationReportText() {
     const should = students.length;
     const leaveSchoolCount = students.filter(s => {
       const st = state.studentStatus[s.name];
-      return st && st.status === 'leaveSchool';
+      if (!st) return false;
+      const statuses = Array.isArray(st.status) ? st.status : [st.status];
+      return statuses.includes('leaveSchool');
     }).length;
     const present = should - leaveSchoolCount;
     gradeStats[grade] = { should, present };
@@ -532,7 +537,7 @@ function clearSearch() {
 function countMatchedPeople() {
   if (!searchKeyword) return 0;
   let count = 0;
-  const dorms = getDormsOnFloor(state.currentFloor);
+  const dorms = getDormsOnFloor('all');
   dorms.forEach(dormNumber => {
     const students = getStudentsInDorm(dormNumber);
     students.forEach(s => {
@@ -544,28 +549,13 @@ function countMatchedPeople() {
 
 function isSearchMatch(student) {
   if (!searchKeyword) return true;
-  try {
-    const k = searchKeyword;
-    // ClassName 和 dorm 保持简单 includes
-    if ((student.className && student.className.toLowerCase().includes(k)) ||
-        (student.dorm && student.dorm.includes(k))) {
-      return true;
-    }
-    // 人名使用模糊匹配
-    if (student.name) {
-      // 先快速 includes 检查
-      if (student.name.toLowerCase().includes(k)) return true;
-      // 再用编辑距离模糊匹配
-      if (typeof levenshteinDistance === 'function') {
-        const dist = levenshteinDistance(k, student.name.toLowerCase());
-        if (dist <= 2) return true;
-      }
-    }
-    return false;
-  } catch (e) {
-    console.error('搜索匹配错误:', e, student);
-    return false;
+  const k = searchKeyword;
+  if ((student.name && student.name.includes(k)) ||
+      (student.className && student.className.includes(k)) ||
+      (student.dorm && student.dorm.includes(k))) {
+    return true;
   }
+  return false;
 }
 
 // ============================================
@@ -574,7 +564,8 @@ function isSearchMatch(student) {
 
 function renderDormList() {
   const container = document.getElementById('dormContainer');
-  const dorms = getDormsOnFloor(state.currentFloor);
+  const searchActive = !!searchKeyword;
+  const dorms = searchActive ? getDormsOnFloor('all') : getDormsOnFloor(state.currentFloor);
 
   if (dorms.length === 0) {
     container.innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><p>该楼层暂无宿舍数据</p></div>';
@@ -591,6 +582,7 @@ function renderDormList() {
 
     const filtered = students.filter(s => {
       if (!isSearchMatch(s)) return false;
+      if (searchActive) return true;
       return matchesActiveFilters(s.name);
     });
 
@@ -654,7 +646,8 @@ function renderSingleDorm() {
 }
 
 function renderDormCard(dormNumber, students, totalBeds) {
-  return '<div class="dorm-card" onclick="enterDorm(\'' + dormNumber + '\')">' +
+  const searchActive = !!searchKeyword;
+  return '<div class="dorm-card' + (searchActive ? ' search-matched' : '') + '" onclick="enterDorm(\'' + dormNumber + '\')">' +
     '<div class="dorm-header">' +
       '<span class="dorm-title">' + dormNumber + '宿舍</span>' +
       '<span class="dorm-count">' + students.length + '人</span>' +
@@ -1165,6 +1158,7 @@ function renderDormCardFull(dormNumber, students) {
 }
 
 function onCardTouchStart(e) {
+  if (e.target.closest('.status-tags')) return;
   cardState.touchStartX = e.touches[0].clientX;
   cardState.touchStartY = e.touches[0].clientY;
   cardState.touchCurrentX = e.touches[0].clientX;

@@ -48,6 +48,7 @@ class DormSwipeController {
   }
 
   onStart(e) {
+    if (e.target.closest('.status-tags')) return;
     const touch = e.touches[0];
     this.isDragging = true;
     this.startX = touch.clientX;
@@ -156,6 +157,46 @@ class DormSwipeController {
     }, 300);
   }
 
+  nextByButton() {
+    if (this.currentIndex >= this.dorms.length - 1) {
+      if (typeof showToast === 'function') showToast('已经是最后一个宿舍');
+      return;
+    }
+    this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
+    this.currentEl.style.opacity = '0';
+    this.currentEl.style.transform = 'translateX(-15px)';
+    setTimeout(() => {
+      this.currentIndex++;
+      this.currentEl.style.transition = 'none';
+      this.currentEl.style.transform = 'translateX(15px)';
+      this.render(this.currentIndex);
+      void this.currentEl.offsetWidth;
+      this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
+      this.currentEl.style.opacity = '1';
+      this.currentEl.style.transform = 'translateX(0)';
+    }, 80);
+  }
+
+  prevByButton() {
+    if (this.currentIndex <= 0) {
+      if (typeof showToast === 'function') showToast('已经是第一个宿舍');
+      return;
+    }
+    this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
+    this.currentEl.style.opacity = '0';
+    this.currentEl.style.transform = 'translateX(15px)';
+    setTimeout(() => {
+      this.currentIndex--;
+      this.currentEl.style.transition = 'none';
+      this.currentEl.style.transform = 'translateX(-15px)';
+      this.render(this.currentIndex);
+      void this.currentEl.offsetWidth;
+      this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
+      this.currentEl.style.opacity = '1';
+      this.currentEl.style.transform = 'translateX(0)';
+    }, 80);
+  }
+
   render(index) {
     const dorm = this.dorms[index];
     if (!dorm) return;
@@ -230,11 +271,11 @@ function buildSwipeDormCard(dormNumber) {
 }
 
 function swipeToNext() {
-  if (window.dormSwipe) window.dormSwipe.next();
+  if (window.dormSwipe) window.dormSwipe.nextByButton();
 }
 
 function swipeToPrev() {
-  if (window.dormSwipe) window.dormSwipe.prev();
+  if (window.dormSwipe) window.dormSwipe.prevByButton();
 }
 
 function updateSwipeStats(dormNumber) {

@@ -18,30 +18,34 @@ const state = {
 // ============================================
 // 事由关键词映射
 // ============================================
-const reasonKeywords = {
-  '数分': '数分', '数分工作室': '数分', '数据分析工作室': '数分',
-  '数据分析': '数分', 'data': '数分',
-  '网安': '网安', '网安工作室': '网安', '网络安全工作室': '网安', '网络安全': '网安',
-  '阿sir': '阿sir', '啊sir': '阿sir', '啊SIR': '阿sir', '预备阿sir': '阿sir',
-  '自媒体工作室': '阿sir', '预备阿sir自媒体工作室': '阿sir', '自媒体': '阿sir',
-  'sir': '阿sir', '阿SIR': '阿sir', '阿Sir': '阿sir',
-  '数据实战': '数实战', '数据实战工作室': '数实战', '数实战': '数实战',
-  '舆情': '舆情', '舆情工作室': '舆情',
-  '网管': '网管', '网管工作室': '网管',
-
-  '分团委': '分团委', '学生会': '学生会', '合唱团': '合唱团',
-  '运动会': '运动会', '警乐团': '警乐团', '羽毛球': '羽毛球',
-  '篮球队': '篮球队', '篮球': '篮球队', '篮球队假单': '篮球队',
-
-  '辩论队': '辩论队', '辩队': '辩论队',
-  '备赛': '备赛', '比赛': '备赛', '竞赛': '备赛',
-  '复习': '复习', '学习': '学习', '自习': '学习',
-  '校督': '校督', '校督促': '校督',
-
-  '请假离校': 'leaveSchool', '离校': 'leaveSchool', '回家': 'leaveSchool',
-  '请假外出': 'leaveOutside', '外出': 'leaveOutside', '出门': 'leaveOutside',
-  '事假': 'leaveInside', '假': 'leaveInside'
-};
+const reasonKeywords = [
+  // Layer 1: leaveSchool (highest priority)
+  { keywords: ['请假离校', '离校', '回家'], mapped: 'leaveSchool', reasonLabel: '请假离校' },
+  // Layer 2: leaveOutside
+  { keywords: ['请假外出', '外出', '出门'], mapped: 'leaveOutside', reasonLabel: '请假外出' },
+  // Layer 3: org/team (leaveInside, higher priority)
+  { keywords: ['分团委'], mapped: '分团委', leaveType: 'leaveInside' },
+  { keywords: ['学生会'], mapped: '学生会', leaveType: 'leaveInside' },
+  { keywords: ['合唱团'], mapped: '合唱团', leaveType: 'leaveInside' },
+  { keywords: ['运动会'], mapped: '运动会', leaveType: 'leaveInside' },
+  { keywords: ['警乐团'], mapped: '警乐团', leaveType: 'leaveInside' },
+  { keywords: ['羽毛球'], mapped: '羽毛球', leaveType: 'leaveInside' },
+  { keywords: ['篮球队', '篮球', '篮球队假单'], mapped: '篮球队', leaveType: 'leaveInside' },
+  { keywords: ['辩论队', '辩队'], mapped: '辩论队', leaveType: 'leaveInside' },
+  { keywords: ['校督', '校督促'], mapped: '校督', leaveType: 'leaveInside' },
+  // Layer 4: studio/study (leaveInside, lower priority)
+  { keywords: ['数分', '数分工作室', '数据分析工作室', '数据分析', 'data'], mapped: '数分', leaveType: 'leaveInside' },
+  { keywords: ['网安', '网安工作室', '网络安全工作室', '网络安全'], mapped: '网安', leaveType: 'leaveInside' },
+  { keywords: ['阿sir', '啊sir', '啊SIR', '预备阿sir', '自媒体工作室', '预备阿sir自媒体工作室', '自媒体', 'sir', '阿SIR', '阿Sir'], mapped: '阿sir', leaveType: 'leaveInside' },
+  { keywords: ['数据实战', '数据实战工作室', '数实战'], mapped: '数实战', leaveType: 'leaveInside' },
+  { keywords: ['舆情', '舆情工作室'], mapped: '舆情', leaveType: 'leaveInside' },
+  { keywords: ['网管', '网管工作室'], mapped: '网管', leaveType: 'leaveInside' },
+  { keywords: ['备赛', '比赛', '竞赛'], mapped: '备赛', leaveType: 'leaveInside' },
+  { keywords: ['复习'], mapped: '复习', leaveType: 'leaveInside' },
+  { keywords: ['学习', '自习'], mapped: '学习', leaveType: 'leaveInside' },
+  // Layer 5: fallback (leaveInside, only explicit '事假')
+  { keywords: ['事假'], mapped: '其他', leaveType: 'leaveInside' }
+];
 
 const subReasons = ['分团委', '学生会', '学习', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '校督', '其他'];
 
@@ -250,15 +254,16 @@ function buildNameIndex() {
 function fuzzyMatchName(input) {
   if (!input || input.length < 2) return null;
 
-  const candidates = state.allNames.filter(name => {
-    return name[0] === input[0] || Math.abs(name.length - input.length) <= 2;
-  });
-
-  for (const name of candidates) {
-    if (input === name) {
-      return { matchedName: name, originalInput: input, matchType: 'exact', confidence: 'high', distance: 0 };
-    }
+  // Level 1: exact match
+  if (state.nameIndex[input]) {
+    return { matchedName: input, originalInput: input, matchType: 'exact', confidence: 'high', distance: 0 };
   }
+
+  // Filter candidates: surname must match, length diff ≤ 2
+  const surname = input[0];
+  const candidates = state.allNames.filter(name => {
+    return name[0] === surname && Math.abs(name.length - input.length) <= 2;
+  });
 
   if (!state.enableFuzzyMatch) {
     if (input.length >= 2 && /[一-龥].*[一-龥]/.test(input)) {
@@ -267,95 +272,20 @@ function fuzzyMatchName(input) {
     return null;
   }
 
-  const pickBest = (matches) => {
-    return matches.sort((a, b) => {
-      if (a.distance !== b.distance) return a.distance - b.distance;
-      return b.name.length - a.name.length;
-    })[0];
-  };
-
-  let matches = [];
-
+  // Level 2: strict surname match + same length after surname + edit distance ≤ 1
+  const givenInput = input.slice(1);
+  const matches = [];
   for (const name of candidates) {
-    if (name.includes(input) && input.length >= 2) {
-      matches.push({ name, distance: levenshteinDistance(input, name) });
+    const givenName = name.slice(1);
+    if (givenInput.length !== givenName.length) continue;
+    const dist = levenshteinDistance(givenInput, givenName);
+    if (dist <= 1) {
+      matches.push({ name, distance: dist });
     }
   }
   if (matches.length > 0) {
-    const best = pickBest(matches);
+    const best = matches.sort((a, b) => a.distance - b.distance)[0];
     return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'high', distance: best.distance };
-  }
-
-  for (const name of candidates) {
-    if (input.includes(name) && name.length >= 2) {
-      matches.push({ name, distance: levenshteinDistance(input, name) });
-    }
-  }
-  if (matches.length > 0) {
-    const best = pickBest(matches);
-    return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'high', distance: best.distance };
-  }
-
-  const getCommonChars = (a, b) => {
-    const setA = new Set(a);
-    let count = 0;
-    for (const ch of b) { if (setA.has(ch)) { count++; setA.delete(ch); } }
-    return count;
-  };
-
-  const meetsQualityThreshold = (input, name, distance) => {
-    const maxLen = Math.max(input.length, name.length);
-    const common = getCommonChars(input, name);
-    if (common < Math.ceil(maxLen / 2)) return false;
-    if (distance === 2 && Math.abs(input.length - name.length) > 1) return false;
-    return true;
-  };
-
-  for (const name of candidates) {
-    if (name[0] === input[0]) {
-      const dist = levenshteinDistance(input, name);
-      if (dist <= 2 && dist > 0 && meetsQualityThreshold(input, name, dist)) {
-        matches.push({ name, distance: dist });
-      }
-    }
-  }
-  if (matches.length > 0) {
-    const best = pickBest(matches);
-    const common = getCommonChars(input, best.name);
-    const maxLen = Math.max(input.length, best.name.length);
-    const confidence = (best.distance >= 2 && common < maxLen * 0.6) ? 'low' : 'high';
-    return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence, distance: best.distance };
-  }
-
-  for (const name of candidates) {
-    if (name[0] === input[0] && name[name.length - 1] === input[input.length - 1] && Math.abs(name.length - input.length) <= 2) {
-      const dist = levenshteinDistance(input, name);
-      if (dist <= 1 && dist > 0) { matches.push({ name, distance: dist }); }
-    }
-  }
-  if (matches.length > 0) {
-    const best = pickBest(matches);
-    return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'high', distance: best.distance };
-  }
-
-  for (const name of candidates) {
-    let hasSubstr = false;
-    if (input.length >= 2) {
-      for (let i = 0; i <= name.length - input.length; i++) {
-        const substr = name.substr(i, input.length);
-        if (levenshteinDistance(input, substr) <= 1) { hasSubstr = true; break; }
-      }
-    }
-    if (hasSubstr) {
-      const dist = levenshteinDistance(input, name);
-      if (dist <= 3 && dist > 0 && meetsQualityThreshold(input, name, dist)) {
-        matches.push({ name, distance: dist });
-      }
-    }
-  }
-  if (matches.length > 0) {
-    const best = pickBest(matches);
-    return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'low', distance: best.distance };
   }
 
   if (input.length >= 2 && /[一-龥].*[一-龥]/.test(input)) {
@@ -369,13 +299,12 @@ function fuzzyMatchName(input) {
 // 从事由关键词判断
 // ============================================
 function isReasonKeyword(token) {
-  if (reasonKeywords[token]) return true;
   const extendedReasons = {
     '数分': true, '网安': true, '阿sir': true, '辩论队': true,
     '备赛': true, '复习': true, '学习': true, '校督': true,
     '分团委': true, '学生会': true, '合唱团': true,
     '运动会': true, '警乐团': true, '羽毛球': true, '篮球队': true,
-    '数实战': true, '网管': true,
+    '数实战': true, '网管': true, '舆情': true,
     '请假离校': true, '离校': true, '事假': true, '外出': true,
     '请假外出': true, '回家': true, '出门': true
   };
@@ -383,9 +312,13 @@ function isReasonKeyword(token) {
 }
 
 function getLeaveTypeByReason(reason) {
-  const mapped = reasonKeywords[reason];
-  if (mapped === 'leaveSchool') return 'leaveSchool';
-  if (mapped === 'leaveOutside') return 'leaveOutside';
+  for (const rule of reasonKeywords) {
+    if (rule.keywords.includes(reason)) {
+      if (rule.mapped === 'leaveSchool') return 'leaveSchool';
+      if (rule.mapped === 'leaveOutside') return 'leaveOutside';
+      return 'leaveInside';
+    }
+  }
   return 'leaveInside';
 }
 
@@ -400,15 +333,17 @@ function findName(token) {
 
 function detectReason(text) {
   const lower = text.toLowerCase();
-  for (const [keyword, mapped] of Object.entries(reasonKeywords)) {
-    if (lower.includes(keyword.toLowerCase())) {
-      return {
-        found: true,
-        reason: mapped === 'leaveSchool' || mapped === 'leaveOutside' ?
-          (mapped === 'leaveSchool' ? '请假离校' : '请假外出') : mapped,
-        leaveType: mapped === 'leaveSchool' || mapped === 'leaveOutside' ? mapped : 'leaveInside',
-        matchedKeyword: keyword
-      };
+  for (const rule of reasonKeywords) {
+    for (const keyword of rule.keywords) {
+      if (lower.includes(keyword.toLowerCase())) {
+        const isExplicitLeaveType = rule.mapped === 'leaveSchool' || rule.mapped === 'leaveOutside';
+        return {
+          found: true,
+          reason: isExplicitLeaveType ? rule.reasonLabel : rule.mapped,
+          leaveType: isExplicitLeaveType ? rule.mapped : (rule.leaveType || 'leaveInside'),
+          matchedKeyword: keyword
+        };
+      }
     }
   }
   return { found: false };
@@ -428,19 +363,20 @@ function detectReasonInLine(line) {
 }
 
 function detectReasonInLineAdvanced(line) {
-  const result = { found: false, reason: null, leaveType: 'leaveInside' };
-  for (const [keyword, mapped] of Object.entries(reasonKeywords)) {
-    if (line.includes(keyword)) {
-      const isLeaveType = mapped === 'leaveSchool' || mapped === 'leaveOutside';
-      return {
-        found: true,
-        reason: isLeaveType ? (mapped === 'leaveSchool' ? '请假离校' : '请假外出') : mapped,
-        leaveType: isLeaveType ? mapped : 'leaveInside',
-        matchedKeyword: keyword
-      };
+  for (const rule of reasonKeywords) {
+    for (const keyword of rule.keywords) {
+      if (line.includes(keyword)) {
+        const isExplicitLeaveType = rule.mapped === 'leaveSchool' || rule.mapped === 'leaveOutside';
+        return {
+          found: true,
+          reason: isExplicitLeaveType ? rule.reasonLabel : rule.mapped,
+          leaveType: isExplicitLeaveType ? rule.mapped : (rule.leaveType || 'leaveInside'),
+          matchedKeyword: keyword
+        };
+      }
     }
   }
-  return result;
+  return { found: false, reason: null, leaveType: 'leaveInside' };
 }
 
 function isTitleLine(current, prev, next) {
@@ -812,16 +748,19 @@ function parseFallback(originalText, cleanedText) {
   let mainReason = '未分组';
   let mainLeaveType = 'leaveInside';
   const textLower = originalText.toLowerCase();
-  for (const [keyword, mapped] of Object.entries(reasonKeywords)) {
-    if (textLower.includes(keyword.toLowerCase())) {
-      if (mapped === 'leaveSchool' || mapped === 'leaveOutside') {
-        mainLeaveType = mapped;
-        mainReason = mapped === 'leaveSchool' ? '请假离校' : '请假外出';
-      } else {
-        mainReason = mapped;
+  for (const rule of reasonKeywords) {
+    for (const keyword of rule.keywords) {
+      if (textLower.includes(keyword.toLowerCase())) {
+        if (rule.mapped === 'leaveSchool' || rule.mapped === 'leaveOutside') {
+          mainLeaveType = rule.mapped;
+          mainReason = rule.mapped === 'leaveSchool' ? '请假离校' : '请假外出';
+        } else {
+          mainReason = rule.mapped;
+        }
+        break;
       }
-      break;
     }
+    if (mainReason !== '未分组') break;
   }
   return [{ name: mainReason, reason: mainReason === '未分组' ? '' : mainReason, leaveType: mainLeaveType, people: matchNames(allNames) }];
 }
@@ -975,9 +914,9 @@ function renderGroups() {
     const isCollapsed = state.collapsedStates[group.id] !== false;
     const isCustomReason = !subReasons.includes(group.reason) && group.reason !== '其他';
     const isSubReasonSelected = subReasons.includes(group.reason) && group.reason !== '其他';
-    const subMenuBtnText = isSubReasonSelected
-      ? '<i class="fas fa-chevron-down"></i> ' + group.reason
-      : (group.showSubReasons || group.reason === '其他' || isCustomReason ? '<i class="fas fa-chevron-up"></i> 收起其他选项' : '<i class="fas fa-chevron-down"></i> 更多事由（分团委、学生会...）');
+    const subMenuBtnText = group.showSubReasons
+      ? '<i class="fas fa-chevron-up"></i> 收起其他选项'
+      : '<i class="fas fa-chevron-down"></i> ' + (subReasons.includes(group.reason) ? group.reason : '更多事由');
     const otherInputValue = isCustomReason ? group.reason : '';
 
     return `
@@ -1019,7 +958,7 @@ function renderGroups() {
                style="width:100%; margin-bottom:8px; background:${group.showSubReasons || group.reason === '其他' || isCustomReason ? '#EAF0E2' : ''};">
             <span>${subMenuBtnText}</span>
           </div>
-          ${group.showSubReasons || subReasons.includes(group.reason) || isCustomReason ? `
+          ${group.showSubReasons ? `
           <div class="sub-reason-menu" style="padding:12px; background:#EAF0E2; border-radius:8px; margin-bottom:12px; animation: slideDown 0.3s ease;">
             <div class="label" style="font-size:12px; color:#2C436F; margin-bottom:8px;">请选择具体事由：</div>
             <div class="reason-options">

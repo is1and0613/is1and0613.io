@@ -51,11 +51,12 @@ export const onRequest = withErrorGuard(async (context) => {
               `    { "reason": "事由名称", "leaveType": "leaveInside" 或 "leaveSchool" 或 "leaveOutside", "people": ["人名1", "人名2"] }\n` +
               `  ]\n` +
               `}\n` +
-              `规则：\n` +
-              `- 事由关键词映射：数分/网安/阿sir/数实战/网管 → leaveInside, reason为该关键词；\n` +
-              `- 请假离校/离校 → leaveSchool, reason="请假离校"；\n` +
-              `- 请假外出/外出 → leaveOutside, reason="请假外出"；\n` +
-              `- 未匹配关键词的统一归为 leaveInside, reason="其他"。\n` +
+              `规则（按优先级从高到低，同一人命中多个关键词时取最高优先级）：\n` +
+              `优先级1（最高）— 请假离校/离校/回家 → leaveSchool, reason="请假离校"；\n` +
+              `优先级2 — 请假外出/外出/出门 → leaveOutside, reason="请假外出"；\n` +
+              `优先级3 — 组织/团队类：分团委/学生会/合唱团/运动会/警乐团/羽毛球/篮球队/篮球/辩论队/辩队/校督/校督促 → leaveInside, reason为该关键词；\n` +
+              `优先级4（最低）— 工作室/学习类：数分/网安/阿sir/数实战/网管/舆情/备赛/复习/学习/自习 → leaveInside, reason为该关键词；\n` +
+              `- 仅当文本明确出现"事假"二字且无更高优先级关键词时，归为 leaveInside, reason="其他"。\n` +
               `- 人名必须是已知宿舍名单中的人（后端会验证），但模型只需要提取疑似人名的中文词。\n` +
               `- 从文本中提取请假时间段，支持常见中文表达，如：\n` +
               `  - "2026年4月30日至5月2日"\n` +
