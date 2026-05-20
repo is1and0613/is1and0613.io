@@ -186,7 +186,7 @@ async function syncRoom() {
       // Map room states to single-mode studentStatus
       if (roomState.states.length > 0) {
         roomState.states.forEach(s => {
-          const statusMap = { present: 'in', absent: 'absent', leave: 'leaveInside', late: 'absent' };
+          const statusMap = { present: 'in', absent: 'absent', leaveSchool: 'leaveSchool', leaveInside: 'leaveInside', leaveOutside: 'leaveOutside' };
           const mappedStatus = statusMap[s.status] || 'in';
           state.studentStatus[s.student_name] = { status: mappedStatus, reason: s.detail || '' };
         });
@@ -378,7 +378,7 @@ function renderRoomLogs() {
 }
 
 function statusCn(s) {
-  const map = { present: '在寝', absent: '未归', leave: '请假', late: '迟到' };
+  const map = { present: '在寝', absent: '未归', leaveSchool: '离校', leaveInside: '事假', leaveOutside: '外出' };
   return map[s] || s;
 }
 

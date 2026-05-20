@@ -324,7 +324,7 @@ async function handleState(request, env, body) {
     return errorResponse('缺少必要参数: code, student_name, new_status', 400);
   }
 
-  const validStatuses = ['present', 'absent', 'leave', 'late'];
+  const validStatuses = ['present', 'absent', 'leaveSchool', 'leaveInside', 'leaveOutside'];
   if (!validStatuses.includes(new_status)) {
     return errorResponse('无效的状态值', 400);
   }
