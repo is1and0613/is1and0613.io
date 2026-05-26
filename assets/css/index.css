@@ -197,7 +197,7 @@ body {
 .filter-btn.active.absent { background: var(--status-absent); border-color: var(--status-absent); }
 .filter-btn.active.leaveSchool { background: var(--status-leaveSchool); border-color: var(--status-leaveSchool); }
 .filter-btn.active.leaveInside { background: var(--status-leaveInside); border-color: var(--status-leaveInside); }
-.filter-btn.active.leaveOutside { background: var(--status-leaveOutside); border-color: var(--status-leaveOutside); color: #053154; }
+.filter-btn.active.leaveOutside { background: var(--status-leaveOutside); border-color: var(--status-leaveOutside); color: #1A1D3C; }
 .filter-btn.active.all { background: var(--primary); border-color: var(--primary); }
 
 /* ===== Status Bar ===== */
@@ -745,8 +745,8 @@ body {
     gap: 6px;
   }
   .status-tag {
-    padding: 6px 10px 6px 20px;
-    font-size: 12px;
+    padding: 5px 10px;
+    font-size: 11px;
     flex-shrink: 0;
     user-select: none;
     -webkit-user-select: none;

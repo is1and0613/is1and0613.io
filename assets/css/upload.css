@@ -53,27 +53,28 @@ body {
 
 /* ===== Upload Area ===== */
 .upload-area {
-  background: var(--bg-card);
+  background: var(--bg);
   margin: 16px;
   padding: 40px 20px;
   border-radius: 12px;
-  border: 2px dashed var(--border);
+  border: 1px solid rgba(128, 128, 128, 0.15);
   text-align: center;
   cursor: pointer;
   transition: all 0.3s;
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow-inset);
 }
 
 .upload-area:hover {
   border-color: var(--primary);
-  background: var(--bg-light);
+  box-shadow: var(--shadow-raised-sm);
 }
 
 .upload-area.drag-over {
-  border-style: solid;
   border-color: var(--primary);
-  background: rgba(11, 50, 137, 0.04);
+  box-shadow: var(--shadow-inset);
+  background: var(--bg);
 }
 
 .upload-area:active {
@@ -99,7 +100,7 @@ body {
 
 /* Image upload variant */
 .upload-area.image-upload {
-  background: linear-gradient(135deg, rgba(11, 50, 137, 0.04) 0%, var(--bg-light) 100%);
+  background: var(--bg);
   border-color: var(--primary);
   min-height: 220px;
   display: flex;
@@ -353,7 +354,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(233, 241, 246, 0.9);
+  background: rgba(224, 229, 236, 0.92);
   z-index: 2000;
   display: none;
   align-items: center;
@@ -361,10 +362,6 @@ body {
   flex-direction: column;
   gap: 16px;
   backdrop-filter: blur(2px);
-}
-
-[data-theme="dark"] .ocr-loading-overlay {
-  background: rgba(5, 49, 84, 0.92);
 }
 
 .ocr-loading-overlay.active {
