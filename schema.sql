@@ -68,3 +68,25 @@ CREATE TABLE IF NOT EXISTS room_messages (
   content TEXT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 查寝批次表（跨设备同步）
+CREATE TABLE IF NOT EXISTS check_sessions (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  floor TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  status TEXT DEFAULT 'active',
+  last_sync DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 查寝记录表（跨设备同步）
+CREATE TABLE IF NOT EXISTS check_records (
+  session_id TEXT NOT NULL,
+  student_name TEXT NOT NULL,
+  status TEXT NOT NULL,
+  reason TEXT,
+  updated_by TEXT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (session_id, student_name)
+);
+CREATE INDEX IF NOT EXISTS idx_check_records_session ON check_records(session_id);

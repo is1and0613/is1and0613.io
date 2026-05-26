@@ -11,6 +11,7 @@ class DormSwipeController {
     this.velocityThreshold = 0.6;
 
     this.isDragging = false;
+    this.isAnimating = false;
     this.startX = 0;
     this.startY = 0;
     this.lastX = 0;
@@ -105,7 +106,9 @@ class DormSwipeController {
     const absX = Math.abs(this.deltaX);
     const fastSwipe = Math.abs(this.velocity || 0) > this.velocityThreshold;
 
-    if (absX > this.threshold || fastSwipe) {
+    if (this.isAnimating) {
+      this.snapBack();
+    } else if (absX > this.threshold || fastSwipe) {
       if (this.deltaX > 0) this.prev();
       else this.next();
     } else {
@@ -120,11 +123,13 @@ class DormSwipeController {
   }
 
   next() {
+    if (this.isAnimating) { this.snapBack(); return; }
     if (this.currentIndex >= this.dorms.length - 1) {
       this.snapBack();
       if (typeof showToast === 'function') showToast('已经是最后一个宿舍');
       return;
     }
+    this.isAnimating = true;
     this.currentEl.style.transform = 'translateX(-120%) rotate(-10deg) scale(0.85)';
     setTimeout(() => {
       this.currentIndex++;
@@ -135,15 +140,18 @@ class DormSwipeController {
       this.currentEl.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
       this.currentEl.style.transform = 'translateX(0) rotate(0deg) scale(1)';
       this.peekEl.style.opacity = '0';
+      setTimeout(() => { this.isAnimating = false; }, 310);
     }, 300);
   }
 
   prev() {
+    if (this.isAnimating) { this.snapBack(); return; }
     if (this.currentIndex <= 0) {
       this.snapBack();
       if (typeof showToast === 'function') showToast('已经是第一个宿舍');
       return;
     }
+    this.isAnimating = true;
     this.currentEl.style.transform = 'translateX(120%) rotate(10deg) scale(0.85)';
     setTimeout(() => {
       this.currentIndex--;
@@ -154,14 +162,17 @@ class DormSwipeController {
       this.currentEl.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
       this.currentEl.style.transform = 'translateX(0) rotate(0deg) scale(1)';
       this.peekEl.style.opacity = '0';
+      setTimeout(() => { this.isAnimating = false; }, 310);
     }, 300);
   }
 
   nextByButton() {
+    if (this.isAnimating) return;
     if (this.currentIndex >= this.dorms.length - 1) {
       if (typeof showToast === 'function') showToast('已经是最后一个宿舍');
       return;
     }
+    this.isAnimating = true;
     this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
     this.currentEl.style.opacity = '0';
     this.currentEl.style.transform = 'translateX(-15px)';
@@ -174,14 +185,17 @@ class DormSwipeController {
       this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
       this.currentEl.style.opacity = '1';
       this.currentEl.style.transform = 'translateX(0)';
+      setTimeout(() => { this.isAnimating = false; }, 80);
     }, 80);
   }
 
   prevByButton() {
+    if (this.isAnimating) return;
     if (this.currentIndex <= 0) {
       if (typeof showToast === 'function') showToast('已经是第一个宿舍');
       return;
     }
+    this.isAnimating = true;
     this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
     this.currentEl.style.opacity = '0';
     this.currentEl.style.transform = 'translateX(15px)';
@@ -194,6 +208,7 @@ class DormSwipeController {
       this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
       this.currentEl.style.opacity = '1';
       this.currentEl.style.transform = 'translateX(0)';
+      setTimeout(() => { this.isAnimating = false; }, 80);
     }, 80);
   }
 

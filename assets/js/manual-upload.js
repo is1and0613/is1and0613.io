@@ -196,8 +196,8 @@ function updateToOCRPipelineUI() {
       <p style="margin-top:8px; font-size:13px; color:#666;">请核对智能分组结果，确认无误后点击底部按钮</p>
     </div>
   `;
-  tipBanner.style.background = 'rgba(169,149,99,0.08)';
-  tipBanner.style.border = '1px solid var(--accent)';
+  tipBanner.style.background = 'rgba(11,50,137,0.06)';
+  tipBanner.style.border = '1px solid var(--primary)';
 
   document.querySelector('.format-guide').style.display = 'none';
   document.querySelector('.input-section .label').textContent = '提取到的文本（可编辑修正）：';
@@ -650,7 +650,7 @@ function parseSection(lines, sectionDefaultReason, sectionDefaultLeaveType) {
   const entries = [];
   let currentDefaultReason = sectionDefaultReason;
   let currentDefaultLeaveType = sectionDefaultLeaveType;
-  lines.forEach(line => {
+  lines.forEach((line, lineIdx) => {
     const lineEntries = parseLine(line, currentDefaultReason, currentDefaultLeaveType);
     entries.push(...lineEntries);
     const lineTokens = line.replace(/\d{3,4}-\d{1,3}(?:-\d{1,2})?/g, ' ')
@@ -659,7 +659,9 @@ function parseSection(lines, sectionDefaultReason, sectionDefaultLeaveType) {
       .split(/[\s,，、]+/).filter(t => t.length >= 2);
     if (lineTokens.length > 0) {
       const firstToken = lineTokens[0];
-      if (isReasonKeyword(firstToken) && !findName(firstToken)) {
+      // Skip group title lines: don't use them as reason defaults
+      const nextLines = lines.slice(lineIdx + 1, lineIdx + 3);
+      if (isReasonKeyword(firstToken) && !findName(firstToken) && !isGroupTitleLine(line, nextLines)) {
         currentDefaultReason = firstToken;
         currentDefaultLeaveType = getLeaveTypeByReason(currentDefaultReason);
       }
@@ -992,8 +994,8 @@ function updatePreviewPanel(original, cleaned, result) {
   }
 
   document.getElementById('resultPreview').innerHTML = resultHtml
-    .replace(/【(.+?)】/g, '<span style="color:var(--accent);font-weight:600;">【$1】</span>')
-    .replace(/匹配: (.+?)(?= 未匹配:|\n|$)/g, '匹配: <span style="color:var(--accent);">$1</span>')
+    .replace(/【(.+?)】/g, '<span style="color:var(--primary);font-weight:600;">【$1】</span>')
+    .replace(/匹配: (.+?)(?= 未匹配:|\n|$)/g, '匹配: <span style="color:var(--primary);">$1</span>')
     .replace(/未匹配: (.+?)(?=\n|$)/g, '未匹配: <span style="color:#ff8a00;">$1</span>')
     .replace(/\n/g, '<br>');
 }
@@ -1056,12 +1058,12 @@ function renderGroups() {
           </div>
           <div class="reason-option has-children ${group.showSubReasons || group.reason === '其他' || isCustomReason ? 'selected' : ''}"
                onclick="toggleSubReasons(event, ${group.id})"
-               style="width:100%; margin-bottom:8px; background:${group.showSubReasons || group.reason === '其他' || isCustomReason ? 'rgba(169,149,99,0.12)' : ''};">
+               style="width:100%; margin-bottom:8px; background:${group.showSubReasons || group.reason === '其他' || isCustomReason ? 'rgba(11,50,137,0.08)' : ''};">
             <span>${subMenuBtnText}</span>
           </div>
           ${group.showSubReasons ? `
           <div class="sub-reason-menu" style="padding:12px; background:var(--bg-light); border-radius:8px; margin-bottom:12px; animation: slideDown 0.3s ease;">
-            <div class="label" style="font-size:12px; color:var(--accent); margin-bottom:8px;">请选择具体事由：</div>
+            <div class="label" style="font-size:12px; color:var(--primary); margin-bottom:8px;">请选择具体事由：</div>
             <div class="reason-options">
               ${contextualSubReasons.map(r => `
                 <label class="reason-option ${group.reason === r || (r === '其他' && isCustomReason) ? 'selected' : ''}"
@@ -1126,12 +1128,19 @@ function setGroupReason(groupId, reason, isSub) {
   const group = state.groups.find(g => g.id === groupId);
   if (!group) return;
   if (!isSub) {
-    // 切换一级事由时，重置子事由状态
+    // 切换一级事由时，完全重置子事由状态
     group.reason = reason;
     group.showSubReasons = false;
   } else {
-    group.reason = reason;
-    group.showSubReasons = true;
+    // 选择具体子事由
+    if (reason === '其他') {
+      // "其他"：保持reason标记但不预填文字，等待用户输入
+      group.reason = '';
+      group.showSubReasons = true;
+    } else {
+      group.reason = reason;
+      group.showSubReasons = true;
+    }
   }
   renderGroups();
   updateReport();

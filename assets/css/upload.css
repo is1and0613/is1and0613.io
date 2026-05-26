@@ -6,8 +6,8 @@ body {
 
 /* ===== Info Banner ===== */
 .info-banner {
-  background: rgba(169, 149, 99, 0.08);
-  border: 1px solid rgba(169, 149, 99, 0.2);
+  background: rgba(11, 50, 137, 0.06);
+  border: 1px solid rgba(11, 50, 137, 0.15);
   border-radius: 12px;
   margin: 12px 16px;
   padding: 16px;
@@ -66,14 +66,14 @@ body {
 }
 
 .upload-area:hover {
-  border-color: var(--accent);
+  border-color: var(--primary);
   background: var(--bg-light);
 }
 
 .upload-area.drag-over {
   border-style: solid;
-  border-color: var(--accent);
-  background: rgba(169, 149, 99, 0.06);
+  border-color: var(--primary);
+  background: rgba(11, 50, 137, 0.04);
 }
 
 .upload-area:active {
@@ -99,15 +99,15 @@ body {
 
 /* Image upload variant */
 .upload-area.image-upload {
-  background: linear-gradient(135deg, rgba(169, 149, 99, 0.06) 0%, var(--bg-light) 100%);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(11, 50, 137, 0.04) 0%, var(--bg-light) 100%);
+  border-color: var(--primary);
   min-height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.upload-area.image-upload i { color: var(--accent); }
+.upload-area.image-upload i { color: var(--primary); }
 
 .upload-empty {
   display: flex;
@@ -353,7 +353,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(224, 229, 236, 0.9);
+  background: rgba(233, 241, 246, 0.9);
   z-index: 2000;
   display: none;
   align-items: center;
@@ -364,7 +364,7 @@ body {
 }
 
 [data-theme="dark"] .ocr-loading-overlay {
-  background: rgba(28, 49, 44, 0.9);
+  background: rgba(5, 49, 84, 0.92);
 }
 
 .ocr-loading-overlay.active {

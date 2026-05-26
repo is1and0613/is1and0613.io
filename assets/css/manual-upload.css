@@ -6,8 +6,8 @@ body {
 
 /* ===== Tip Banner ===== */
 .tip-banner {
-  background: rgba(169, 149, 99, 0.08);
-  border: 1px solid rgba(169, 149, 99, 0.25);
+  background: rgba(11, 50, 137, 0.06);
+  border: 1px solid rgba(11, 50, 137, 0.15);
   border-radius: 12px;
   margin: 12px 16px;
   padding: 16px;
@@ -115,7 +115,7 @@ body {
 .input-section textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(169, 149, 99, 0.3);
+  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(11, 50, 137, 0.2);
 }
 
 .input-section .parse-btn {
@@ -230,7 +230,7 @@ body {
 }
 
 .preview-step .step-content.cleaned {
-  background: rgba(169, 149, 99, 0.1);
+  background: rgba(11, 50, 137, 0.08);
   color: var(--text);
 }
 
@@ -354,13 +354,13 @@ body {
 }
 
 .type-option:hover {
-  border-color: var(--accent);
+  border-color: var(--primary);
 }
 
 .type-option.selected {
-  border-color: var(--accent);
-  background: rgba(169, 149, 99, 0.12);
-  color: var(--accent);
+  border-color: var(--primary);
+  background: rgba(11, 50, 137, 0.08);
+  color: var(--primary);
 }
 
 .type-option:active {
@@ -400,13 +400,13 @@ body {
 }
 
 .reason-option:hover {
-  border-color: var(--accent);
+  border-color: var(--primary);
 }
 
 .reason-option.selected {
-  border-color: var(--accent);
-  background: rgba(169, 149, 99, 0.12);
-  color: var(--accent);
+  border-color: var(--primary);
+  background: rgba(11, 50, 137, 0.08);
+  color: var(--primary);
 }
 
 .reason-option:active {
@@ -418,8 +418,8 @@ body {
 }
 
 .reason-option.has-children {
-  background: rgba(169, 149, 99, 0.08);
-  border-color: var(--accent);
+  background: rgba(11, 50, 137, 0.06);
+  border-color: var(--primary);
   color: var(--text);
   grid-column: span 3;
   text-align: center;
@@ -427,9 +427,9 @@ body {
 }
 
 .reason-option.has-children.selected {
-  background: var(--accent);
+  background: var(--primary);
   color: #fff;
-  border-color: var(--accent);
+  border-color: var(--primary);
 }
 
 .sub-reason-menu {
@@ -455,8 +455,8 @@ body {
 
 .reason-other-input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(169, 149, 99, 0.3);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(11, 50, 137, 0.2);
 }
 
 /* ===== People List ===== */
@@ -494,8 +494,8 @@ body {
 }
 
 .person-item.fuzzy-match {
-  background: rgba(169, 149, 99, 0.08);
-  border-left: 4px solid var(--accent);
+  background: rgba(240, 192, 64, 0.1);
+  border-left: 4px solid #d4a017;
   padding-left: 6px;
   position: relative;
 }
@@ -506,11 +506,11 @@ body {
   top: 4px;
   right: 8px;
   font-size: 10px;
-  color: var(--accent);
-  background: rgba(169, 149, 99, 0.12);
+  color: #d4a017;
+  background: rgba(212, 160, 23, 0.12);
   padding: 1px 6px;
   border-radius: 3px;
-  border: 1px solid rgba(169, 149, 99, 0.3);
+  border: 1px solid rgba(212, 160, 23, 0.3);
 }
 
 .fuzzy-warning {
@@ -523,7 +523,7 @@ body {
   min-width: 44px;
   min-height: 44px;
   vertical-align: middle;
-  color: var(--accent);
+  color: #d4a017;
 }
 
 .person-checkbox {
@@ -611,7 +611,7 @@ body {
 
 /* ===== Date Range Display ===== */
 .date-range-display {
-  background: rgba(169, 149, 99, 0.08);
+  background: rgba(11, 50, 137, 0.06);
   color: var(--text);
   padding: 10px 16px;
   border-radius: 8px;
@@ -632,15 +632,15 @@ body {
 
 /* ===== Text Highlights ===== */
 .highlight-name {
-  color: var(--accent);
+  color: var(--primary);
   font-weight: 600;
-  background: rgba(169, 149, 99, 0.2);
+  background: rgba(11, 50, 137, 0.1);
   padding: 0 4px;
   border-radius: 3px;
 }
 
 .highlight-reason {
-  color: var(--accent);
+  color: var(--primary);
   font-weight: 600;
 }
 

@@ -1007,21 +1007,37 @@ function getStateKey() {
   return key;
 }
 
-function restoreState() {
+async function restoreState() {
   const key = getStateKey();
+  let restored = false;
+
   try {
     const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Only restore names that still exist in current dormData
-      const restored = {};
+      const result = {};
       for (const name in parsed.studentStatus) {
         if (window.nameIndex && window.nameIndex[name]) {
-          restored[name] = parsed.studentStatus[name];
+          result[name] = parsed.studentStatus[name];
         }
       }
-      state.studentStatus = restored;
+      state.studentStatus = result;
+      restored = Object.keys(result).length > 0;
     }
+
+    // 本地无状态时，尝试从 D1 加载跨设备数据
+    if (!restored) {
+      const d1Data = await loadFromD1();
+      if (d1Data && Object.keys(d1Data).length > 0) {
+        state.studentStatus = d1Data;
+        autoSaveState(); // 同步到本地
+        refreshView();
+        if (typeof showToast === 'function') {
+          showToast('已从云端恢复查寝进度');
+        }
+      }
+    }
+
     // Also migrate old dormCheckState if exists
     const old = localStorage.getItem('dormCheckState');
     if (old) {
@@ -1043,11 +1059,113 @@ function restoreState() {
   }
 }
 
+// D1 sync debounce timer
+let d1SyncTimer = null;
+let d1SyncPending = false;
+
+function getSessionId() {
+  const username = sessionStorage.getItem('username') || 'default';
+  const mode = roomState.mode || sessionStorage.getItem('checkMode') || 'single';
+  let sid = 'ns_' + username + '_' + mode;
+  if (mode === 'multi' && roomState.code) {
+    sid += '_' + roomState.code;
+  }
+  return sid;
+}
+
+async function syncToD1() {
+  if (d1SyncPending) return;
+  d1SyncPending = true;
+
+  try {
+    const token = sessionStorage.getItem('authToken');
+    if (!token) { d1SyncPending = false; return; }
+
+    const sessionId = getSessionId();
+    const floor = state.currentFloor ? String(state.currentFloor) : null;
+
+    // 确保 session 存在
+    await apiFetch('/api/check-session?action=create', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, floor })
+    });
+
+    // 批量同步记录
+    const records = [];
+    for (const name in state.studentStatus) {
+      const st = state.studentStatus[name];
+      const status = Array.isArray(st.status) ? st.status.join(',') : (st.status || 'in');
+      records.push({
+        studentName: name,
+        status: status,
+        reason: st.reason || null
+      });
+    }
+
+    if (records.length > 0) {
+      await apiFetch('/api/check-session?action=sync', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId,
+          records,
+          deviceId: getDeviceId()
+        })
+      });
+    }
+  } catch (e) {
+    console.error('D1 sync failed:', e);
+  } finally {
+    d1SyncPending = false;
+  }
+}
+
+function getDeviceId() {
+  let deviceId = localStorage.getItem('nightshift_device_id');
+  if (!deviceId) {
+    deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('nightshift_device_id', deviceId);
+  }
+  return deviceId;
+}
+
+async function loadFromD1() {
+  try {
+    const token = sessionStorage.getItem('authToken');
+    if (!token) return null;
+
+    const sessionId = getSessionId();
+    const resp = await apiFetch('/api/check-session?action=records&session_id=' + encodeURIComponent(sessionId));
+    if (!resp || !resp.records || resp.records.length === 0) return null;
+
+    const restored = {};
+    for (const rec of resp.records) {
+      if (window.nameIndex && window.nameIndex[rec.student_name]) {
+        const statuses = rec.status.split(',');
+        restored[rec.student_name] = {
+          status: statuses.length === 1 ? statuses[0] : statuses,
+          reason: rec.reason || undefined
+        };
+      }
+    }
+    return restored;
+  } catch (e) {
+    console.error('D1 load failed:', e);
+    return null;
+  }
+}
+
 function autoSaveState() {
-  localStorage.setItem(getStateKey(), JSON.stringify({
+  const data = {
     studentStatus: state.studentStatus,
     lastSaveTime: new Date().toLocaleString()
-  }));
+  };
+  localStorage.setItem(getStateKey(), JSON.stringify(data));
+
+  // D1 同步（防抖：每 3 秒最多同步一次）
+  if (d1SyncTimer) clearTimeout(d1SyncTimer);
+  d1SyncTimer = setTimeout(() => {
+    syncToD1();
+  }, 3000);
 }
 
 function clearSavedState() {
@@ -1234,7 +1352,7 @@ function goToNextCard() {
 // 报告模态框函数
 // ============================================
 
-function showReportModal() {
+async function showReportModal() {
   if (!window.dormData) {
     showToast('宿舍数据尚未加载，请稍后重试');
     return;
@@ -1243,13 +1361,23 @@ function showReportModal() {
   document.getElementById('btnAbsent').classList.add('active');
   document.getElementById('btnPresent').classList.remove('active');
   document.getElementById('btnVacation').classList.remove('active');
-  // Sync intern switch visual with current state
   document.getElementById('internSwitch').classList.toggle('on', internIncluded);
 
   const result = generateReportText();
   document.getElementById('reportOverview').textContent = result.overview;
   document.getElementById('reportSummary').textContent = result.summary || '';
   document.getElementById('reportModal').classList.add('active');
+
+  // 标记查寝完成（D1 同步）
+  try {
+    const token = sessionStorage.getItem('authToken');
+    if (token) {
+      await apiFetch('/api/check-session?action=complete', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId: getSessionId() })
+      });
+    }
+  } catch (e) { /* 静默失败 */ }
 }
 
 function closeReportModal() {

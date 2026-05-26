@@ -19,24 +19,24 @@
 }
 
 .mode-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   padding: 32px 24px;
   width: 90%;
   max-width: 360px;
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-card);
 }
 
 .mode-card h2 {
   font-size: 20px;
-  color: #333;
+  color: var(--text);
   margin-bottom: 8px;
 }
 
 .mode-card .mode-subtitle {
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
   margin-bottom: 28px;
 }
 
@@ -48,9 +48,9 @@
 
 .mode-btn {
   padding: 16px;
-  border: 2px solid #e8e8e8;
+  border: 2px solid var(--border);
   border-radius: 12px;
-  background: white;
+  background: var(--bg);
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
@@ -59,27 +59,34 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  color: var(--text);
+  box-shadow: var(--shadow-raised-sm);
 }
 
 .mode-btn:hover {
-  border-color: #2C436F;
+  border-color: var(--primary);
 }
 
 .mode-btn.primary {
-  background: #2C436F;
+  background: var(--primary);
   color: white;
-  border-color: #2C436F;
+  border-color: var(--primary);
 }
 
 .mode-btn.primary:active {
-  background: #1a2d4d;
+  background: var(--primary-dark);
+}
+
+.mode-btn:active {
+  box-shadow: var(--shadow-pressed);
+  transform: scale(0.96);
 }
 
 .mode-btn .mode-desc {
   display: block;
   font-size: 12px;
   font-weight: normal;
-  color: #999;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
@@ -99,21 +106,21 @@
 .room-lobby h2 {
   text-align: center;
   font-size: 20px;
-  color: #333;
+  color: var(--text);
   margin-bottom: 24px;
 }
 
 .room-lobby-section {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
 }
 
 .room-lobby-section h3 {
   font-size: 16px;
-  color: #333;
+  color: var(--text);
   margin-bottom: 12px;
 }
 
@@ -129,9 +136,15 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #2C436F;
+  background: var(--primary);
   color: white;
   transition: opacity 0.2s;
+  box-shadow: var(--shadow-raised-sm);
+}
+
+.room-lobby-btn:active {
+  box-shadow: var(--shadow-pressed);
+  transform: scale(0.96);
 }
 
 .room-lobby-btn:disabled {
@@ -148,24 +161,28 @@
 .room-code-input {
   flex: 1;
   padding: 12px 16px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 18px;
   text-transform: uppercase;
   text-align: center;
   letter-spacing: 4px;
   outline: none;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: var(--shadow-inset);
 }
 
 .room-code-input:focus {
-  border-color: #2C436F;
-  box-shadow: 0 0 0 3px rgba(44,67,111,0.1);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-inset), 0 0 0 3px rgba(11, 50, 137, 0.1);
 }
 
 .room-lobby-btn.secondary {
-  background: white;
-  border: 1px solid #2C436F;
-  color: #2C436F;
+  background: var(--bg);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  box-shadow: var(--shadow-raised-sm);
 }
 
 /* ===== Room View ===== */
@@ -192,25 +209,26 @@
 
 .room-members-bar {
   padding: 8px 16px;
-  background: #f5f5f5;
+  background: var(--bg);
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   flex-shrink: 0;
   overflow-x: auto;
+  border-bottom: 1px solid var(--border);
 }
 
 .room-member-tag {
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 12px;
-  background: #e8e8e8;
-  color: #666;
+  background: var(--bg-light);
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .room-member-tag.creator {
-  background: #2C436F;
+  background: var(--primary);
   color: white;
 }
 
@@ -221,9 +239,9 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-lg);
   z-index: 1100;
   transform: translateY(100%);
   transition: transform 0.3s ease;
@@ -239,7 +257,7 @@
 .drawer-handle {
   width: 36px;
   height: 4px;
-  background: #d9d9d9;
+  background: var(--border);
   border-radius: 2px;
   margin: 8px auto;
 }
@@ -248,8 +266,8 @@
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #f0f0f0;
+  color: var(--text);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -265,15 +283,15 @@
   border: none;
   background: transparent;
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all 0.2s;
 }
 
 .drawer-tab.active {
-  color: #2C436F;
-  border-bottom-color: #2C436F;
+  color: var(--primary);
+  border-bottom-color: var(--primary);
   font-weight: 600;
 }
 
@@ -281,13 +299,18 @@
   width: 28px;
   height: 28px;
   border: none;
-  background: #f5f5f5;
+  background: var(--bg);
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--text-muted);
+  box-shadow: var(--shadow-raised-sm);
+}
+
+.drawer-close:active {
+  box-shadow: var(--shadow-pressed);
 }
 
 .drawer-body {
@@ -299,26 +322,26 @@
 /* Messages */
 .room-msg {
   padding: 6px 0;
-  border-bottom: 1px solid #f9f9f9;
+  border-bottom: 1px solid var(--border-light);
   font-size: 13px;
   line-height: 1.5;
 }
 
 .room-msg-user {
   font-weight: 600;
-  color: #2C436F;
+  color: var(--primary);
   margin-right: 6px;
 }
 
 .room-msg-time {
   font-size: 11px;
-  color: #ccc;
+  color: var(--text-muted);
   margin-left: 8px;
 }
 
 .room-chat-empty, .room-log-empty {
   text-align: center;
-  color: #ccc;
+  color: var(--text-muted);
   padding: 24px;
   font-size: 14px;
 }
@@ -328,39 +351,48 @@
   display: flex;
   gap: 8px;
   padding: 10px 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-light);
 }
 
 .chat-input {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border);
   border-radius: 20px;
   font-size: 14px;
   outline: none;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: var(--shadow-inset-sm);
 }
 
 .chat-input:focus {
-  border-color: #2C436F;
+  border-color: var(--primary);
 }
 
 .chat-send-btn {
   padding: 10px 16px;
   border: none;
   border-radius: 20px;
-  background: #2C436F;
+  background: var(--primary);
   color: white;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  box-shadow: var(--shadow-raised-sm);
+}
+
+.chat-send-btn:active {
+  box-shadow: var(--shadow-pressed);
+  transform: scale(0.92);
 }
 
 /* Log items */
 .room-log-item {
   padding: 4px 0;
   font-size: 12px;
-  color: #666;
-  border-bottom: 1px solid #f9f9f9;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-light);
 }
 
 /* Floating chat button */
@@ -371,10 +403,10 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: #2C436F;
+  background: var(--primary);
   color: white;
   border: none;
-  box-shadow: 0 4px 12px rgba(44,67,111,0.3);
+  box-shadow: 0 4px 12px rgba(11, 50, 137, 0.3);
   cursor: pointer;
   z-index: 1050;
   display: none;
@@ -394,7 +426,7 @@
   min-width: 18px;
   height: 18px;
   border-radius: 9px;
-  background: #e74c3c;
+  background: var(--danger);
   color: white;
   font-size: 11px;
   display: flex;
