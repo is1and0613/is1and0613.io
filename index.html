@@ -131,7 +131,7 @@
     <h2><i class="fas fa-users"></i> 多人查寝</h2>
     <div class="room-lobby-section">
       <h3>创建新房间</h3>
-      <p style="font-size:13px;color:#999;margin-bottom:12px;">创建一个查寝房间，邀请其他同学加入协同查寝。房间有效期为90分钟。</p>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">创建一个查寝房间，邀请其他同学加入协同查寝。房间有效期为90分钟。</p>
       <button class="room-lobby-btn" id="createRoomBtn" onclick="createRoom()">
         <i class="fas fa-plus-circle"></i>创建房间
       </button>
@@ -249,9 +249,9 @@
       <div class="reason-header">选择事假事由</div>
       <div class="reason-list">
         <div class="reason-item has-submenu" onclick="toggleStudioSubMenu(event)">
-          <span>工作室 <i class="fas fa-chevron-down" id="studioArrow" style="color:#999; transition: transform 0.3s;"></i></span>
+          <span>工作室 <i class="fas fa-chevron-down" id="studioArrow" style="color:var(--text-muted); transition: transform 0.3s;"></i></span>
         </div>
-        <div class="sub-reason-list" id="studioSubList" style="display: none; background: #f5f5f5; padding: 0 16px;">
+        <div class="sub-reason-list" id="studioSubList" style="display: none; background: var(--bg-light); padding: 0 16px;">
           <div class="reason-item" onclick="selectStudioReason('数据分析工作室')" style="padding-left: 32px; font-size: 13px;">数据分析工作室（数分）</div>
           <div class="reason-item" onclick="selectStudioReason('数据实战工作室')" style="padding-left: 32px; font-size: 13px;">数据实战工作室（数实战）</div>
           <div class="reason-item" onclick="selectStudioReason('网安工作室')" style="padding-left: 32px; font-size: 13px;">网安工作室</div>
@@ -259,25 +259,25 @@
           <div class="reason-item" onclick="selectStudioReason('网管工作室')" style="padding-left: 32px; font-size: 13px;">网管工作室</div>
           <div class="reason-item" onclick="selectStudioReason('阿sir工作室')" style="padding-left: 32px; font-size: 13px;">阿sir工作室</div>
         </div>
-        <div class="reason-item" onclick="selectReason('备赛')">备赛 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-        <div class="reason-item" onclick="selectReason('辩论队')">辩论队 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-        <div class="reason-item" onclick="selectReason('复习')">复习 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-        <div class="reason-item" onclick="selectReason('学习')">学习 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-        <div class="reason-item" onclick="selectReason('校督')">校督 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
+        <div class="reason-item" onclick="selectReason('备赛')">备赛 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+        <div class="reason-item" onclick="selectReason('辩论队')">辩论队 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+        <div class="reason-item" onclick="selectReason('复习')">复习 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+        <div class="reason-item" onclick="selectReason('学习')">学习 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+        <div class="reason-item" onclick="selectReason('校督')">校督 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
         <div class="reason-item has-submenu" onclick="toggleSubMenu(event)">
-          <span>其他 <i class="fas fa-chevron-down" style="color:#999; transition: transform 0.3s;"></i></span>
+          <span>其他 <i class="fas fa-chevron-down" style="color:var(--text-muted); transition: transform 0.3s;"></i></span>
         </div>
-        <div class="sub-reason-list" id="subReasonList" style="display: none; background: #f5f5f5; padding: 0 16px;">
-          <div class="reason-item" onclick="selectReason('分团委')" style="padding-left: 32px; font-size: 13px;">分团委 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-          <div class="reason-item" onclick="selectReason('学生会')" style="padding-left: 32px; font-size: 13px;">学生会 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-          <div class="reason-item" onclick="selectReason('合唱团')" style="padding-left: 32px; font-size: 13px;">合唱团 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-          <div class="reason-item" onclick="selectReason('运动会')" style="padding-left: 32px; font-size: 13px;">运动会 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-          <div class="reason-item" onclick="selectReason('警乐团')" style="padding-left: 32px; font-size: 13px;">警乐团 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-          <div class="reason-item" onclick="selectReason('羽毛球')" style="padding-left: 32px; font-size: 13px;">羽毛球 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-          <div class="reason-item" onclick="selectReason('篮球队')" style="padding-left: 32px; font-size: 13px;">篮球队 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
-          <div class="reason-item" onclick="selectReason('其他')" style="padding-left: 32px; font-size: 13px; color: #666;">自定义其他 <i class="fas fa-chevron-right" style="color:#999;"></i></div>
+        <div class="sub-reason-list" id="subReasonList" style="display: none; background: var(--bg-light); padding: 0 16px;">
+          <div class="reason-item" onclick="selectReason('分团委')" style="padding-left: 32px; font-size: 13px;">分团委 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+          <div class="reason-item" onclick="selectReason('学生会')" style="padding-left: 32px; font-size: 13px;">学生会 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+          <div class="reason-item" onclick="selectReason('合唱团')" style="padding-left: 32px; font-size: 13px;">合唱团 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+          <div class="reason-item" onclick="selectReason('运动会')" style="padding-left: 32px; font-size: 13px;">运动会 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+          <div class="reason-item" onclick="selectReason('警乐团')" style="padding-left: 32px; font-size: 13px;">警乐团 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+          <div class="reason-item" onclick="selectReason('羽毛球')" style="padding-left: 32px; font-size: 13px;">羽毛球 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+          <div class="reason-item" onclick="selectReason('篮球队')" style="padding-left: 32px; font-size: 13px;">篮球队 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+          <div class="reason-item" onclick="selectReason('其他')" style="padding-left: 32px; font-size: 13px; color: var(--text-muted);">自定义其他 <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
         </div>
-        <div class="reason-item" style="color:#999; border-top: 1px solid #e8e8e8; margin-top: 8px;" onclick="closeReasonModal()">取消 <i class="fas fa-times" style="color:#999;"></i></div>
+        <div class="reason-item" style="color:var(--text-muted); border-top: 1px solid var(--border); margin-top: 8px;" onclick="closeReasonModal()">取消 <i class="fas fa-times" style="color:var(--text-muted);"></i></div>
       </div>
     </div>
   </div>

@@ -184,3 +184,36 @@ function showUpdateToast() {
 
 // 页面加载时自动注册 Service Worker
 registerServiceWorker();
+
+// ============================================
+// 主题初始化（所有页面通用）
+// ============================================
+(function initTheme() {
+  const saved = localStorage.getItem('nightshift_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  if (!localStorage.getItem('nightshift_theme')) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    if (mq.matches) document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  // 更新主题图标
+  document.addEventListener('DOMContentLoaded', function() {
+    updateThemeIcon();
+  });
+})();
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('nightshift_theme', next);
+  updateThemeIcon();
+}
+
+function updateThemeIcon() {
+  const icons = document.querySelectorAll('#btnTheme i, .btn-theme i');
+  const theme = document.documentElement.getAttribute('data-theme');
+  icons.forEach(icon => {
+    icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+  });
+}

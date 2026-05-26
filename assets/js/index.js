@@ -1388,39 +1388,7 @@ function applyPendingLeaves() {
 }
 
 // ============================================
-// ============================================
-// 主题切换
-// ============================================
-
-(function initTheme() {
-  const saved = localStorage.getItem('nightshift_theme') || 'light';
-  document.documentElement.setAttribute('data-theme', saved);
-  if (!localStorage.getItem('nightshift_theme')) {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    if (mq.matches) document.documentElement.setAttribute('data-theme', 'dark');
-  }
-  // Set initial icon on DOM ready
-  document.addEventListener('DOMContentLoaded', function() {
-    const theme = document.documentElement.getAttribute('data-theme');
-    const icon = document.querySelector('#btnTheme i');
-    if (icon) {
-      icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-    }
-  });
-})();
-
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('nightshift_theme', next);
-  const icon = document.querySelector('#btnTheme i');
-  if (icon) {
-    icon.className = next === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-  }
-}
-
+// 主题切换（实现在 utils.js，此处仅作注释说明）
 // ============================================
 // 事件监听初始化
 // ============================================

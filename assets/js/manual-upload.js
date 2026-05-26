@@ -16,6 +16,24 @@ const state = {
 };
 
 // ============================================
+// 区队/专业排除规则（可配置数组）
+// 匹配「专业简称+数字」的区队标识，不参与事由匹配
+// ============================================
+const classExclusionPatterns = [
+  '网安', '信安', '情报', '数分', '治安', '侦查', '刑技', '交管', '特警'
+];
+
+function isClassIdentifier(text) {
+  if (!text || text.length < 4) return false;
+  for (const prefix of classExclusionPatterns) {
+    if (text.startsWith(prefix) && /\d{2,4}$/.test(text.slice(prefix.length))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ============================================
 // 事由关键词映射
 // ============================================
 const reasonKeywords = [
@@ -48,6 +66,33 @@ const reasonKeywords = [
 ];
 
 const subReasons = ['分团委', '学生会', '学习', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '校督', '其他'];
+
+// 事由层级映射：一级事由 → 其下属具体事由列表
+const reasonHierarchy = {
+  '数分': ['学习', '备赛', '复习'],
+  '网安': ['学习', '备赛', '竞赛'],
+  '阿sir': ['学习', '备赛'],
+  '数实战': ['学习', '备赛', '竞赛'],
+  '网管': ['学习'],
+  '舆情': ['学习', '备赛'],
+  '篮球队': ['篮球队'],
+  '辩论队': ['辩论队'],
+  '备赛': ['备赛'],
+  '复习': ['复习'],
+  '合唱团': ['合唱团'],
+  '运动会': ['运动会'],
+  '警乐团': ['警乐团'],
+  '羽毛球': ['羽毛球'],
+  '校督': ['校督'],
+  '分团委': ['分团委'],
+  '学生会': ['学生会']
+};
+
+function getSubReasonsFor(reason) {
+  if (reasonHierarchy[reason]) return reasonHierarchy[reason];
+  // 对于未知一级事由，返回通用子事由列表
+  return ['学习', '备赛', '其他'];
+}
 
 // ============================================
 // 初始化
@@ -147,12 +192,12 @@ function updateToOCRPipelineUI() {
   const tipBanner = document.querySelector('.tip-banner');
   tipBanner.innerHTML = `
     <div class="content">
-      <p><i class="fas fa-magic" style="color:#2C436F;"></i> 图片识别结果已自动导入</p>
+      <p><i class="fas fa-magic" style="color:var(--accent);"></i> 图片识别结果已自动导入</p>
       <p style="margin-top:8px; font-size:13px; color:#666;">请核对智能分组结果，确认无误后点击底部按钮</p>
     </div>
   `;
-  tipBanner.style.background = '#EAF0E2';
-  tipBanner.style.border = '1px solid #2C436F';
+  tipBanner.style.background = 'rgba(169,149,99,0.08)';
+  tipBanner.style.border = '1px solid var(--accent)';
 
   document.querySelector('.format-guide').style.display = 'none';
   document.querySelector('.input-section .label').textContent = '提取到的文本（可编辑修正）：';
@@ -259,11 +304,18 @@ function fuzzyMatchName(input) {
     return { matchedName: input, originalInput: input, matchType: 'exact', confidence: 'high', distance: 0 };
   }
 
-  // Filter candidates: surname must match, length diff ≤ 2
+  // Filter candidates: surname must match strictly, full name length diff ≤ 1
   const surname = input[0];
   const candidates = state.allNames.filter(name => {
-    return name[0] === surname && Math.abs(name.length - input.length) <= 2;
+    return name[0] === surname && Math.abs(name.length - input.length) <= 1;
   });
+
+  if (candidates.length === 0) {
+    if (input.length >= 2 && /[一-龥].*[一-龥]/.test(input)) {
+      return { matchedName: null, originalInput: input, matchType: 'none', confidence: 'low', distance: null };
+    }
+    return null;
+  }
 
   if (!state.enableFuzzyMatch) {
     if (input.length >= 2 && /[一-龥].*[一-龥]/.test(input)) {
@@ -272,20 +324,32 @@ function fuzzyMatchName(input) {
     return null;
   }
 
-  // Level 2: strict surname match + same length after surname + edit distance ≤ 1
+  // Level 2: strict surname match + edit distance on full name
+  // Given-name portion: allow length diff ≤ 1, edit distance ≤ 1
   const givenInput = input.slice(1);
   const matches = [];
   for (const name of candidates) {
     const givenName = name.slice(1);
-    if (givenInput.length !== givenName.length) continue;
-    const dist = levenshteinDistance(givenInput, givenName);
+    // Given-name length must differ by at most 1
+    if (Math.abs(givenInput.length - givenName.length) > 1) continue;
+    // Full-name edit distance ≤ 1 (for 2-3 char names = max 1 char diff)
+    const dist = levenshteinDistance(input, name);
     if (dist <= 1) {
       matches.push({ name, distance: dist });
+      continue;
+    }
+    // Relaxed: given-name edit distance ≤ 1 when same length (handles 形近字)
+    if (givenInput.length === givenName.length) {
+      const givenDist = levenshteinDistance(givenInput, givenName);
+      if (givenDist <= 1) {
+        matches.push({ name, distance: givenDist + 0.5 });
+      }
     }
   }
+
   if (matches.length > 0) {
     const best = matches.sort((a, b) => a.distance - b.distance)[0];
-    return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'high', distance: best.distance };
+    return { matchedName: best.name, originalInput: input, matchType: 'fuzzy', confidence: 'medium', distance: best.distance };
   }
 
   if (input.length >= 2 && /[一-龥].*[一-龥]/.test(input)) {
@@ -299,6 +363,8 @@ function fuzzyMatchName(input) {
 // 从事由关键词判断
 // ============================================
 function isReasonKeyword(token) {
+  // 排除区队标识（如网安2501、信安2401）
+  if (isClassIdentifier(token)) return false;
   const extendedReasons = {
     '数分': true, '网安': true, '阿sir': true, '辩论队': true,
     '备赛': true, '复习': true, '学习': true, '校督': true,
@@ -335,15 +401,18 @@ function detectReason(text) {
   const lower = text.toLowerCase();
   for (const rule of reasonKeywords) {
     for (const keyword of rule.keywords) {
-      if (lower.includes(keyword.toLowerCase())) {
-        const isExplicitLeaveType = rule.mapped === 'leaveSchool' || rule.mapped === 'leaveOutside';
-        return {
-          found: true,
-          reason: isExplicitLeaveType ? rule.reasonLabel : rule.mapped,
-          leaveType: isExplicitLeaveType ? rule.mapped : (rule.leaveType || 'leaveInside'),
-          matchedKeyword: keyword
-        };
-      }
+      const idx = lower.indexOf(keyword.toLowerCase());
+      if (idx === -1) continue;
+      // 排除区队标识：关键词后紧跟数字（如"网安2501"中的"网安"）
+      const afterKeyword = text.slice(idx + keyword.length);
+      if (/^\d{2,4}/.test(afterKeyword)) continue;
+      const isExplicitLeaveType = rule.mapped === 'leaveSchool' || rule.mapped === 'leaveOutside';
+      return {
+        found: true,
+        reason: isExplicitLeaveType ? rule.reasonLabel : rule.mapped,
+        leaveType: isExplicitLeaveType ? rule.mapped : (rule.leaveType || 'leaveInside'),
+        matchedKeyword: keyword
+      };
     }
   }
   return { found: false };
@@ -365,15 +434,18 @@ function detectReasonInLine(line) {
 function detectReasonInLineAdvanced(line) {
   for (const rule of reasonKeywords) {
     for (const keyword of rule.keywords) {
-      if (line.includes(keyword)) {
-        const isExplicitLeaveType = rule.mapped === 'leaveSchool' || rule.mapped === 'leaveOutside';
-        return {
-          found: true,
-          reason: isExplicitLeaveType ? rule.reasonLabel : rule.mapped,
-          leaveType: isExplicitLeaveType ? rule.mapped : (rule.leaveType || 'leaveInside'),
-          matchedKeyword: keyword
-        };
-      }
+      const idx = line.indexOf(keyword);
+      if (idx === -1) continue;
+      // 排除区队标识：关键词后紧跟数字
+      const afterKeyword = line.slice(idx + keyword.length);
+      if (/^\d{2,4}/.test(afterKeyword)) continue;
+      const isExplicitLeaveType = rule.mapped === 'leaveSchool' || rule.mapped === 'leaveOutside';
+      return {
+        found: true,
+        reason: isExplicitLeaveType ? rule.reasonLabel : rule.mapped,
+        leaveType: isExplicitLeaveType ? rule.mapped : (rule.leaveType || 'leaveInside'),
+        matchedKeyword: keyword
+      };
     }
   }
   return { found: false, reason: null, leaveType: 'leaveInside' };
@@ -381,13 +453,19 @@ function detectReasonInLineAdvanced(line) {
 
 function isTitleLine(current, prev, next) {
   if (current.length < 15 && detectReason(current).found) {
-    if (next && (extractNamesFromLine(next).length > 0 || isDormFormat(next))) return true;
+    if (next && (extractNamesFromLine(next).length > 0 || isDormFormat(next))) {
+      // 排除分组标题: 短行(2-6字纯文字)后接人名 → 视为分组名而非事由标题
+      if (isGroupTitleLine(current, [next])) return false;
+      return true;
+    }
   }
   return false;
 }
 
 function isPureTitle(line) {
   if (line.length > 20) return false;
+  // 排除分组标题（短行纯文字）
+  if (/^[一-龥a-zA-Z]{2,6}$/.test(line.replace(/\//g, '').trim())) return false;
   const hasReason = detectReason(line).found;
   const hasName = extractNamesFromLine(line).length > 0;
   return hasReason && !hasName;
@@ -514,18 +592,22 @@ function splitIntoSections(text) {
   const sections = [];
   const lines = text.split('\n');
   let currentSection = null;
-  lines.forEach(line => {
-    line = line.trim();
-    if (!line) return;
+  const allLines = lines.map(l => l.trim());
+  for (let i = 0; i < allLines.length; i++) {
+    const line = allLines[i];
+    if (!line) continue;
     const sectionHeader = parseSectionHeader(line);
-    if (sectionHeader.isHeader) {
+    // 分组标题保护：若该行检测为header但与后续人名列表相邻，视为分组名而非事由
+    const nextLines = allLines.slice(i + 1, i + 3);
+    const isGroupTitle = isGroupTitleLine(line, nextLines);
+    if (sectionHeader.isHeader && !isGroupTitle) {
       if (currentSection && currentSection.lines.length > 0) sections.push(currentSection);
       currentSection = { lines: [], defaultReason: sectionHeader.reason, defaultLeaveType: sectionHeader.leaveType };
     } else {
       if (!currentSection) currentSection = { lines: [], defaultReason: null, defaultLeaveType: 'leaveInside' };
       currentSection.lines.push(line);
     }
-  });
+  }
   if (currentSection && currentSection.lines.length > 0) sections.push(currentSection);
   return sections;
 }
@@ -547,6 +629,21 @@ function parseSectionHeader(line) {
     result.leaveType = reasonInfo.leaveType;
   }
   return result;
+}
+
+function isGroupTitleLine(line, nextLines) {
+  // 短行（2-4字）且后续行含人名 → 优先视为分组标题
+  const trimmed = line.replace(/\//g, '').trim();
+  if (trimmed.length < 2 || trimmed.length > 6) return false;
+  if (!/^[一-龥a-zA-Z]+$/.test(trimmed)) return false;
+  // 检查后续2行是否包含人名
+  const checkLines = nextLines || [];
+  for (const next of checkLines) {
+    if (!next) continue;
+    const names = extractNamesFromLine(next.trim());
+    if (names.length > 0) return true;
+  }
+  return false;
 }
 
 function parseSection(lines, sectionDefaultReason, sectionDefaultLeaveType) {
@@ -799,7 +896,8 @@ async function parseInput() {
     }
 
     state.groups = data.groups.map((g, idx) => {
-      const isCustomReason = g.reason && !subReasons.includes(g.reason) && g.reason !== '其他';
+      const isCustomReason = g.reason && !subReasons.includes(g.reason) && g.reason !== '其他'
+        && !Object.keys(reasonHierarchy).includes(g.reason);
       return {
         id: idx,
         name: g.reason,
@@ -851,7 +949,8 @@ function fallbackParseInput(text, cleanedText) {
   }
 
   state.groups = bestResult.map((g, idx) => {
-    const isCustomReason = g.reason && !subReasons.includes(g.reason) && g.reason !== '其他';
+    const isCustomReason = g.reason && !subReasons.includes(g.reason) && g.reason !== '其他'
+      && !Object.keys(reasonHierarchy).includes(g.reason);
     return { ...g, id: idx, showSubReasons: subReasons.includes(g.reason) || g.reason === '其他' || isCustomReason };
   });
 
@@ -893,8 +992,8 @@ function updatePreviewPanel(original, cleaned, result) {
   }
 
   document.getElementById('resultPreview').innerHTML = resultHtml
-    .replace(/【(.+?)】/g, '<span style="color:#2C436F;font-weight:600;">【$1】</span>')
-    .replace(/匹配: (.+?)(?= 未匹配:|\n|$)/g, '匹配: <span style="color:#2C436F;">$1</span>')
+    .replace(/【(.+?)】/g, '<span style="color:var(--accent);font-weight:600;">【$1】</span>')
+    .replace(/匹配: (.+?)(?= 未匹配:|\n|$)/g, '匹配: <span style="color:var(--accent);">$1</span>')
     .replace(/未匹配: (.+?)(?=\n|$)/g, '未匹配: <span style="color:#ff8a00;">$1</span>')
     .replace(/\n/g, '<br>');
 }
@@ -912,8 +1011,10 @@ function renderGroups() {
 
   container.innerHTML = state.groups.map(group => {
     const isCollapsed = state.collapsedStates[group.id] !== false;
-    const isCustomReason = !subReasons.includes(group.reason) && group.reason !== '其他';
+    const isCustomReason = group.reason && !subReasons.includes(group.reason) && group.reason !== '其他'
+      && !Object.keys(reasonHierarchy).includes(group.reason);
     const isSubReasonSelected = subReasons.includes(group.reason) && group.reason !== '其他';
+    const contextualSubReasons = getSubReasonsFor(group.reason);
     const subMenuBtnText = group.showSubReasons
       ? '<i class="fas fa-chevron-up"></i> 收起其他选项'
       : '<i class="fas fa-chevron-down"></i> ' + (subReasons.includes(group.reason) ? group.reason : '更多事由');
@@ -955,14 +1056,14 @@ function renderGroups() {
           </div>
           <div class="reason-option has-children ${group.showSubReasons || group.reason === '其他' || isCustomReason ? 'selected' : ''}"
                onclick="toggleSubReasons(event, ${group.id})"
-               style="width:100%; margin-bottom:8px; background:${group.showSubReasons || group.reason === '其他' || isCustomReason ? '#EAF0E2' : ''};">
+               style="width:100%; margin-bottom:8px; background:${group.showSubReasons || group.reason === '其他' || isCustomReason ? 'rgba(169,149,99,0.12)' : ''};">
             <span>${subMenuBtnText}</span>
           </div>
           ${group.showSubReasons ? `
-          <div class="sub-reason-menu" style="padding:12px; background:#EAF0E2; border-radius:8px; margin-bottom:12px; animation: slideDown 0.3s ease;">
-            <div class="label" style="font-size:12px; color:#2C436F; margin-bottom:8px;">请选择具体事由：</div>
+          <div class="sub-reason-menu" style="padding:12px; background:var(--bg-light); border-radius:8px; margin-bottom:12px; animation: slideDown 0.3s ease;">
+            <div class="label" style="font-size:12px; color:var(--accent); margin-bottom:8px;">请选择具体事由：</div>
             <div class="reason-options">
-              ${subReasons.map(r => `
+              ${contextualSubReasons.map(r => `
                 <label class="reason-option ${group.reason === r || (r === '其他' && isCustomReason) ? 'selected' : ''}"
                        onclick="setGroupReason(${group.id}, '${r}', true)"
                        style="${r === '其他' ? 'grid-column:span 2;' : ''}">
@@ -985,7 +1086,7 @@ function renderGroups() {
               <div class="person-checkbox ${p.checked ? 'checked' : ''}">${p.checked ? '<i class="fas fa-check"></i>' : ''}</div>
               <div class="person-info">
                 <span class="person-name">${p.name}</span>
-                ${p.matchType === 'fuzzy' ? '<i class="fas fa-exclamation-triangle fuzzy-warning" onclick="event.stopPropagation(); showToast(\'原识别为：' + p.originalInput + ' → 匹配为：' + p.name + '\')" title="点击查看原输入"></i>' : ''}
+                ${p.matchType === 'fuzzy' ? `<i class="fas fa-exclamation-triangle fuzzy-warning" onclick="event.stopPropagation(); showToast('模糊匹配：输入 \\'${p.originalInput}\\' → 系统姓名 \\'${p.name}\\'，请人工确认')" title="模糊匹配：输入 ${p.originalInput} → 系统姓名 ${p.name}，请人工确认"></i>` : ''}
                 <span class="person-location">${p.info.dorm}-${p.info.bed}</span>
               </div>
             </div>
@@ -1024,8 +1125,14 @@ function setGroupType(groupId, type) {
 function setGroupReason(groupId, reason, isSub) {
   const group = state.groups.find(g => g.id === groupId);
   if (!group) return;
-  group.reason = reason;
-  if (isSub) group.showSubReasons = true;
+  if (!isSub) {
+    // 切换一级事由时，重置子事由状态
+    group.reason = reason;
+    group.showSubReasons = false;
+  } else {
+    group.reason = reason;
+    group.showSubReasons = true;
+  }
   renderGroups();
   updateReport();
 }
