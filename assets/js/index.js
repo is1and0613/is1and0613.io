@@ -1026,7 +1026,8 @@ async function restoreState() {
     }
 
     // 本地无状态时，尝试从 D1 加载跨设备数据
-    if (!restored) {
+    // 仅在用户曾有查寝记录时才发起请求（避免首次访问触发无效 API 调用）
+    if (!restored && localStorage.getItem('nightshift_has_checked') === '1') {
       const d1Data = await loadFromD1();
       if (d1Data && Object.keys(d1Data).length > 0) {
         state.studentStatus = d1Data;
@@ -1160,6 +1161,8 @@ function autoSaveState() {
     lastSaveTime: new Date().toLocaleString()
   };
   localStorage.setItem(getStateKey(), JSON.stringify(data));
+  // 标记用户曾有查寝记录，供 restoreState 判断是否从 D1 拉取
+  localStorage.setItem('nightshift_has_checked', '1');
 
   // D1 同步（防抖：每 3 秒最多同步一次）
   if (d1SyncTimer) clearTimeout(d1SyncTimer);

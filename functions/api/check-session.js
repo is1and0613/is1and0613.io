@@ -13,8 +13,21 @@ export const onRequest = withErrorGuard(async (context) => {
   dbGuard(env);
   const db = env.DB;
 
+  // JWT payload 中字段为 user_id (snake_case)
+  const userId = user.user_id;
   const url = new URL(request.url);
   const action = url.searchParams.get('action') || 'list';
+
+  console.log('[check-session]', { action, userId, url: url.pathname + url.search });
+
+  // 关键参数空值兜底：user_id 无效时直接返回空数据，不触达 D1
+  if (!userId) {
+    console.log('[check-session] user_id 缺失，返回空数据');
+    if (request.method === 'GET') {
+      return jsonResponse({ sessions: [], records: [], session: null });
+    }
+    return errorResponse('用户身份无效', 401);
+  }
 
   if (request.method === 'GET') {
     // 列出当前用户的活跃 sessions
@@ -26,7 +39,7 @@ export const onRequest = withErrorGuard(async (context) => {
          WHERE s.user_id = ? AND s.status = 'active'
          GROUP BY s.id
          ORDER BY s.last_sync DESC`
-      ).bind(user.userId || user.id).all();
+      ).bind(String(userId)).all();
 
       return jsonResponse({ sessions: sessions.results });
     }
@@ -36,11 +49,14 @@ export const onRequest = withErrorGuard(async (context) => {
       const sessionId = url.searchParams.get('session_id');
       if (!sessionId) return errorResponse('缺少 session_id', 400);
 
+      // session 不存在时返回空记录，不报 404/500
       const session = await db.prepare(
         'SELECT * FROM check_sessions WHERE id = ? AND user_id = ?'
-      ).bind(sessionId, user.userId || user.id).first();
+      ).bind(sessionId, String(userId)).first();
 
-      if (!session) return errorResponse('查寝批次不存在', 404);
+      if (!session) {
+        return jsonResponse({ session: null, records: [] });
+      }
 
       const records = await db.prepare(
         'SELECT * FROM check_records WHERE session_id = ?'
@@ -53,19 +69,22 @@ export const onRequest = withErrorGuard(async (context) => {
   }
 
   if (request.method === 'POST') {
-    const body = await request.json();
+    let body = {};
+    try {
+      body = await request.json();
+    } catch (e) {
+      return errorResponse('请求格式错误', 400);
+    }
 
     // 创建新的查寝 session
     if (action === 'create') {
       const { sessionId, floor } = body;
       if (!sessionId) return errorResponse('缺少 sessionId', 400);
 
-      const userId = user.userId || user.id;
-
       await db.prepare(
         `INSERT OR REPLACE INTO check_sessions (id, user_id, floor, status, last_sync)
          VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP)`
-      ).bind(sessionId, userId, floor || null).run();
+      ).bind(sessionId, String(userId), floor || null).run();
 
       return jsonResponse({ sessionId, message: '创建成功' });
     }
@@ -76,13 +95,11 @@ export const onRequest = withErrorGuard(async (context) => {
       if (!sessionId) return errorResponse('缺少 sessionId', 400);
       if (!records || !Array.isArray(records)) return errorResponse('缺少 records', 400);
 
-      const userId = user.userId || user.id;
-
       // 确保 session 存在
       await db.prepare(
         `INSERT OR IGNORE INTO check_sessions (id, user_id, status, last_sync)
          VALUES (?, ?, 'active', CURRENT_TIMESTAMP)`
-      ).bind(sessionId, userId).run();
+      ).bind(sessionId, String(userId)).run();
 
       // 批量 upsert 记录
       const stmt = db.prepare(
@@ -90,7 +107,6 @@ export const onRequest = withErrorGuard(async (context) => {
          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
       );
 
-      // D1 batch
       const batch = [];
       for (const rec of records) {
         batch.push(stmt.bind(sessionId, rec.studentName, rec.status, rec.reason || null, deviceId || 'unknown'));
@@ -112,7 +128,7 @@ export const onRequest = withErrorGuard(async (context) => {
 
       await db.prepare(
         'UPDATE check_sessions SET status = ?, last_sync = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
-      ).bind('completed', sessionId, user.userId || user.id).run();
+      ).bind('completed', sessionId, String(userId)).run();
 
       return jsonResponse({ message: '查寝完成' });
     }

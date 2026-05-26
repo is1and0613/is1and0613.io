@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS room_messages (
 -- 查寝批次表（跨设备同步）
 CREATE TABLE IF NOT EXISTS check_sessions (
   id TEXT PRIMARY KEY,
-  user_id INTEGER NOT NULL,
+  user_id TEXT NOT NULL,
   floor TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   status TEXT DEFAULT 'active',
