@@ -29,8 +29,8 @@ class DormSwipeController {
         <div class="dorm-card-stack" id="dorm-stack">
           <div class="dorm-card-peek" id="dorm-peek"></div>
           <div class="dorm-card-current" id="dorm-current"></div>
-          <div class="swipe-hint left">‹</div>
-          <div class="swipe-hint right">›</div>
+          <div class="swipe-hint left">&lsaquo;</div>
+          <div class="swipe-hint right">&rsaquo;</div>
         </div>
       </div>
     `;
@@ -50,6 +50,7 @@ class DormSwipeController {
 
   onStart(e) {
     if (e.target.closest('.status-tags')) return;
+    if (this.isAnimating) return;
     const touch = e.touches[0];
     this.isDragging = true;
     this.startX = touch.clientX;
@@ -106,9 +107,9 @@ class DormSwipeController {
     const absX = Math.abs(this.deltaX);
     const fastSwipe = Math.abs(this.velocity || 0) > this.velocityThreshold;
 
-    if (this.isAnimating) {
-      this.snapBack();
-    } else if (absX > this.threshold || fastSwipe) {
+    if (this.isAnimating) return;
+
+    if (absX > this.threshold || fastSwipe) {
       if (this.deltaX > 0) this.prev();
       else this.next();
     } else {
@@ -123,7 +124,7 @@ class DormSwipeController {
   }
 
   next() {
-    if (this.isAnimating) { this.snapBack(); return; }
+    if (this.isAnimating) return;
     if (this.currentIndex >= this.dorms.length - 1) {
       this.snapBack();
       if (typeof showToast === 'function') showToast('已经是最后一个宿舍');
@@ -145,7 +146,7 @@ class DormSwipeController {
   }
 
   prev() {
-    if (this.isAnimating) { this.snapBack(); return; }
+    if (this.isAnimating) return;
     if (this.currentIndex <= 0) {
       this.snapBack();
       if (typeof showToast === 'function') showToast('已经是第一个宿舍');
@@ -173,20 +174,20 @@ class DormSwipeController {
       return;
     }
     this.isAnimating = true;
-    this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
+    this.currentEl.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
     this.currentEl.style.opacity = '0';
-    this.currentEl.style.transform = 'translateX(-15px)';
+    this.currentEl.style.transform = 'translateX(-20px)';
     setTimeout(() => {
       this.currentIndex++;
       this.currentEl.style.transition = 'none';
-      this.currentEl.style.transform = 'translateX(15px)';
+      this.currentEl.style.transform = 'translateX(20px)';
       this.render(this.currentIndex);
       void this.currentEl.offsetWidth;
-      this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
+      this.currentEl.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
       this.currentEl.style.opacity = '1';
       this.currentEl.style.transform = 'translateX(0)';
-      setTimeout(() => { this.isAnimating = false; }, 80);
-    }, 80);
+      setTimeout(() => { this.isAnimating = false; }, 130);
+    }, 120);
   }
 
   prevByButton() {
@@ -196,27 +197,35 @@ class DormSwipeController {
       return;
     }
     this.isAnimating = true;
-    this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
+    this.currentEl.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
     this.currentEl.style.opacity = '0';
-    this.currentEl.style.transform = 'translateX(15px)';
+    this.currentEl.style.transform = 'translateX(20px)';
     setTimeout(() => {
       this.currentIndex--;
       this.currentEl.style.transition = 'none';
-      this.currentEl.style.transform = 'translateX(-15px)';
+      this.currentEl.style.transform = 'translateX(-20px)';
       this.render(this.currentIndex);
       void this.currentEl.offsetWidth;
-      this.currentEl.style.transition = 'opacity 0.075s ease, transform 0.075s ease';
+      this.currentEl.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
       this.currentEl.style.opacity = '1';
       this.currentEl.style.transform = 'translateX(0)';
-      setTimeout(() => { this.isAnimating = false; }, 80);
-    }, 80);
+      setTimeout(() => { this.isAnimating = false; }, 130);
+    }, 120);
   }
 
   render(index) {
     const dorm = this.dorms[index];
     if (!dorm) return;
     this.currentEl.innerHTML = this.buildDormHTML(dorm);
+    this.updateNavButtons();
     this.onDormChange({ dorm, index, total: this.dorms.length });
+  }
+
+  updateNavButtons() {
+    var prevBtn = this.currentEl.querySelector('.dorm-nav-btn.prev');
+    var nextBtn = this.currentEl.querySelector('.dorm-nav-btn.next');
+    if (prevBtn) prevBtn.disabled = this.currentIndex <= 0;
+    if (nextBtn) nextBtn.disabled = this.currentIndex >= this.dorms.length - 1;
   }
 
   preparePeek() {
@@ -276,9 +285,9 @@ function buildSwipeDormCard(dormNumber) {
   });
 
   var html = '<div class="dorm-card"><div class="dorm-nav">' +
-    '<button class="dorm-nav-btn" onclick="event.stopPropagation(); swipeToPrev()"><i class="fas fa-chevron-left"></i></button>' +
+    '<button class="dorm-nav-btn prev" onclick="event.stopPropagation(); swipeToPrev()"><i class="fas fa-chevron-left"></i></button>' +
     '<div class="dorm-nav-current" onclick="backToList()">' + dormNumber + '宿舍</div>' +
-    '<button class="dorm-nav-btn" onclick="event.stopPropagation(); swipeToNext()"><i class="fas fa-chevron-right"></i></button>' +
+    '<button class="dorm-nav-btn next" onclick="event.stopPropagation(); swipeToNext()"><i class="fas fa-chevron-right"></i></button>' +
     '</div><div class="student-list">' +
     filtered.map(function(s) { return renderStudentItem(s); }).join('') +
     '</div></div>';

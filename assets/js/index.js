@@ -1196,6 +1196,7 @@ let cardState = {
   touchStartY: 0,
   touchCurrentX: 0,
   isSwiping: false,
+  isAnimating: false,
   dorms: [],
 };
 
@@ -1313,6 +1314,7 @@ function onCardTouchMove(e) {
 
 function onCardTouchEnd(e) {
   if (!cardState.isSwiping) return;
+  if (cardState.isAnimating) { cardState.isSwiping = false; return; }
 
   const dx = cardState.touchCurrentX - cardState.touchStartX;
   const card = document.getElementById('fullDormCard');
@@ -1338,16 +1340,22 @@ function onCardTouchEnd(e) {
 }
 
 function goToPrevCard() {
+  if (cardState.isAnimating) return;
   if (cardState.cardIndex > 0) {
+    cardState.isAnimating = true;
     cardState.cardIndex--;
     renderCardView();
+    setTimeout(function() { cardState.isAnimating = false; }, 350);
   }
 }
 
 function goToNextCard() {
+  if (cardState.isAnimating) return;
   if (cardState.cardIndex < cardState.dorms.length - 1) {
+    cardState.isAnimating = true;
     cardState.cardIndex++;
     renderCardView();
+    setTimeout(function() { cardState.isAnimating = false; }, 350);
   }
 }
 
