@@ -1,0 +1,8 @@
+name = "niteshift"
+pages_build_output_dir = "./"
+compatibility_date = "2026-05-21"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nightshift-db"
+database_id = "dc0645ff-429c-479d-8d14-fdd831d36254"
