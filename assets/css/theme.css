@@ -57,6 +57,21 @@
   --radius-sm: 8px;
   --radius-lg: 16px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+
+  /* Neumorphism v13 — unified variables */
+  --neu-bg: #E0E5EC;
+  --neu-dark: #A3B1C6;
+  --neu-light: #FFFFFF;
+  --neu-text: #1A1D3C;
+  --neu-text-secondary: #6B7280;
+  --neu-transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Status colors — text/dots only, never backgrounds */
+  --status-in: #2563EB;
+  --status-out: #7C3AED;
+  --status-leave: #D97706;
+  --status-away: #059669;
+  --status-missing: #DC2626;
 }
 
 /* ===== CSS Variables — Neumorphic Dark Theme (Reference-aligned) ===== */
@@ -109,6 +124,13 @@
   --danger-bg: rgba(224, 112, 96, 0.1);
   --danger-border: rgba(224, 112, 96, 0.25);
   --warning: #f0c040;
+
+  /* Neumorphism v13 — dark mode variables */
+  --neu-bg: #1A1D3C;
+  --neu-dark: rgba(0, 0, 0, 0.6);
+  --neu-light: rgba(255, 255, 255, 0.08);
+  --neu-text: #E2E8F0;
+  --neu-text-secondary: #94A3B8;
 }
 
 /* ===== Global Reset ===== */
@@ -292,12 +314,12 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg-card);
-  border-top: 1px solid var(--border);
+  background: var(--neu-bg);
+  border-top: none;
   padding: 12px 16px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   z-index: 100;
-  box-shadow: var(--shadow-raised);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
 }
 
 .bottom-actions {
@@ -307,19 +329,21 @@ body {
 
 .bottom-btn {
   flex: 1;
-  padding: 14px 12px;
-  border-radius: var(--radius-sm);
-  border: none;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  line-height: 1.3;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 16px;
+  background: var(--neu-bg);
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  border: none;
+  color: var(--neu-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--neu-transition);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -336,37 +360,14 @@ body {
   opacity: 0.9;
 }
 
-.bottom-btn.primary {
-  background: var(--bg);
-  color: var(--primary);
-  box-shadow: var(--shadow-raised-sm);
+.bottom-btn i {
+  font-size: 20px;
+  color: var(--neu-text-secondary);
 }
 
-.bottom-btn.primary:active {
-  box-shadow: var(--shadow-pressed);
-  transform: scale(0.96);
-}
-
-.bottom-btn.secondary {
-  background: var(--bg);
-  color: var(--text-secondary);
-  box-shadow: var(--shadow-raised-sm);
-}
-
-.bottom-btn.secondary:active {
-  box-shadow: var(--shadow-pressed);
-  transform: scale(0.96);
-}
-
-.bottom-btn.danger {
-  background: var(--bg);
-  color: var(--danger);
-  box-shadow: var(--shadow-raised-sm);
-}
-
-.bottom-btn.danger:active {
-  box-shadow: var(--shadow-pressed);
-  transform: scale(0.96);
+.bottom-btn:active {
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  transform: scale(0.97);
 }
 
 /* ===== Card Base ===== */
@@ -381,51 +382,32 @@ body {
 /* ===== Action Buttons (legacy) ===== */
 .action-btn {
   flex: 1;
-  padding: 12px 0;
-  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 16px;
   border: none;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  background: var(--neu-bg);
+  color: var(--neu-text);
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
   -webkit-tap-highlight-color: transparent;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--neu-transition);
 }
 
-.action-btn.primary {
-  background: var(--bg);
-  color: var(--primary);
-  box-shadow: var(--shadow-raised-sm);
+.action-btn i {
+  font-size: 20px;
+  color: var(--neu-text-secondary);
 }
 
-.action-btn.primary:active {
-  box-shadow: var(--shadow-pressed);
-  transform: scale(0.92);
-}
-
-.action-btn.secondary {
-  background: var(--bg);
-  color: var(--text-secondary);
-  box-shadow: var(--shadow-raised-sm);
-}
-
-.action-btn.secondary:active {
-  box-shadow: var(--shadow-pressed);
-  transform: scale(0.92);
-}
-
-.action-btn.danger {
-  background: var(--bg);
-  color: var(--danger);
-  box-shadow: var(--shadow-raised-sm);
-}
-
-.action-btn.danger:active {
-  box-shadow: var(--shadow-pressed);
-  transform: scale(0.92);
+.action-btn:active {
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  transform: scale(0.97);
 }
 
 /* ===== Modal Base ===== */
@@ -622,79 +604,36 @@ button,
 }
 
 [data-theme="dark"] .search-section {
-  background: var(--bg-card);
+  background: var(--neu-bg);
   border-color: var(--border);
 }
 
 [data-theme="dark"] .search-box input {
-  background: var(--bg-light);
-  color: var(--text);
-  border-color: var(--border);
-  box-shadow: var(--shadow-inset);
+  background: var(--neu-bg);
+  color: var(--neu-text);
+  border-color: transparent;
+  box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px var(--neu-light);
 }
 
 [data-theme="dark"] .search-box input:focus {
-  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(129, 202, 196, 0.4);
+  box-shadow: inset 8px 8px 16px var(--neu-dark), inset -8px -8px 16px var(--neu-light);
 }
 
 [data-theme="dark"] .search-box input::placeholder {
-  color: var(--text-muted);
+  color: var(--neu-text-secondary);
 }
 
 [data-theme="dark"] .bottom-bar {
-  background: var(--bg-card);
-  border-color: var(--border);
+  background: var(--neu-bg);
+  border-color: transparent;
 }
 
 [data-theme="dark"] .card,
 [data-theme="dark"] .dorm-card,
 [data-theme="dark"] .modal-container,
 [data-theme="dark"] .reason-panel {
-  background: var(--bg-card);
+  background: var(--neu-bg);
   border-color: var(--border);
-}
-
-[data-theme="dark"] .floor-tab {
-  color: var(--text-secondary);
-  box-shadow: 4px 4px 8px #0F1230, -4px -4px 8px #252B4A;
-}
-
-[data-theme="dark"] .floor-tab:active {
-  box-shadow: inset 3px 3px 6px #0F1230, inset -3px -3px 6px #252B4A;
-}
-
-[data-theme="dark"] .floor-tab.active {
-  color: var(--primary);
-  box-shadow: 4px 4px 8px #0F1230, -4px -4px 8px #252B4A;
-}
-
-[data-theme="dark"] .filter-btn {
-  background: var(--bg);
-  color: var(--text-secondary);
-  border-color: transparent;
-  box-shadow: 4px 4px 8px #0F1230, -4px -4px 8px #252B4A;
-}
-
-/* Dark mode filter buttons — keep neumorphic shadow, differentiate by fill */
-[data-theme="dark"] .filter-btn.active {
-  color: #ffffff;
-  border-color: transparent;
-  box-shadow: 4px 4px 8px #0F1230, -4px -4px 8px #252B4A;
-}
-[data-theme="dark"] .filter-btn.active.absent { background: #c44536; border-color: #c44536; }
-[data-theme="dark"] .filter-btn.active.leaveSchool { background: #5b6bb5; border-color: #5b6bb5; }
-[data-theme="dark"] .filter-btn.active.leaveInside { background: #d4a017; border-color: #d4a017; }
-[data-theme="dark"] .filter-btn.active.leaveOutside { background: #81cac4; border-color: #81cac4; color: #1A1D3C; }
-[data-theme="dark"] .filter-btn.active.all { background: var(--primary); border-color: var(--primary); color: #1A1D3C; }
-
-[data-theme="dark"] .bottom-btn.secondary {
-  background: var(--bg);
-  color: var(--text-secondary);
-}
-
-[data-theme="dark"] .bottom-btn.primary {
-  background: var(--bg);
-  color: var(--primary);
 }
 
 [data-theme="dark"] .modal-btn.secondary {
@@ -711,24 +650,9 @@ button,
 [data-theme="dark"] .modal-footer { border-color: var(--border); }
 
 [data-theme="dark"] .student-item { border-color: var(--border); }
-[data-theme="dark"] .student-info { color: var(--text); }
-[data-theme="dark"] .student-name { color: var(--text); }
-[data-theme="dark"] .student-meta { color: var(--text-muted); }
-
-[data-theme="dark"] .report-section-header { border-color: var(--border); }
-[data-theme="dark"] .report-section-label { color: var(--text-secondary); }
-[data-theme="dark"] .report-content { color: var(--text); }
-[data-theme="dark"] .report-copy-btn { color: var(--text-secondary); border-color: var(--border); }
-[data-theme="dark"] .report-toggle-btn {
-  background: var(--bg-light);
-  color: var(--text-secondary);
-  border-color: var(--border);
-}
-[data-theme="dark"] .report-toggle-btn.active {
-  background: var(--primary);
-  color: #1A1D3C;
-  border-color: var(--primary);
-}
+[data-theme="dark"] .student-info { color: var(--neu-text); }
+[data-theme="dark"] .student-name { color: var(--neu-text); }
+[data-theme="dark"] .student-meta { color: var(--neu-text-secondary); }
 
 [data-theme="dark"] .room-member-tag {
   background: var(--bg-light);
@@ -768,9 +692,7 @@ button,
 [data-theme="dark"] .reason-item { color: var(--text); }
 [data-theme="dark"] .reason-item:active { background: var(--bg-light); }
 [data-theme="dark"] .reason-header { color: var(--text-secondary); }
-[data-theme="dark"] .toggle-label { color: var(--text-secondary); }
-[data-theme="dark"] .toggle-switch { background: var(--border); }
-[data-theme="dark"] .toggle-switch.on { background: var(--primary); }
+[data-theme="dark"] .toggle-label { color: var(--neu-text-secondary); }
 
 [data-theme="dark"] .copy-name-btn { color: var(--text-muted); }
 [data-theme="dark"] .copy-name-btn:active { background: var(--bg-light); }
@@ -802,10 +724,10 @@ button,
   border-color: var(--border) !important;
 }
 
-[data-theme="dark"] .bottom-stats { color: var(--text-secondary); }
-[data-theme="dark"] .status-bar { background: var(--bg-card); border-color: var(--border); }
-[data-theme="dark"] .filter-bar { background: var(--bg); border-color: transparent; }
-[data-theme="dark"] .floor-tabs { background: var(--bg); }
+[data-theme="dark"] .bottom-stats { color: var(--neu-text-secondary); }
+[data-theme="dark"] .status-bar { background: var(--neu-bg); border-color: var(--border); }
+[data-theme="dark"] .filter-bar { background: var(--neu-bg); border-color: transparent; }
+[data-theme="dark"] .floor-tabs { background: var(--neu-bg); }
 
 /* ===== Dark Theme — Login Page ===== */
 [data-theme="dark"] .login-card {
@@ -1165,8 +1087,8 @@ button,
 
 /* Dark mode dorm header */
 [data-theme="dark"] .dorm-header {
-  background: var(--bg-card);
-  box-shadow: 8px 8px 16px #0F1230, -8px -8px 16px #252B4A;
+  background: var(--neu-bg);
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
 }
 
 /* ===== Neumorphic focus ring ===== */
@@ -1174,10 +1096,6 @@ button,
 .input-field:focus,
 textarea:focus {
   outline: none;
-}
-
-[data-theme="dark"] .search-box input:focus {
-  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(129, 202, 196, 0.4);
 }
 
 /* ===== Fix: no white cards in dark mode ===== */
@@ -1255,3 +1173,275 @@ textarea:focus {
 [data-theme="dark"] .doc-icon.word { background: rgba(22, 119, 255, 0.15); }
 [data-theme="dark"] .doc-icon.excel { background: rgba(82, 196, 26, 0.15); }
 [data-theme="dark"] .doc-icon.txt { background: var(--bg-light); }
+
+/* ============================================================
+   新拟态全局基础类 — v13
+   ============================================================ */
+
+/* ===== 凸起（默认态：卡片、按钮） ===== */
+.neu-raised {
+  background: var(--neu-bg);
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  transition: var(--neu-transition);
+  border: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.neu-raised:active {
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  transform: scale(0.98);
+}
+
+/* 大卡片专用（宿舍卡片、报告卡片） */
+.neu-card {
+  background: var(--neu-bg);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 12px 12px 24px var(--neu-dark), -12px -12px 24px var(--neu-light);
+  transition: var(--neu-transition);
+}
+
+/* 小按钮/图标按钮（导航箭头、复制按钮） */
+.neu-btn-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--neu-bg);
+  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  transition: var(--neu-transition);
+  border: none;
+  outline: none;
+  color: var(--neu-text);
+  cursor: pointer;
+}
+.neu-btn-icon:active {
+  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+  transform: scale(0.95);
+}
+
+/* ===== 凹陷（搜索框、Tabs 容器、Toggle 轨道） ===== */
+.neu-sunken {
+  background: var(--neu-bg);
+  box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px var(--neu-light);
+  border: none;
+  outline: none;
+}
+
+/* ===== Tabs / Segmented Control ===== */
+.neu-tabs {
+  display: flex;
+  background: var(--neu-bg);
+  border-radius: 16px;
+  padding: 5px;
+  box-shadow: inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
+  gap: 4px;
+}
+.neu-tab {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--neu-text-secondary);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--neu-transition);
+  text-align: center;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.neu-tab.active {
+  color: var(--neu-text);
+  background: var(--neu-bg);
+  box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+}
+.neu-tab:active:not(.active) {
+  transform: scale(0.96);
+}
+
+/* ===== Toggle 开关 ===== */
+.neu-toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.neu-toggle {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--neu-bg);
+  border-radius: 15px;
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  cursor: pointer;
+  outline: none;
+  transition: var(--neu-transition);
+  flex-shrink: 0;
+}
+.neu-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--neu-bg);
+  box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px var(--neu-light);
+  transition: var(--neu-transition);
+}
+.neu-toggle:checked::after {
+  transform: translateX(22px);
+}
+.neu-toggle:checked {
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+}
+
+/* ===== 搜索框 ===== */
+.neu-input {
+  width: 100%;
+  padding: 14px 18px 14px 44px;
+  border-radius: 16px;
+  background: var(--neu-bg);
+  box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px var(--neu-light);
+  border: none;
+  color: var(--neu-text);
+  font-size: 15px;
+  transition: var(--neu-transition);
+  outline: none;
+}
+.neu-input::placeholder {
+  color: var(--neu-text-secondary);
+}
+.neu-input:focus {
+  box-shadow: inset 8px 8px 16px var(--neu-dark), inset -8px -8px 16px var(--neu-light);
+}
+
+/* ===== 状态胶囊标签（学生状态：在寝/离校/事假/外出） ===== */
+.neu-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.neu-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 20px;
+  background: transparent;
+  border: none;
+  color: var(--neu-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--neu-transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.neu-pill:hover {
+  box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+}
+.neu-pill:active {
+  transform: scale(0.96);
+}
+.neu-pill.active {
+  background: var(--neu-bg);
+  box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+  font-weight: 600;
+}
+.neu-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neu-text-secondary);
+  opacity: 0.5;
+  transition: var(--neu-transition);
+}
+.neu-pill.active .dot {
+  opacity: 1;
+}
+
+/* 各状态颜色（仅文字和圆点） */
+.neu-pill.active[data-status="in"]     { color: var(--status-in); }
+.neu-pill.active[data-status="in"] .dot     { background: var(--status-in); }
+.neu-pill.active[data-status="out"]    { color: var(--status-out); }
+.neu-pill.active[data-status="out"] .dot    { background: var(--status-out); }
+.neu-pill.active[data-status="leave"]  { color: var(--status-leave); }
+.neu-pill.active[data-status="leave"] .dot  { background: var(--status-leave); }
+.neu-pill.active[data-status="away"]   { color: var(--status-away); }
+.neu-pill.active[data-status="away"] .dot   { background: var(--status-away); }
+.neu-pill.active[data-status="missing"]{ color: var(--status-missing); }
+.neu-pill.active[data-status="missing"] .dot{ background: var(--status-missing); }
+
+/* ===== 底部固定操作栏按钮 ===== */
+.neu-bottom-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 16px;
+  background: var(--neu-bg);
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  border: none;
+  color: var(--neu-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--neu-transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.neu-bottom-btn:active {
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  transform: scale(0.97);
+}
+.neu-bottom-btn i {
+  font-size: 20px;
+  color: var(--neu-text-secondary);
+}
+
+/* ===== 报告页专用 ===== */
+.neu-btn-sm {
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: var(--neu-bg);
+  box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+  border: none;
+  color: var(--neu-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--neu-transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.neu-btn-sm:active {
+  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+}
+
+.neu-btn-block {
+  width: 100%;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--neu-bg);
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  border: none;
+  color: var(--neu-text);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--neu-transition);
+  text-align: center;
+}
+.neu-btn-block:active {
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  transform: scale(0.98);
+}

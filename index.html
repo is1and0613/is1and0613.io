@@ -82,17 +82,22 @@
   </div>
   <div class="search-result-info" id="searchResultInfo"></div>
 
-  <!-- 楼层标签 -->
+  <!-- 楼层标签 — 新拟态 Tabs 凹槽 -->
   <div class="floor-tabs">
-    <div class="floor-tab" data-floor="all">全部</div>
-    <div class="floor-tab" data-floor="1">1F</div>
-    <div class="floor-tab" data-floor="4">4F</div>
-    <div class="floor-tab active" data-floor="5">5F</div>
-    <div class="floor-tab" data-floor="6">6F</div>
+    <div class="floor-tabs-inner">
+      <button class="floor-tab" data-floor="all">全部</button>
+      <button class="floor-tab" data-floor="1">1F</button>
+      <button class="floor-tab" data-floor="4">4F</button>
+      <button class="floor-tab active" data-floor="5">5F</button>
+      <button class="floor-tab" data-floor="6">6F</button>
+    </div>
   </div>
 
-  <!-- 筛选按钮 -->
+  <!-- 筛选按钮 — 新拟态 Pills -->
   <div class="filter-bar">
+    <button class="filter-btn all active" data-filter="all">
+      <span class="dot"></span>全部
+    </button>
     <button class="filter-btn absent" data-filter="absent">
       <span class="dot"></span>未归
     </button>
@@ -104,9 +109,6 @@
     </button>
     <button class="filter-btn leaveOutside" data-filter="leaveOutside">
       <span class="dot"></span>外出
-    </button>
-    <button class="filter-btn all active" data-filter="all">
-      <span class="dot"></span>全部
     </button>
   </div>
 
@@ -185,13 +187,13 @@
   <!-- 底部固定栏 -->
   <div class="bottom-bar">
     <div class="bottom-actions">
-      <button class="action-btn primary" onclick="showReportModal()">
+      <button class="action-btn" onclick="showReportModal()">
         <i class="fas fa-file-alt"></i>生成报告
       </button>
-      <button class="action-btn secondary" onclick="uploadLeaveNote()">
+      <button class="action-btn" onclick="uploadLeaveNote()">
         <i class="fas fa-cloud-upload-alt"></i>上传假单
       </button>
-      <button class="action-btn secondary" onclick="manualInput()">
+      <button class="action-btn" onclick="manualInput()">
         <i class="fas fa-pen"></i>手动输入
       </button>
     </div>
@@ -208,8 +210,8 @@
           <button class="report-toggle-btn" id="btnVacation" onclick="switchReportMode('vacation')">假期版</button>
         </div>
         <div class="intern-toggle">
-          <label class="toggle-label" onclick="toggleIntern()">
-            <span class="toggle-switch" id="internSwitch"></span>
+          <label class="toggle-label">
+            <input type="checkbox" class="toggle-switch" id="internSwitch" onchange="toggleIntern()">
             包含大三学生
           </label>
         </div>

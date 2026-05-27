@@ -496,9 +496,8 @@ function switchReportMode(type) {
 }
 
 function toggleIntern() {
-  internIncluded = !internIncluded;
+  internIncluded = document.getElementById('internSwitch').checked;
   document.getElementById('internSwitch').classList.toggle('on', internIncluded);
-  // Regenerate current report
   switchReportMode(currentReportMode);
 }
 
@@ -1372,6 +1371,7 @@ async function showReportModal() {
   document.getElementById('btnAbsent').classList.add('active');
   document.getElementById('btnPresent').classList.remove('active');
   document.getElementById('btnVacation').classList.remove('active');
+  document.getElementById('internSwitch').checked = internIncluded;
   document.getElementById('internSwitch').classList.toggle('on', internIncluded);
 
   const result = generateReportText();
