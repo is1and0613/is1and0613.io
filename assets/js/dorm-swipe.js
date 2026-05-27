@@ -101,13 +101,14 @@ class DormSwipeController {
     this.currentEl.classList.remove('is-dragging');
     this.currentEl.removeAttribute('data-direction');
 
+    // v14: 提前检查动画锁，防止快速操作导致索引错乱
+    if (this.isAnimating) { this.snapBack(); return; }
+
     this.currentEl.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
     this.peekEl.style.transition = 'opacity 0.2s ease, transform 0.3s ease';
 
     const absX = Math.abs(this.deltaX);
     const fastSwipe = Math.abs(this.velocity || 0) > this.velocityThreshold;
-
-    if (this.isAnimating) return;
 
     if (absX > this.threshold || fastSwipe) {
       if (this.deltaX > 0) this.prev();

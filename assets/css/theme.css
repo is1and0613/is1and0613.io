@@ -60,7 +60,7 @@
 
   /* Neumorphism v13 — unified variables */
   --neu-bg: #E0E5EC;
-  --neu-dark: #A3B1C6;
+  --neu-dark: #8A9BB5;
   --neu-light: #FFFFFF;
   --neu-text: #1A1D3C;
   --neu-text-secondary: #6B7280;
@@ -190,25 +190,34 @@ body {
   background: rgba(255,255,255,0.1);
 }
 
-.header-action-btn {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
+/* v14: Header 按钮新拟态化 */
+.neu-btn-header {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--neu-bg);
+  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  border: none;
+  color: var(--neu-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--neu-transition);
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
-
-.header-action-btn:active {
-  background: rgba(255,255,255,0.3);
-  transform: scale(0.92);
+.neu-btn-header:active {
+  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+  transform: scale(0.96);
+}
+.neu-btn-header.icon-only {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
 }
 
 /* ===== Toast ===== */
@@ -316,15 +325,15 @@ body {
   right: 0;
   background: var(--neu-bg);
   border-top: none;
-  padding: 12px 16px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 14px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   z-index: 100;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.04);
 }
 
 .bottom-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .bottom-btn {
@@ -333,14 +342,14 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 14px 8px;
-  border-radius: 16px;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 14px;
   background: var(--neu-bg);
-  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  box-shadow: 10px 10px 20px var(--neu-dark), -10px -10px 20px var(--neu-light);
   border: none;
   color: var(--neu-text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: var(--neu-transition);
@@ -351,17 +360,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .bottom-btn .btn-sub {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   opacity: 0.9;
 }
 
 .bottom-btn i {
-  font-size: 20px;
+  font-size: 18px;
   color: var(--neu-text-secondary);
 }
 
@@ -379,29 +388,29 @@ body {
   border: none;
 }
 
-/* ===== Action Buttons (legacy) ===== */
+/* ===== Action Buttons v14: 缩小尺寸 + 加强阴影 ===== */
 .action-btn {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 14px 8px;
-  border-radius: 16px;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 14px;
   border: none;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   background: var(--neu-bg);
   color: var(--neu-text);
-  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  box-shadow: 10px 10px 20px var(--neu-dark), -10px -10px 20px var(--neu-light);
   -webkit-tap-highlight-color: transparent;
   transition: var(--neu-transition);
 }
 
 .action-btn i {
-  font-size: 20px;
+  font-size: 18px;
   color: var(--neu-text-secondary);
 }
 
@@ -595,12 +604,6 @@ button,
 
 [data-theme="dark"] .header {
   background: #141732;
-}
-
-[data-theme="dark"] .header-action-btn {
-  background: rgba(129, 202, 196, 0.12);
-  border-color: rgba(129, 202, 196, 0.25);
-  color: var(--text);
 }
 
 [data-theme="dark"] .search-section {
@@ -1178,30 +1181,39 @@ textarea:focus {
    新拟态全局基础类 — v13
    ============================================================ */
 
-/* ===== 凸起（默认态：卡片、按钮） ===== */
+/* ===== 凸起（默认态：卡片、按钮）— v14: 加强阴影 ===== */
 .neu-raised {
   background: var(--neu-bg);
-  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  box-shadow: 10px 10px 20px var(--neu-dark), -10px -10px 20px var(--neu-light);
   transition: var(--neu-transition);
   border: none;
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }
 .neu-raised:active {
-  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  box-shadow: inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
   transform: scale(0.98);
 }
 
-/* 大卡片专用（宿舍卡片、报告卡片） */
+/* 大卡片专用（宿舍卡片、报告卡片）— v14: 加强阴影 + overflow 修复尖角 */
 .neu-card {
   background: var(--neu-bg);
   border-radius: 20px;
   padding: 20px;
-  box-shadow: 12px 12px 24px var(--neu-dark), -12px -12px 24px var(--neu-light);
+  box-shadow: 16px 16px 32px var(--neu-dark), -16px -16px 32px var(--neu-light);
   transition: var(--neu-transition);
+  overflow: hidden;
 }
 
-/* 小按钮/图标按钮（导航箭头、复制按钮） */
+/* v14: 卡片层次链 — 外层 > Header > 导航箭头 */
+.neu-card .card-header {
+  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+}
+.neu-card .card-header .nav-arrow {
+  box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+}
+
+/* 小按钮/图标按钮（导航箭头、复制按钮）— v14: 加强阴影 */
 .neu-btn-icon {
   width: 44px;
   height: 44px;
@@ -1210,7 +1222,7 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   background: var(--neu-bg);
-  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
   transition: var(--neu-transition);
   border: none;
   outline: none;
@@ -1257,7 +1269,7 @@ textarea:focus {
 .neu-tab.active {
   color: var(--neu-text);
   background: var(--neu-bg);
-  box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
 }
 .neu-tab:active:not(.active) {
   transform: scale(0.96);
@@ -1379,21 +1391,21 @@ textarea:focus {
 .neu-pill.active[data-status="missing"]{ color: var(--status-missing); }
 .neu-pill.active[data-status="missing"] .dot{ background: var(--status-missing); }
 
-/* ===== 底部固定操作栏按钮 ===== */
+/* ===== 底部固定操作栏按钮 — v14: 缩小尺寸 + 加强阴影 ===== */
 .neu-bottom-btn {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 14px 8px;
-  border-radius: 16px;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 14px;
   background: var(--neu-bg);
   box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
   border: none;
   color: var(--neu-text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: var(--neu-transition);
@@ -1404,7 +1416,7 @@ textarea:focus {
   transform: scale(0.97);
 }
 .neu-bottom-btn i {
-  font-size: 20px;
+  font-size: 18px;
   color: var(--neu-text-secondary);
 }
 

@@ -52,19 +52,19 @@
   <div class="header">
     <h1><i class="fas fa-clipboard-check"></i> <span id="headerTitle">晚寝查寝系统</span><span id="headerRoomCode" style="display:none;"></span><span id="headerCountdown" style="display:none;"></span></h1>
     <div style="display: flex; gap: 8px;" id="headerActions">
-      <button class="header-action-btn" id="btnTheme" onclick="toggleTheme()" title="切换日间/夜间模式">
+      <button class="neu-btn-header icon-only" id="btnTheme" onclick="toggleTheme()" title="切换日间/夜间模式">
         <i class="fas fa-moon"></i>
       </button>
-      <button class="header-action-btn" id="btnWorkWechat" onclick="openWorkWechat()" title="打开企业微信">
+      <button class="neu-btn-header" id="btnWorkWechat" onclick="openWorkWechat()" title="打开企业微信">
         <i class="fas fa-building"></i> 企业微信
       </button>
-      <button class="header-action-btn" id="btnReset" onclick="resetAllStatus()" title="清空所有记录，开始新查寝">
+      <button class="neu-btn-header" id="btnReset" onclick="resetAllStatus()" title="清空所有记录，开始新查寝">
         <i class="fas fa-redo"></i> 新查寝
       </button>
-      <button class="header-action-btn" id="btnSyncRoom" onclick="syncRoom()" style="display:none;">
+      <button class="neu-btn-header" id="btnSyncRoom" onclick="syncRoom()" style="display:none;">
         <i class="fas fa-sync-alt"></i> 刷新
       </button>
-      <button class="header-action-btn" id="btnLeaveRoom" onclick="leaveRoom()" style="display:none;">
+      <button class="neu-btn-header" id="btnLeaveRoom" onclick="leaveRoom()" style="display:none;">
         <i class="fas fa-sign-out-alt"></i> 退出
       </button>
     </div>
@@ -187,13 +187,13 @@
   <!-- 底部固定栏 -->
   <div class="bottom-bar">
     <div class="bottom-actions">
-      <button class="action-btn" onclick="showReportModal()">
+      <button class="neu-bottom-btn" onclick="showReportModal()">
         <i class="fas fa-file-alt"></i>生成报告
       </button>
-      <button class="action-btn" onclick="uploadLeaveNote()">
+      <button class="neu-bottom-btn" onclick="uploadLeaveNote()">
         <i class="fas fa-cloud-upload-alt"></i>上传假单
       </button>
-      <button class="action-btn" onclick="manualInput()">
+      <button class="neu-bottom-btn" onclick="manualInput()">
         <i class="fas fa-pen"></i>手动输入
       </button>
     </div>

@@ -252,14 +252,14 @@ body {
   border-radius: 20px;
   margin-bottom: 12px;
   overflow: hidden;
-  box-shadow: 12px 12px 24px var(--neu-dark), -12px -12px 24px var(--neu-light);
+  box-shadow: 16px 16px 32px var(--neu-dark), -16px -16px 32px var(--neu-light);
   animation: fadeIn 0.3s ease-out;
   border: none;
 }
 
 .dorm-card.search-matched {
   border: 2px solid var(--primary);
-  box-shadow: 12px 12px 24px var(--neu-dark), -12px -12px 24px var(--neu-light), 0 4px 16px rgba(11, 50, 137, 0.15);
+  box-shadow: 16px 16px 32px var(--neu-dark), -16px -16px 32px var(--neu-light), 0 4px 16px rgba(11, 50, 137, 0.15);
 }
 
 /* Dorm Navigation — neumorphic raised header bar */
@@ -287,7 +287,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
   transition: var(--neu-transition);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -303,7 +303,7 @@ body {
 
 .dorm-nav-btn:active:not(:disabled) {
   transform: scale(0.92);
-  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+  box-shadow: inset 2px 2px 4px var(--neu-dark), inset -2px -2px 4px var(--neu-light);
 }
 
 .dorm-nav-current {
@@ -891,15 +891,15 @@ body {
   height: 36px;
   border: none;
   border-radius: 50%;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--neu-bg);
+  color: var(--neu-text);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
-  box-shadow: var(--shadow-raised-sm);
-  transition: all 0.2s;
+  box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+  transition: var(--neu-transition);
   flex-shrink: 0;
 }
 
@@ -910,9 +910,8 @@ body {
 }
 
 .card-nav-arrow:active:not(:disabled) {
-  background: var(--primary);
-  color: white;
-  box-shadow: var(--shadow-pressed);
+  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+  transform: scale(0.95);
 }
 
 .card-title-area {
