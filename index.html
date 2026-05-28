@@ -82,15 +82,14 @@
   </div>
   <div class="search-result-info" id="searchResultInfo"></div>
 
-  <!-- 楼层标签 — 新拟态 Tabs 凹槽 -->
-  <div class="floor-tabs">
-    <div class="floor-tabs-inner">
-      <button class="floor-tab" data-floor="all">全部</button>
-      <button class="floor-tab" data-floor="1">1F</button>
-      <button class="floor-tab" data-floor="4">4F</button>
-      <button class="floor-tab active" data-floor="5">5F</button>
-      <button class="floor-tab" data-floor="6">6F</button>
-    </div>
+  <!-- 楼层标签 — v15: 滑块动效 -->
+  <div class="neu-tabs" id="floorTabs">
+    <div class="tab-thumb"></div>
+    <button class="neu-tab" data-floor="all">全部</button>
+    <button class="neu-tab" data-floor="1">1F</button>
+    <button class="neu-tab" data-floor="4">4F</button>
+    <button class="neu-tab active" data-floor="5">5F</button>
+    <button class="neu-tab" data-floor="6">6F</button>
   </div>
 
   <!-- 筛选按钮 — 新拟态 Pills -->
@@ -204,10 +203,11 @@
   <div class="modal-overlay" id="reportModal">
     <div class="modal-container">
       <div class="modal-header">
-        <div class="report-toggle">
-          <button class="report-toggle-btn active" id="btnAbsent" onclick="switchReportMode('absent')">请假版</button>
-          <button class="report-toggle-btn" id="btnPresent" onclick="switchReportMode('present')">在校版</button>
-          <button class="report-toggle-btn" id="btnVacation" onclick="switchReportMode('vacation')">假期版</button>
+        <div class="neu-tabs" id="reportVersionTabs" style="margin-bottom: 16px;">
+          <div class="tab-thumb"></div>
+          <button class="neu-tab active" id="btnAbsent" onclick="switchReportMode('absent')">请假版</button>
+          <button class="neu-tab" id="btnPresent" onclick="switchReportMode('present')">在校版</button>
+          <button class="neu-tab" id="btnVacation" onclick="switchReportMode('vacation')">假期版</button>
         </div>
         <div class="intern-toggle">
           <label class="toggle-label">

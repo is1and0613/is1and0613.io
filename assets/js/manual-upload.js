@@ -12,7 +12,7 @@ const state = {
   lastParseResult: null,
   collapsedStates: {},
   dateRange: null,
-  enableFuzzyMatch: false
+  enableFuzzyMatch: true
 };
 
 // ============================================

@@ -60,7 +60,7 @@
 
   /* Neumorphism v13 — unified variables */
   --neu-bg: #E0E5EC;
-  --neu-dark: #8A9BB5;
+  --neu-dark: #B8C4D4;
   --neu-light: #FFFFFF;
   --neu-text: #1A1D3C;
   --neu-text-secondary: #6B7280;
@@ -190,7 +190,7 @@ body {
   background: rgba(255,255,255,0.1);
 }
 
-/* v14: Header 按钮新拟态化 */
+/* Header 按钮 — v15: 禁止光晕 */
 .neu-btn-header {
   display: inline-flex;
   align-items: center;
@@ -199,7 +199,7 @@ body {
   padding: 8px 14px;
   border-radius: 12px;
   background: var(--neu-bg);
-  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
   border: none;
   color: var(--neu-text);
   font-size: 13px;
@@ -208,6 +208,8 @@ body {
   transition: var(--neu-transition);
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
+  filter: none !important;
+  text-shadow: none !important;
 }
 .neu-btn-header:active {
   box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
@@ -491,7 +493,7 @@ button,
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ===== Status Tags — Lightweight capsule pills ===== */
+/* ===== Status Tags — v15: 选中态彩色填充+白字 ===== */
 .status-tag {
   display: inline-flex;
   align-items: center;
@@ -500,100 +502,53 @@ button,
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid transparent;
+  border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--neu-text-secondary);
   white-space: nowrap;
-  box-shadow: none !important;
-  transition: all 0.15s ease;
+  box-shadow: inset 1px 1px 2px rgba(163,177,198,0.3), inset -1px -1px 2px rgba(255,255,255,0.5);
+  transition: all 0.25s ease;
   cursor: pointer;
 }
 
 .status-tag::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--text-muted);
+  opacity: 0.4;
   flex-shrink: 0;
 }
 
-/* Unselected: colored border 40% + colored dot + colored text */
-.status-tag.in { color: var(--status-in); border-color: rgba(11, 50, 137, 0.4); }
-.status-tag.in::before { background: var(--status-in); }
-.status-tag.leaveSchool { color: var(--status-leaveSchool); border-color: rgba(91, 107, 181, 0.4); }
-.status-tag.leaveSchool::before { background: var(--status-leaveSchool); }
-.status-tag.leaveInside { color: var(--status-leaveInside); border-color: rgba(212, 160, 23, 0.4); }
-.status-tag.leaveInside::before { background: var(--status-leaveInside); }
-.status-tag.leaveOutside { color: var(--status-leaveOutside); border-color: rgba(129, 202, 196, 0.4); }
-.status-tag.leaveOutside::before { background: var(--status-leaveOutside); }
-.status-tag.absent { color: var(--status-absent); border-color: rgba(196, 69, 54, 0.4); }
-.status-tag.absent::before { background: var(--status-absent); }
+/* Unselected dot colors */
+.status-tag.in::before           { background: #2563EB; }
+.status-tag.leaveSchool::before   { background: #7C3AED; }
+.status-tag.leaveInside::before   { background: #D97706; }
+.status-tag.leaveOutside::before  { background: #059669; }
+.status-tag.absent::before        { background: #DC2626; }
 
-/* Hover/press: slightly deepen */
-.status-tag:hover, .status-tag:active {
-  opacity: 0.8;
-  transform: scale(0.95);
-}
-
-/* Active/selected: tinted background + colored text + colored dot (NO solid fill) */
-.status-tag.in.active {
-  background: rgba(11, 50, 137, 0.08);
-  color: var(--status-in);
-  border-color: rgba(11, 50, 137, 0.6);
+/* Active: solid fill + white text */
+.status-tag.active {
+  color: #FFFFFF;
   font-weight: 600;
+  box-shadow: 3px 3px 6px rgba(0,0,0,0.15);
+  transform: scale(1.02);
 }
-.status-tag.in.active::before { background: var(--status-in); }
-
-.status-tag.leaveSchool.active {
-  background: rgba(91, 107, 181, 0.08);
-  color: var(--status-leaveSchool);
-  border-color: rgba(91, 107, 181, 0.6);
-  font-weight: 600;
+.status-tag.active::before {
+  background: #FFFFFF !important;
+  opacity: 1;
 }
-.status-tag.leaveSchool.active::before { background: var(--status-leaveSchool); }
 
-.status-tag.leaveInside.active {
-  background: rgba(212, 160, 23, 0.08);
-  color: var(--status-leaveInside);
-  border-color: rgba(212, 160, 23, 0.6);
-  font-weight: 600;
+.status-tag.in.active           { background: #2563EB; }
+.status-tag.leaveSchool.active  { background: #7C3AED; }
+.status-tag.leaveInside.active  { background: #D97706; }
+.status-tag.leaveOutside.active { background: #059669; }
+.status-tag.absent.active       { background: #DC2626; }
+
+/* Dark theme active: keep solid fill */
+[data-theme="dark"] .status-tag.active {
+  color: #FFFFFF;
 }
-.status-tag.leaveInside.active::before { background: var(--status-leaveInside); }
-
-.status-tag.leaveOutside.active {
-  background: rgba(129, 202, 196, 0.08);
-  color: var(--status-leaveOutside);
-  border-color: rgba(129, 202, 196, 0.6);
-  font-weight: 600;
-}
-.status-tag.leaveOutside.active::before { background: var(--status-leaveOutside); }
-
-.status-tag.absent.active {
-  background: rgba(196, 69, 54, 0.08);
-  color: var(--status-absent);
-  border-color: rgba(196, 69, 54, 0.6);
-  font-weight: 600;
-}
-.status-tag.absent.active::before { background: var(--status-absent); }
-
-/* ===== Dark Theme — Status Tags ===== */
-[data-theme="dark"] .status-tag.in { border-color: rgba(129, 202, 196, 0.6); }
-[data-theme="dark"] .status-tag.leaveSchool { border-color: rgba(168, 181, 224, 0.6); }
-[data-theme="dark"] .status-tag.leaveInside { border-color: rgba(240, 192, 64, 0.6); }
-[data-theme="dark"] .status-tag.leaveOutside { border-color: rgba(168, 224, 216, 0.6); }
-[data-theme="dark"] .status-tag.absent { border-color: rgba(224, 112, 96, 0.6); }
-
-[data-theme="dark"] .status-tag.in.active { background: rgba(129, 202, 196, 0.12); color: var(--status-in); border-color: rgba(129, 202, 196, 0.7); }
-[data-theme="dark"] .status-tag.in.active::before { background: var(--status-in); }
-[data-theme="dark"] .status-tag.leaveSchool.active { background: rgba(168, 181, 224, 0.12); color: var(--status-leaveSchool); border-color: rgba(168, 181, 224, 0.7); }
-[data-theme="dark"] .status-tag.leaveSchool.active::before { background: var(--status-leaveSchool); }
-[data-theme="dark"] .status-tag.leaveInside.active { background: rgba(240, 192, 64, 0.12); color: #f0c040; border-color: rgba(240, 192, 64, 0.7); }
-[data-theme="dark"] .status-tag.leaveInside.active::before { background: #f0c040; }
-[data-theme="dark"] .status-tag.leaveOutside.active { background: rgba(168, 224, 216, 0.12); color: var(--status-leaveOutside); border-color: rgba(168, 224, 216, 0.7); }
-[data-theme="dark"] .status-tag.leaveOutside.active::before { background: var(--status-leaveOutside); }
-[data-theme="dark"] .status-tag.absent.active { background: rgba(224, 112, 96, 0.12); color: var(--status-absent); border-color: rgba(224, 112, 96, 0.7); }
-[data-theme="dark"] .status-tag.absent.active::before { background: var(--status-absent); }
 
 /* ===== Dark Theme — Component Overrides ===== */
 
@@ -1242,14 +1197,27 @@ textarea:focus {
   outline: none;
 }
 
-/* ===== Tabs / Segmented Control ===== */
+/* ===== Tabs / Segmented Control — v15: 滑块动效 ===== */
 .neu-tabs {
+  position: relative;
   display: flex;
   background: var(--neu-bg);
   border-radius: 16px;
   padding: 5px;
   box-shadow: inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
   gap: 4px;
+}
+.tab-thumb {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  height: calc(100% - 10px);
+  background: var(--neu-bg);
+  border-radius: 12px;
+  box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+  pointer-events: none;
 }
 .neu-tab {
   flex: 1;
@@ -1261,15 +1229,17 @@ textarea:focus {
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
-  transition: var(--neu-transition);
+  transition: color 0.35s ease;
   text-align: center;
   position: relative;
+  z-index: 1;
   -webkit-tap-highlight-color: transparent;
 }
 .neu-tab.active {
   color: var(--neu-text);
-  background: var(--neu-bg);
-  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  font-weight: 600;
+  background: transparent;
+  box-shadow: none;
 }
 .neu-tab:active:not(.active) {
   transform: scale(0.96);
@@ -1316,13 +1286,13 @@ textarea:focus {
   box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
 }
 
-/* ===== 搜索框 ===== */
+/* ===== 搜索框 — v15: 加强凹陷 ===== */
 .neu-input {
   width: 100%;
   padding: 14px 18px 14px 44px;
   border-radius: 16px;
   background: var(--neu-bg);
-  box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px var(--neu-light);
+  box-shadow: inset 8px 8px 16px var(--neu-dark), inset -8px -8px 16px var(--neu-light);
   border: none;
   color: var(--neu-text);
   font-size: 15px;
@@ -1391,7 +1361,7 @@ textarea:focus {
 .neu-pill.active[data-status="missing"]{ color: var(--status-missing); }
 .neu-pill.active[data-status="missing"] .dot{ background: var(--status-missing); }
 
-/* ===== 底部固定操作栏按钮 — v14: 缩小尺寸 + 加强阴影 ===== */
+/* ===== 底部固定操作栏按钮 — v15: 进一步缩小 ===== */
 .neu-bottom-btn {
   flex: 1;
   display: flex;
@@ -1399,13 +1369,13 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 10px 6px;
-  border-radius: 14px;
+  padding: 8px 6px;
+  border-radius: 12px;
   background: var(--neu-bg);
-  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
   border: none;
   color: var(--neu-text);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: var(--neu-transition);
@@ -1416,7 +1386,7 @@ textarea:focus {
   transform: scale(0.97);
 }
 .neu-bottom-btn i {
-  font-size: 18px;
+  font-size: 16px;
   color: var(--neu-text-secondary);
 }
 

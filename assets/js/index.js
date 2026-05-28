@@ -181,10 +181,17 @@ function matchesActiveFilters(studentName) {
 function getStatusDisplay(statusObj) {
   if (!statusObj || statusObj.status === 'in') return '在寝';
 
+  const studioShortNames = {
+    '数据分析工作室': '数分', '数据实战工作室': '数实战',
+    '网安工作室': '网安', '舆情工作室': '舆情',
+    '网管工作室': '网管', '阿sir工作室': '阿sir'
+  };
+
   if (Array.isArray(statusObj.status)) {
     const statusTexts = [];
     if (statusObj.status.includes('leaveInside')) {
-      statusTexts.push(statusObj.reason || '事假');
+      const sub = statusObj.subReason;
+      statusTexts.push((sub && studioShortNames[sub]) ? studioShortNames[sub] : (statusObj.reason || '事假'));
     }
     if (statusObj.status.includes('absent')) {
       statusTexts.push('未归');
@@ -194,7 +201,10 @@ function getStatusDisplay(statusObj) {
 
   switch (statusObj.status) {
     case 'leaveSchool': return '离校';
-    case 'leaveInside': return statusObj.reason ? statusObj.reason : '事假';
+    case 'leaveInside': {
+      const sub = statusObj.subReason;
+      return (sub && studioShortNames[sub]) ? studioShortNames[sub] : (statusObj.reason || '事假');
+    }
     case 'leaveOutside': return '外出';
     case 'absent': return '未归';
     default: return '在寝';
@@ -287,11 +297,11 @@ function generateReportText() {
     overview += shortGrade + '级应到' + stats.should + ' 实到' + stats.actual + '\n';
 
     if (stats.business.length > 0) {
-      const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '舆情', '工作室', '数据分析工作室', '数据实战工作室'];
+      const studioReasons = ['数分', '网安', '阿sir', '数实战', '网管', '舆情', '工作室', '数据分析工作室', '数据实战工作室', '网安工作室', '舆情工作室', '网管工作室', '阿sir工作室'];
       const reasonCount = {};
       stats.business.forEach(s => {
         let r = s.reason || '其他';
-        if (studioReasons.includes(r)) { r = '工作室'; }
+        if (studioReasons.includes(r) || (s.subReason && studioReasons.includes(s.subReason))) { r = '工作室'; }
         reasonCount[r] = (reasonCount[r] || 0) + 1;
       });
       const reasonOrder = ['工作室', '备赛', '辩论队', '复习', '学习', '校督', '分团委', '学生会', '合唱团', '运动会', '警乐团', '羽毛球', '篮球队', '其他'];
@@ -483,6 +493,7 @@ function switchReportMode(type) {
   document.getElementById('btnAbsent').classList.toggle('active', type === 'absent');
   document.getElementById('btnPresent').classList.toggle('active', type === 'present');
   document.getElementById('btnVacation').classList.toggle('active', type === 'vacation');
+  if (window.reportTabsInstance) window.reportTabsInstance.moveThumbToActive();
 
   let result;
   switch (type) {
@@ -717,13 +728,14 @@ function switchFloor(floor) {
   state.currentFloor = floor;
   state.viewMode = 'list';
   state.currentDorm = null;
-  document.querySelectorAll('.floor-tab').forEach(tab => {
+  document.querySelectorAll('#floorTabs .neu-tab').forEach(tab => {
     if (floor === 'all') {
       tab.classList.toggle('active', tab.dataset.floor === 'all');
     } else {
       tab.classList.toggle('active', parseInt(tab.dataset.floor) === floor);
     }
   });
+  if (window.floorTabsInstance) window.floorTabsInstance.moveThumbToActive();
   document.getElementById('currentFloor').textContent = (floor === 'all') ? '全部楼层' : floor + 'F';
   renderDormList();
 }
@@ -1252,7 +1264,6 @@ function renderCardView() {
         <button class="card-nav-arrow" ${!prevDorm ? 'disabled' : ''} onclick="goToPrevCard()"><i class="fas fa-chevron-left"></i></button>
         <div class="card-title-area">
           <div class="card-dorm-number">${dormNumber} 宿舍</div>
-          <div class="card-page-indicator">${cardState.cardIndex + 1} / ${dorms.length}</div>
         </div>
         <button class="card-nav-arrow" ${!nextDorm ? 'disabled' : ''} onclick="goToNextCard()"><i class="fas fa-chevron-right"></i></button>
       </div>
@@ -1527,18 +1538,61 @@ function applyPendingLeaves() {
 }
 
 // ============================================
+// SmoothTabs — 选项卡滑块动效
+// ============================================
+class SmoothTabs {
+  constructor(containerSelector) {
+    this.container = document.querySelector(containerSelector);
+    if (!this.container) return;
+    this.thumb = this.container.querySelector('.tab-thumb');
+    this.tabs = this.container.querySelectorAll('.neu-tab');
+    this.init();
+  }
+
+  init() {
+    if (!this.thumb) return;
+    this.moveThumbToActive();
+    this.tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        this.moveThumb(tab);
+      });
+    });
+    window.addEventListener('resize', () => this.moveThumbToActive());
+  }
+
+  moveThumb(targetTab) {
+    if (!this.thumb) return;
+    const containerRect = this.container.getBoundingClientRect();
+    const tabRect = targetTab.getBoundingClientRect();
+    const left = tabRect.left - containerRect.left;
+    const width = tabRect.width;
+    this.thumb.style.transform = `translateX(${left}px)`;
+    this.thumb.style.width = `${width}px`;
+  }
+
+  moveThumbToActive() {
+    const active = this.container.querySelector('.neu-tab.active');
+    if (active) this.moveThumb(active);
+  }
+}
+
+// ============================================
 // 主题切换（实现在 utils.js，此处仅作注释说明）
 // ============================================
 // 事件监听初始化
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.floor-tab').forEach(tab => {
+  document.querySelectorAll('#floorTabs .neu-tab').forEach(tab => {
     tab.addEventListener('click', function() {
       const floor = this.dataset.floor;
       switchFloor(floor === 'all' ? 'all' : parseInt(floor));
     });
   });
+
+  // 初始化选项卡滑块动效
+  window.floorTabsInstance = new SmoothTabs('#floorTabs');
+  window.reportTabsInstance = new SmoothTabs('#reportVersionTabs');
 
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', function() {
