@@ -52,19 +52,19 @@
   <div class="header">
     <h1><i class="fas fa-clipboard-check"></i> <span id="headerTitle">晚寝查寝系统</span><span id="headerRoomCode" style="display:none;"></span><span id="headerCountdown" style="display:none;"></span></h1>
     <div style="display: flex; gap: 8px;" id="headerActions">
-      <button class="neu-btn-header icon-only" id="btnTheme" onclick="toggleTheme()" title="切换日间/夜间模式">
+      <button class="header-btn icon-only" id="btnTheme" onclick="toggleTheme()" title="切换日间/夜间模式">
         <i class="fas fa-moon"></i>
       </button>
-      <button class="neu-btn-header" id="btnWorkWechat" onclick="openWorkWechat()" title="打开企业微信">
+      <button class="header-btn" id="btnWorkWechat" onclick="openWorkWechat()" title="打开企业微信">
         <i class="fas fa-building"></i> 企业微信
       </button>
-      <button class="neu-btn-header" id="btnReset" onclick="resetAllStatus()" title="清空所有记录，开始新查寝">
+      <button class="header-btn" id="btnReset" onclick="resetAllStatus()" title="清空所有记录，开始新查寝">
         <i class="fas fa-redo"></i> 新查寝
       </button>
-      <button class="neu-btn-header" id="btnSyncRoom" onclick="syncRoom()" style="display:none;">
+      <button class="header-btn" id="btnSyncRoom" onclick="syncRoom()" style="display:none;">
         <i class="fas fa-sync-alt"></i> 刷新
       </button>
-      <button class="neu-btn-header" id="btnLeaveRoom" onclick="leaveRoom()" style="display:none;">
+      <button class="header-btn" id="btnLeaveRoom" onclick="leaveRoom()" style="display:none;">
         <i class="fas fa-sign-out-alt"></i> 退出
       </button>
     </div>
@@ -133,7 +133,7 @@
     <div class="room-lobby-section">
       <h3>创建新房间</h3>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">创建一个查寝房间，邀请其他同学加入协同查寝。房间有效期为90分钟。</p>
-      <button class="room-lobby-btn" id="createRoomBtn" onclick="createRoom()">
+      <button class="modal-btn-primary" id="createRoomBtn" onclick="createRoom()">
         <i class="fas fa-plus-circle"></i>创建房间
       </button>
     </div>
@@ -143,11 +143,11 @@
       <div class="room-code-input-wrap">
         <input type="text" class="room-code-input" id="roomCodeInput" placeholder="输入6位房间码" maxlength="6" autocomplete="off">
       </div>
-      <button class="room-lobby-btn secondary" id="joinRoomBtn" onclick="joinRoom()">
+      <button class="modal-btn-primary" id="joinRoomBtn" onclick="joinRoom()">
         <i class="fas fa-sign-in-alt"></i>加入房间
       </button>
     </div>
-    <button class="room-lobby-btn secondary" style="margin-top:8px;" onclick="selectMode('single')">
+    <button class="modal-btn-secondary" style="margin-top:8px;" onclick="selectMode('single')">
       <i class="fas fa-arrow-left"></i>返回单人模式
     </button>
   </div>

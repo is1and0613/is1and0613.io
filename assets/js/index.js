@@ -1538,7 +1538,7 @@ function applyPendingLeaves() {
 }
 
 // ============================================
-// SmoothTabs — 选项卡滑块动效
+// SmoothTabs — 选项卡滑块动效 (v16: left+width 精确定位)
 // ============================================
 class SmoothTabs {
   constructor(containerSelector) {
@@ -1551,23 +1551,35 @@ class SmoothTabs {
 
   init() {
     if (!this.thumb) return;
-    this.moveThumbToActive();
+    const activeTab = this.container.querySelector('.neu-tab.active');
+    if (activeTab) this.moveThumb(activeTab);
+
     this.tabs.forEach(tab => {
       tab.addEventListener('click', () => {
+        this.tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
         this.moveThumb(tab);
       });
     });
-    window.addEventListener('resize', () => this.moveThumbToActive());
+
+    window.addEventListener('resize', () => {
+      const active = this.container.querySelector('.neu-tab.active');
+      if (active) this.moveThumb(active);
+    });
   }
 
   moveThumb(targetTab) {
     if (!this.thumb) return;
     const containerRect = this.container.getBoundingClientRect();
     const tabRect = targetTab.getBoundingClientRect();
+
+    // 使用 left + width 精确定位，禁止 transform 偏移
     const left = tabRect.left - containerRect.left;
     const width = tabRect.width;
-    this.thumb.style.transform = `translateX(${left}px)`;
-    this.thumb.style.width = `${width}px`;
+
+    this.thumb.style.left = left + 'px';
+    this.thumb.style.width = width + 'px';
+    this.thumb.style.transform = 'none';
   }
 
   moveThumbToActive() {

@@ -190,36 +190,50 @@ body {
   background: rgba(255,255,255,0.1);
 }
 
-/* Header 按钮 — v15: 禁止光晕 */
-.neu-btn-header {
+/* Header 按钮 — v16: 毛玻璃半透明（彻底放弃新拟态） */
+.header-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   padding: 8px 14px;
   border-radius: 12px;
-  background: var(--neu-bg);
-  box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
-  border: none;
-  color: var(--neu-text);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: var(--neu-transition);
-  white-space: nowrap;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   -webkit-tap-highlight-color: transparent;
+  box-shadow: none !important;
   filter: none !important;
   text-shadow: none !important;
+  white-space: nowrap;
 }
-.neu-btn-header:active {
-  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+.header-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.header-btn:active {
+  background: rgba(255, 255, 255, 0.08);
   transform: scale(0.96);
 }
-.neu-btn-header.icon-only {
+
+/* 月亮图标专用圆形 */
+.header-btn.icon-only {
   width: 40px;
   height: 40px;
   padding: 0;
   border-radius: 50%;
+}
+
+/* 图标颜色强制白色 */
+.header-btn i,
+.header-btn svg {
+  color: #FFFFFF;
+  font-size: 16px;
 }
 
 /* ===== Toast ===== */
@@ -685,7 +699,7 @@ button,
 [data-theme="dark"] .bottom-stats { color: var(--neu-text-secondary); }
 [data-theme="dark"] .status-bar { background: var(--neu-bg); border-color: var(--border); }
 [data-theme="dark"] .filter-bar { background: var(--neu-bg); border-color: transparent; }
-[data-theme="dark"] .floor-tabs { background: var(--neu-bg); }
+[data-theme="dark"] .neu-tabs { background: var(--neu-bg); }
 
 /* ===== Dark Theme — Login Page ===== */
 [data-theme="dark"] .login-card {
@@ -1197,7 +1211,7 @@ textarea:focus {
   outline: none;
 }
 
-/* ===== Tabs / Segmented Control — v15: 滑块动效 ===== */
+/* ===== Tabs / Segmented Control — v16: 强制文字居中 + 滑块精确定位 ===== */
 .neu-tabs {
   position: relative;
   display: flex;
@@ -1205,23 +1219,24 @@ textarea:focus {
   border-radius: 16px;
   padding: 5px;
   box-shadow: inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
-  gap: 4px;
+  justify-content: space-between;
 }
 .tab-thumb {
   position: absolute;
   top: 5px;
+  bottom: 5px;
   left: 5px;
-  height: calc(100% - 10px);
   background: var(--neu-bg);
   border-radius: 12px;
   box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 0;
   pointer-events: none;
+  /* width 由 JS 动态控制，不设置固定值 */
 }
 .neu-tab {
   flex: 1;
-  padding: 10px 14px;
+  padding: 10px 0;
   border-radius: 12px;
   border: none;
   background: transparent;
@@ -1234,6 +1249,10 @@ textarea:focus {
   position: relative;
   z-index: 1;
   -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
 }
 .neu-tab.active {
   color: var(--neu-text);

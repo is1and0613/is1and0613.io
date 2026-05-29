@@ -185,6 +185,53 @@
   box-shadow: var(--shadow-raised-sm);
 }
 
+/* ===== Modal 内按钮 — v16: 统一新拟态，禁止填充色和边框 ===== */
+.modal-btn-primary {
+  width: 100%;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--neu-bg);
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  border: none;
+  color: var(--neu-text);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-btn-primary:active {
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  transform: scale(0.98);
+}
+
+.modal-btn-secondary {
+  width: 100%;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--neu-bg);
+  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  border: none;
+  color: var(--neu-text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-btn-secondary:active {
+  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+  transform: scale(0.98);
+}
+
 /* ===== Room View ===== */
 
 .room-view {

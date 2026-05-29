@@ -23,11 +23,27 @@ function showModeSelection() {
 }
 
 function selectMode(mode) {
+  const prevMode = roomState.mode;
   roomState.mode = mode;
   sessionStorage.setItem('checkMode', mode);
   document.getElementById('modeOverlay').classList.remove('active');
 
   if (mode === 'single') {
+    // If switching from multi mode, clean up room state and restore main UI
+    if (prevMode === 'multi') {
+      stopRoomPolling();
+      sessionStorage.removeItem('roomCode');
+      roomState.room = null;
+      roomState.code = null;
+      roomState.states = [];
+      roomState.logs = [];
+      roomState.messages = [];
+      roomState.members = [];
+      roomState.lastReadId = 0;
+      roomState.unreadCount = 0;
+      updateChatBadge();
+      hideRoomLobby();
+    }
     document.getElementById('loadingOverlay').classList.remove('hidden');
     loadDormData();
   } else {
@@ -45,7 +61,8 @@ function showRoomLobby() {
   document.querySelector('.bottom-bar').style.display = 'none';
   document.querySelector('.header').style.display = 'none';
   document.querySelector('.search-section').style.display = 'none';
-  document.querySelector('.floor-tabs').style.display = 'none';
+  const floorTabs = document.getElementById('floorTabs');
+  if (floorTabs) floorTabs.style.display = 'none';
   document.querySelector('.filter-bar').style.display = 'none';
   document.querySelector('.status-bar').style.display = 'none';
 }
@@ -55,7 +72,8 @@ function hideRoomLobby() {
   document.getElementById('roomView').style.display = 'none';
   document.querySelector('.header').style.display = '';
   document.querySelector('.search-section').style.display = '';
-  document.querySelector('.floor-tabs').style.display = '';
+  const floorTabs = document.getElementById('floorTabs');
+  if (floorTabs) floorTabs.style.display = '';
   document.querySelector('.filter-bar').style.display = '';
   document.querySelector('.status-bar').style.display = '';
   document.querySelector('.bottom-bar').style.display = '';
@@ -130,7 +148,8 @@ async function showRoomView() {
   // Keep main UI (header, search, floor tabs, filter, dorm container, bottom bar)
   document.querySelector('.header').style.display = '';
   document.querySelector('.search-section').style.display = '';
-  document.querySelector('.floor-tabs').style.display = '';
+  const floorTabs = document.getElementById('floorTabs');
+  if (floorTabs) floorTabs.style.display = '';
   document.querySelector('.filter-bar').style.display = '';
   document.querySelector('.status-bar').style.display = '';
   document.querySelector('.bottom-bar').style.display = '';
