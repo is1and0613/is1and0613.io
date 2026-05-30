@@ -1,6 +1,6 @@
 // Service Worker — NightShift 查寝系统
 // 版本更新时修改此常量（deploy checklist 第一项）
-const CACHE_NAME = 'nightshift-v2026-0529b';
+const CACHE_NAME = 'nightshift-v2026-0530a';
 
 // 安装：skipWaiting 立即激活，不预缓存
 self.addEventListener('install', () => {
@@ -14,7 +14,7 @@ self.addEventListener('activate', e => {
       keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
     ))
   );
-  // 不调用 clients.claim()，让新 SW 在下次导航时接管
+  self.clients.claim();
 });
 
 // 是否可缓存的静态资源
