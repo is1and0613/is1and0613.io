@@ -8,7 +8,7 @@ import {
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/I/1
 const CODE_LENGTH = 6;
-const ROOM_TTL_MINUTES = 90;
+const ROOM_TTL_MINUTES = 2 * 24 * 60; // 2 days
 const MAX_SYNC_LOGS = 50;
 const MAX_SYNC_MESSAGES = 50;
 
@@ -188,7 +188,7 @@ async function handleJoin(request, env, body) {
     await env.DB.prepare(
       "UPDATE rooms SET status = 'expired' WHERE id = ?"
     ).bind(room.id).run();
-    return errorResponse('房间已过期（90分钟有效期）', 410);
+    return errorResponse('房间已过期（2天有效期）', 410);
   }
 
   // Check duplicate

@@ -82,6 +82,16 @@
   </div>
   <div class="search-result-info" id="searchResultInfo"></div>
 
+  <!-- v17.5: 年级筛选（独立一行，搜索框下方、楼层筛选上方） -->
+  <div class="neu-tabs grade-tabs" id="gradeTabs">
+    <div class="tab-thumb"></div>
+    <button class="neu-tab active" data-grade="all">全部年级</button>
+    <button class="neu-tab" data-grade="2022级">大四</button>
+    <button class="neu-tab" data-grade="2023级">大三</button>
+    <button class="neu-tab" data-grade="2024级">大二</button>
+    <button class="neu-tab" data-grade="2025级">大一</button>
+  </div>
+
   <!-- 楼层标签 — v15: 滑块动效 -->
   <div class="neu-tabs" id="floorTabs">
     <div class="tab-thumb"></div>
@@ -113,8 +123,9 @@
 
   <!-- 状态栏 -->
   <div class="status-bar">
-    当前楼层：<span id="currentFloor">5F</span> |
-    当前筛选：<span id="currentFilter">全部</span>
+    年级：<span id="currentGrade">全部年级</span> |
+    楼层：<span id="currentFloor">5F</span> |
+    筛选：<span id="currentFilter">全部</span>
   </div>
 
   <!-- 宿舍列表容器 -->
@@ -132,7 +143,7 @@
     <h2><i class="fas fa-users"></i> 多人查寝</h2>
     <div class="room-lobby-section">
       <h3>创建新房间</h3>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">创建一个查寝房间，邀请其他同学加入协同查寝。房间有效期为90分钟。</p>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">创建一个查寝房间，邀请其他同学加入协同查寝。房间有效期为2天。</p>
       <button class="modal-btn-primary" id="createRoomBtn" onclick="createRoom()">
         <i class="fas fa-plus-circle"></i>创建房间
       </button>

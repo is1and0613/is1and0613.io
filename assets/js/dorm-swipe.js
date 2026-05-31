@@ -111,8 +111,9 @@ class DormSwipeController {
     const fastSwipe = Math.abs(this.velocity || 0) > this.velocityThreshold;
 
     if (absX > this.threshold || fastSwipe) {
-      if (this.deltaX > 0) this.prev();
-      else this.next();
+      // v17.5: 统一方向 — 手指向右滑 → 下一间(+1), 手指向左滑 → 上一间(-1)
+      if (this.deltaX > 0) this.next();
+      else this.prev();
     } else {
       this.snapBack();
     }
@@ -230,9 +231,10 @@ class DormSwipeController {
   }
 
   preparePeek() {
+    // v17.5: 方向统一 — 向右滑显示下一间(peek +1), 向左滑显示上一间(peek -1)
     let peekIndex = this.currentIndex;
-    if (this.deltaX > 0) peekIndex = this.currentIndex - 1;
-    else if (this.deltaX < 0) peekIndex = this.currentIndex + 1;
+    if (this.deltaX > 0) peekIndex = this.currentIndex + 1;
+    else if (this.deltaX < 0) peekIndex = this.currentIndex - 1;
 
     if (peekIndex >= 0 && peekIndex < this.dorms.length) {
       const dorm = this.dorms[peekIndex];
@@ -282,7 +284,7 @@ function renderSwipeDorm(dormNumber) {
 function buildSwipeDormCard(dormNumber) {
   const students = getStudentsInDorm(dormNumber);
   const filtered = students.filter(function(s) {
-    return isSearchMatch(s) && matchesActiveFilters(s.name);
+    return isSearchMatch(s) && matchesActiveFilters(s.name) && (typeof matchesGradeFilter === 'function' ? matchesGradeFilter(s) : true);
   });
 
   var html = '<div class="dorm-card"><div class="dorm-nav">' +

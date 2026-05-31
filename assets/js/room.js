@@ -61,6 +61,8 @@ function showRoomLobby() {
   document.querySelector('.bottom-bar').style.display = 'none';
   document.querySelector('.header').style.display = 'none';
   document.querySelector('.search-section').style.display = 'none';
+  const gradeTabs = document.getElementById('gradeTabs');
+  if (gradeTabs) gradeTabs.style.display = 'none';
   const floorTabs = document.getElementById('floorTabs');
   if (floorTabs) floorTabs.style.display = 'none';
   document.querySelector('.filter-bar').style.display = 'none';
@@ -72,6 +74,8 @@ function hideRoomLobby() {
   document.getElementById('roomView').style.display = 'none';
   document.querySelector('.header').style.display = '';
   document.querySelector('.search-section').style.display = '';
+  const gradeTabs = document.getElementById('gradeTabs');
+  if (gradeTabs) gradeTabs.style.display = '';
   const floorTabs = document.getElementById('floorTabs');
   if (floorTabs) floorTabs.style.display = '';
   document.querySelector('.filter-bar').style.display = '';
@@ -148,6 +152,8 @@ async function showRoomView() {
   // Keep main UI (header, search, floor tabs, filter, dorm container, bottom bar)
   document.querySelector('.header').style.display = '';
   document.querySelector('.search-section').style.display = '';
+  const gradeTabs = document.getElementById('gradeTabs');
+  if (gradeTabs) gradeTabs.style.display = '';
   const floorTabs = document.getElementById('floorTabs');
   if (floorTabs) floorTabs.style.display = '';
   document.querySelector('.filter-bar').style.display = '';
@@ -159,6 +165,12 @@ async function showRoomView() {
   document.getElementById('headerTitle').style.display = 'none';
   document.getElementById('headerRoomCode').style.display = '';
   document.getElementById('headerRoomCode').textContent = roomState.code;
+  // v17.5: 点击房间码复制
+  document.getElementById('headerRoomCode').style.cursor = 'pointer';
+  document.getElementById('headerRoomCode').title = '点击复制房间码';
+  document.getElementById('headerRoomCode').onclick = function() {
+    copyRoomCode(roomState.code);
+  };
   document.getElementById('headerCountdown').style.display = '';
   document.getElementById('btnWorkWechat').style.display = 'none';
   document.getElementById('btnReset').style.display = 'none';
@@ -191,7 +203,7 @@ async function syncRoom() {
       // Check if room expired during sync
       if (data.room_info && data.room_info.status === 'expired') {
         stopRoomPolling();
-        showToast('房间已过期（90分钟有效期）');
+        showToast('房间已过期（2天有效期）');
         setTimeout(() => { leaveRoom(true); }, 1500);
         return;
       }
@@ -411,17 +423,33 @@ function updateRoomCountdown() {
 
   if (diff <= 0) {
     el.textContent = ' · 已过期';
-    el.style.color = '#e74c3c';
+    el.style.color = '#DC2626';
     stopRoomPolling();
-    showToast('房间已过期（90分钟有效期）');
+    showToast('房间已过期（2天有效期）');
     setTimeout(() => { leaveRoom(true); }, 1500);
     return;
   }
 
-  const min = Math.floor(diff / 60000);
-  const sec = Math.floor((diff % 60000) / 1000);
-  el.textContent = ` · ${min}分${sec}秒后过期`;
-  el.style.color = diff < 300000 ? '#e74c3c' : '#999';
+  // v17.5: 支持天/时/分/秒 完整显示
+  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+  const seconds = Math.floor((diff % (60 * 1000)) / 1000);
+
+  let text = ' · ';
+  if (days > 0) text += `${days}天`;
+  if (hours > 0 || days > 0) text += `${hours}小时`;
+  text += `${minutes}分${seconds}秒后过期`;
+  el.textContent = text;
+
+  // v17.5: 颜色警告 — < 1小时橙色, < 10分钟红色
+  if (diff < 10 * 60 * 1000) {
+    el.style.color = '#DC2626';
+  } else if (diff < 60 * 60 * 1000) {
+    el.style.color = '#D97706';
+  } else {
+    el.style.color = 'rgba(255,255,255,0.7)';
+  }
 }
 
 function leaveRoom(silent) {
@@ -504,6 +532,30 @@ function switchDrawerTab(tab) {
   }
 }
 
+function copyRoomCode(code) {
+  try {
+    navigator.clipboard.writeText(code).then(() => {
+      showToast('房间码已复制：' + code);
+    }).catch(() => {
+      fallbackCopy(code);
+    });
+  } catch (err) {
+    fallbackCopy(code);
+  }
+}
+
+function fallbackCopy(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+  showToast('房间码已复制：' + text);
+}
+
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
@@ -537,7 +589,14 @@ function generateRoomReport() {
   }
 }
 
-// Countdown ticker
-setInterval(() => {
-  if (roomState.room) updateRoomCountdown();
-}, 10000);
+// v17.5: 倒计时每秒更新
+let countdownInterval = null;
+function startCountdownTicker() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    if (roomState.room) updateRoomCountdown();
+  }, 1000);
+}
+
+// 初始化时启动
+startCountdownTicker();

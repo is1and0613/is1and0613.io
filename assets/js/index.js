@@ -10,6 +10,7 @@ let searchDebounceTimer = null;
 // ============================================
 const state = {
   currentFloor: 5,
+  currentGrade: 'all', // v17.5: 年级筛选
   activeFilters: new Set(['all']),
   viewMode: 'list',
   currentDorm: null,
@@ -592,6 +593,7 @@ function renderDormList() {
 
     const filtered = students.filter(s => {
       if (!isSearchMatch(s)) return false;
+      if (!matchesGradeFilter(s)) return false; // v17.5: 年级筛选
       if (searchActive) return true;
       return matchesActiveFilters(s.name);
     });
@@ -630,7 +632,7 @@ function renderSingleDorm() {
   const nextDorm = currentIndex < dorms.length - 1 ? dorms[currentIndex + 1] : null;
 
   const students = getStudentsInDorm(state.currentDorm);
-  const filtered = students.filter(s => isSearchMatch(s) && matchesActiveFilters(s.name));
+  const filtered = students.filter(s => isSearchMatch(s) && matchesActiveFilters(s.name) && matchesGradeFilter(s));
   let totalCount = filtered.length;
   let absentCount = 0, leaveSchoolCount = 0, leaveInsideCount = 0, leaveOutsideCount = 0;
 
@@ -736,8 +738,33 @@ function switchFloor(floor) {
     }
   });
   if (window.floorTabsInstance) window.floorTabsInstance.moveThumbToActive();
-  document.getElementById('currentFloor').textContent = (floor === 'all') ? '全部楼层' : floor + 'F';
+  updateFilterInfo();
   renderDormList();
+}
+
+// v17.5: 年级筛选
+function switchGrade(grade) {
+  state.currentGrade = grade;
+  document.querySelectorAll('#gradeTabs .neu-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.grade === grade);
+  });
+  if (window.gradeTabsInstance) window.gradeTabsInstance.moveThumbToActive();
+  // 更新筛选信息
+  updateFilterInfo();
+  refreshView();
+}
+
+function matchesGradeFilter(student) {
+  if (state.currentGrade === 'all') return true;
+  return student.grade === state.currentGrade;
+}
+
+function updateFilterInfo() {
+  const gradeMap = { '2022级': '大四', '2023级': '大三', '2024级': '大二', '2025级': '大一' };
+  const gradeText = state.currentGrade === 'all' ? '全部年级' : (gradeMap[state.currentGrade] || state.currentGrade);
+  const floorText = state.currentFloor === 'all' ? '全部楼层' : state.currentFloor + 'F';
+  document.getElementById('currentFloor').textContent = floorText;
+  document.getElementById('currentGrade').textContent = gradeText;
 }
 
 function switchFilter(filter) {
@@ -1236,7 +1263,7 @@ function renderCardView() {
 
   const dormNumber = dorms[cardState.cardIndex];
   const allStudents = getStudentsInDorm(dormNumber);
-  const students = allStudents.filter(s => isSearchMatch(s) && matchesActiveFilters(s.name));
+  const students = allStudents.filter(s => isSearchMatch(s) && matchesActiveFilters(s.name) && matchesGradeFilter(s));
   const prevDorm = cardState.cardIndex > 0;
   const nextDorm = cardState.cardIndex < dorms.length - 1;
 
@@ -1331,10 +1358,11 @@ function onCardTouchEnd(e) {
   const threshold = window.innerWidth * 0.3;
 
   if (Math.abs(dx) > threshold || Math.abs(dx) > 80) {
+    // v17.5: 统一方向 — 手指向右滑 → 下一间(+1), 手指向左滑 → 上一间(-1)
     if (dx > 0) {
-      goToPrevCard();
-    } else {
       goToNextCard();
+    } else {
+      goToPrevCard();
     }
   } else {
     // Snap back
@@ -1602,8 +1630,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // v17.5: 年级筛选事件
+  document.querySelectorAll('#gradeTabs .neu-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      switchGrade(this.dataset.grade);
+    });
+  });
+
   // 初始化选项卡滑块动效
   window.floorTabsInstance = new SmoothTabs('#floorTabs');
+  window.gradeTabsInstance = new SmoothTabs('#gradeTabs');
   window.reportTabsInstance = new SmoothTabs('#reportVersionTabs');
 
   document.querySelectorAll('.filter-btn').forEach(btn => {

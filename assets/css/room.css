@@ -18,80 +18,83 @@
   pointer-events: auto;
 }
 
+/* v17.5: 模式选择 Modal — 统一新拟态，禁止克莱因蓝填充 */
 .mode-card {
-  background: var(--bg-card);
-  border-radius: 16px;
+  background: var(--neu-bg);
+  border-radius: 24px;
   padding: 32px 24px;
   width: 90%;
   max-width: 360px;
   text-align: center;
-  box-shadow: var(--shadow-card);
+  box-shadow: 16px 16px 32px var(--neu-dark), -16px -16px 32px var(--neu-light);
 }
 
 .mode-card h2 {
-  font-size: 20px;
-  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--neu-text);
   margin-bottom: 8px;
 }
 
 .mode-card .mode-subtitle {
   font-size: 14px;
-  color: var(--text-muted);
-  margin-bottom: 28px;
+  color: var(--neu-text-secondary);
+  margin-bottom: 24px;
 }
 
 .mode-btns {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .mode-btn {
-  padding: 16px;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg);
-  font-size: 16px;
-  font-weight: 500;
+  width: 100%;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--neu-bg);
+  box-shadow: 10px 10px 20px var(--neu-dark), -10px -10px 20px var(--neu-light);
+  border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--text);
-  box-shadow: var(--shadow-raised-sm);
-}
-
-.mode-btn:hover {
-  border-color: var(--primary);
-}
-
-.mode-btn.primary {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
-}
-
-.mode-btn.primary:active {
-  background: var(--primary-dark);
+  color: var(--neu-text);
+  font-size: 16px;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mode-btn:active {
-  box-shadow: var(--shadow-pressed);
-  transform: scale(0.96);
+  box-shadow: inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
+  transform: scale(0.98);
+}
+
+/* v17.5: 去除 .primary 的克莱因蓝填充，双按钮统一新拟态 */
+.mode-btn.primary {
+  background: var(--neu-bg);
+  color: var(--neu-text);
+  border: none;
+  box-shadow: 10px 10px 20px var(--neu-dark), -10px -10px 20px var(--neu-light);
+}
+.mode-btn.primary:active {
+  box-shadow: inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
+  transform: scale(0.98);
 }
 
 .mode-btn .mode-desc {
   display: block;
   font-size: 12px;
   font-weight: normal;
-  color: var(--text-muted);
+  color: var(--neu-text-secondary);
   margin-top: 4px;
 }
 
 .mode-btn.primary .mode-desc {
-  color: rgba(255,255,255,0.7);
+  color: var(--neu-text-secondary);
 }
 
 /* ===== Room Lobby ===== */
@@ -240,11 +243,25 @@
 }
 
 /* Header room code & countdown */
+/* v17.5: 房间码可点击复制 */
 #headerRoomCode {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 3px;
   color: white;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+#headerRoomCode:active {
+  opacity: 0.7;
+}
+#headerRoomCode::after {
+  content: '📋';
+  font-size: 14px;
+  margin-left: 6px;
+  opacity: 0.8;
 }
 
 #headerCountdown {

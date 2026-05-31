@@ -102,6 +102,17 @@ body {
   padding: 0 1px;
 }
 
+/* ===== v17.5: Grade Tabs — 年级筛选（搜索框下方、楼层筛选上方） ===== */
+.grade-tabs {
+  margin: 12px 16px 8px;
+  padding: 4px;
+  border-radius: 14px;
+}
+.grade-tabs .neu-tab {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
 /* ===== Floor Tabs — v15: 改用 .neu-tabs + .tab-thumb 滑块 ===== */
 #floorTabs {
   position: sticky;
