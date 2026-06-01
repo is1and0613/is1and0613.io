@@ -219,7 +219,7 @@ async function syncRoom() {
         roomState.states.forEach(s => {
           const statusMap = { present: 'in', absent: 'absent', leaveSchool: 'leaveSchool', leaveInside: 'leaveInside', leaveOutside: 'leaveOutside' };
           const mappedStatus = statusMap[s.status] || 'in';
-          state.studentStatus[s.student_name] = { status: mappedStatus, reason: s.detail || '' };
+          state.studentStatus[s.student_name] = { status: mappedStatus, reason: s.reason || s.detail || '', reason_detail: s.reason_detail || '' };
         });
       }
 
@@ -318,6 +318,8 @@ async function updateRoomStudentState(studentName, newStatus, detail) {
         student_name: studentName,
         new_status: newStatus,
         detail: detail || null,
+        reason: detail || null,
+        reason_detail: null,
       }),
     });
   } catch (e) {

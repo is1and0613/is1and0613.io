@@ -101,7 +101,7 @@ class DormSwipeController {
     this.currentEl.classList.remove('is-dragging');
     this.currentEl.removeAttribute('data-direction');
 
-    // v14: 提前检查动画锁，防止快速操作导致索引错乱
+    // v18: 提前检查动画锁，防止快速操作导致索引错乱
     if (this.isAnimating) { this.snapBack(); return; }
 
     this.currentEl.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
@@ -111,9 +111,9 @@ class DormSwipeController {
     const fastSwipe = Math.abs(this.velocity || 0) > this.velocityThreshold;
 
     if (absX > this.threshold || fastSwipe) {
-      // v17.5: 统一方向 — 手指向右滑 → 下一间(+1), 手指向左滑 → 上一间(-1)
-      if (this.deltaX > 0) this.next();
-      else this.prev();
+      // v18: 标准方向 — 手指向右滑 → 上一间(-1), 手指向左滑 → 下一间(+1)
+      if (this.deltaX > 0) this.prev();
+      else this.next();
     } else {
       this.snapBack();
     }
@@ -231,10 +231,10 @@ class DormSwipeController {
   }
 
   preparePeek() {
-    // v17.5: 方向统一 — 向右滑显示下一间(peek +1), 向左滑显示上一间(peek -1)
+    // v18: 标准方向 — 向右滑预览上一间(peek -1), 向左滑预览下一间(peek +1)
     let peekIndex = this.currentIndex;
-    if (this.deltaX > 0) peekIndex = this.currentIndex + 1;
-    else if (this.deltaX < 0) peekIndex = this.currentIndex - 1;
+    if (this.deltaX > 0) peekIndex = this.currentIndex - 1;
+    else if (this.deltaX < 0) peekIndex = this.currentIndex + 1;
 
     if (peekIndex >= 0 && peekIndex < this.dorms.length) {
       const dorm = this.dorms[peekIndex];

@@ -72,6 +72,11 @@ function initApp() {
   restoreState();
   renderDormList();
 
+  // v18: 网络恢复后处理离线同步队列
+  if (typeof processSyncQueue === 'function') {
+    processSyncQueue();
+  }
+
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('applyLeaves') === '1') {
     applyPendingLeaves();
@@ -1102,14 +1107,12 @@ async function restoreState() {
 let d1SyncTimer = null;
 let d1SyncPending = false;
 
-function getSessionId() {
-  const username = sessionStorage.getItem('username') || 'default';
-  const mode = roomState.mode || sessionStorage.getItem('checkMode') || 'single';
-  let sid = 'ns_' + username + '_' + mode;
-  if (mode === 'multi' && roomState.code) {
-    sid += '_' + roomState.code;
-  }
-  return sid;
+function getTodayDate() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 async function syncToD1() {
@@ -1120,51 +1123,47 @@ async function syncToD1() {
     const token = sessionStorage.getItem('authToken');
     if (!token) { d1SyncPending = false; return; }
 
-    const sessionId = getSessionId();
-    const floor = state.currentFloor ? String(state.currentFloor) : null;
-
-    // 确保 session 存在
-    await apiFetch('/api/check-session?action=create', {
-      method: 'POST',
-      body: JSON.stringify({ sessionId, floor })
-    });
-
-    // 批量同步记录
+    const checkDate = getTodayDate();
     const records = [];
+
     for (const name in state.studentStatus) {
       const st = state.studentStatus[name];
       const status = Array.isArray(st.status) ? st.status.join(',') : (st.status || 'in');
+      const info = (window.nameIndex && window.nameIndex[name]) || {};
+
       records.push({
-        studentName: name,
+        student_id: name,
+        student_name: name,
+        dorm_number: info.dorm ? String(info.dorm) : null,
+        bed_number: info.bed ? String(info.bed) : null,
+        grade: info.grade || null,
+        class_name: info.className || null,
         status: status,
         reason: st.reason || null
       });
     }
 
     if (records.length > 0) {
-      await apiFetch('/api/check-session?action=sync', {
+      await apiFetch('/api/single-check?action=update', {
         method: 'POST',
         body: JSON.stringify({
-          sessionId,
-          records,
-          deviceId: getDeviceId()
+          check_date: checkDate,
+          records: records
         })
       });
     }
   } catch (e) {
     console.error('D1 sync failed:', e);
+    // 网络失败时入队离线重试
+    if (typeof enqueueSync === 'function') {
+      enqueueSync({
+        url: '/api/single-check?action=update',
+        body: JSON.stringify({ check_date: checkDate, records: records })
+      }).catch(function () { /* silent */ });
+    }
   } finally {
     d1SyncPending = false;
   }
-}
-
-function getDeviceId() {
-  let deviceId = localStorage.getItem('nightshift_device_id');
-  if (!deviceId) {
-    deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-    localStorage.setItem('nightshift_device_id', deviceId);
-  }
-  return deviceId;
 }
 
 async function loadFromD1() {
@@ -1172,15 +1171,15 @@ async function loadFromD1() {
     const token = sessionStorage.getItem('authToken');
     if (!token) return null;
 
-    const sessionId = getSessionId();
-    const resp = await apiFetch('/api/check-session?action=records&session_id=' + encodeURIComponent(sessionId));
+    const checkDate = getTodayDate();
+    const resp = await apiFetch('/api/single-check?action=list&date=' + encodeURIComponent(checkDate));
     if (!resp || !resp.records || resp.records.length === 0) return null;
 
     const restored = {};
     for (const rec of resp.records) {
-      if (window.nameIndex && window.nameIndex[rec.student_name]) {
+      if (window.nameIndex && window.nameIndex[rec.student_id]) {
         const statuses = rec.status.split(',');
-        restored[rec.student_name] = {
+        restored[rec.student_id] = {
           status: statuses.length === 1 ? statuses[0] : statuses,
           reason: rec.reason || undefined
         };
@@ -1358,11 +1357,11 @@ function onCardTouchEnd(e) {
   const threshold = window.innerWidth * 0.3;
 
   if (Math.abs(dx) > threshold || Math.abs(dx) > 80) {
-    // v17.5: 统一方向 — 手指向右滑 → 下一间(+1), 手指向左滑 → 上一间(-1)
+    // v18: 标准方向 — 手指向右滑 → 上一间(-1), 手指向左滑 → 下一间(+1)
     if (dx > 0) {
-      goToNextCard();
-    } else {
       goToPrevCard();
+    } else {
+      goToNextCard();
     }
   } else {
     // Snap back
@@ -1418,16 +1417,7 @@ async function showReportModal() {
   document.getElementById('reportSummary').textContent = result.summary || '';
   document.getElementById('reportModal').classList.add('active');
 
-  // 标记查寝完成（D1 同步）
-  try {
-    const token = sessionStorage.getItem('authToken');
-    if (token) {
-      await apiFetch('/api/check-session?action=complete', {
-        method: 'POST',
-        body: JSON.stringify({ sessionId: getSessionId() })
-      });
-    }
-  } catch (e) { /* 静默失败 */ }
+  // v18: session 完成标记已移除（数据按日期维度存储，无需关闭 session）
 }
 
 function closeReportModal() {

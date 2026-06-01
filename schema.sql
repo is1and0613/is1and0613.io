@@ -90,3 +90,26 @@ CREATE TABLE IF NOT EXISTS check_records (
   PRIMARY KEY (session_id, student_name)
 );
 CREATE INDEX IF NOT EXISTS idx_check_records_session ON check_records(session_id);
+
+-- 单人查寝记录表（v18：按 account + date 维度持久化，跨设备同步）
+CREATE TABLE IF NOT EXISTS single_check_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  check_date TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  student_name TEXT NOT NULL,
+  dorm_number TEXT,
+  bed_number TEXT,
+  grade TEXT,
+  class_name TEXT,
+  status TEXT DEFAULT 'in',
+  reason TEXT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, check_date, student_id)
+);
+CREATE INDEX IF NOT EXISTS idx_single_check_user_date ON single_check_records(user_id, check_date);
+
+-- v18: room_states 增加原因字段和操作者名称
+ALTER TABLE room_states ADD COLUMN reason TEXT;
+ALTER TABLE room_states ADD COLUMN reason_detail TEXT;
+ALTER TABLE room_states ADD COLUMN updated_by_name TEXT;

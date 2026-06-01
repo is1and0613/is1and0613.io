@@ -318,7 +318,7 @@ async function handleState(request, env, body) {
 
   const userId = payload.user_id;
   const username = payload.username;
-  const { code, student_name, new_status, detail } = body;
+  const { code, student_name, new_status, detail, reason, reason_detail } = body;
 
   if (!code || !student_name || !new_status) {
     return errorResponse('缺少必要参数: code, student_name, new_status', 400);
@@ -348,12 +348,13 @@ async function handleState(request, env, body) {
 
   const oldStatus = currentState.status;
 
-  // Update state
+  // Update state (v18: 增加 reason, reason_detail, updated_by_name)
+  const updatedByName = username || payload.display_name || '';
   await env.DB.prepare(
     `UPDATE room_states
-     SET status = ?, updated_by = ?, updated_at = datetime('now')
+     SET status = ?, reason = ?, reason_detail = ?, updated_by = ?, updated_by_name = ?, updated_at = datetime('now')
      WHERE room_id = ? AND student_name = ?`
-  ).bind(new_status, userId, room.id, student_name).run();
+  ).bind(new_status, detail || reason || null, reason_detail || null, userId, updatedByName, room.id, student_name).run();
 
   // Insert log
   await env.DB.prepare(
