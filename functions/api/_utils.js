@@ -55,7 +55,7 @@ export async function logSystemAction(env, userInfo, action, targetType, targetI
     const ip = request ? getClientIP(request) : 'system';
     const ua = request ? (request.headers.get('User-Agent') || '').slice(0, 200) : '';
     // 脱敏 detail 中的姓名
-    const safeDetail = detail ? maskNamesInText(detail) : null;
+    const safeDetail = detail ? detail.slice(0, 500) : null;
     await env.DB.prepare(
       `INSERT INTO system_logs (user_id, username, role, action, target_type, target_id, detail, ip, user_agent)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`

@@ -70,7 +70,7 @@ export const onRequest = withErrorGuard(async (context) => {
 
   if (request.method === 'POST') {
     // v20: role check — only inspector/teacher/admin can modify
-    requireRole(user, ['inspector', 'teacher', 'admin']);
+    requireRole(user, ['inspector', 'admin']);
 
     let body = {};
     try {

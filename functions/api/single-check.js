@@ -4,7 +4,7 @@
 import {
   jsonResponse, errorResponse, handleOptions,
   verifyToken, dbGuard, withErrorGuard,
-  requireRole, maskName,
+  requireRole,
 } from './_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
@@ -55,7 +55,7 @@ export const onRequest = withErrorGuard(async (context) => {
   // ============================================
   if (request.method === 'POST') {
     const payload = await verifyToken(request, env);
-    requireRole(payload, ['inspector', 'teacher', 'admin']);
+    requireRole(payload, ['inspector', 'admin']);
     const userId = payload.user_id;
 
     if (!userId) {

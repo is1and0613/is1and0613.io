@@ -1,10 +1,10 @@
 // functions/api/admin/rooms.js
-// v20: 管理员/教师房间监控 — 列出所有房间及状态
+// v20: 管理员房间监控 — 列出所有房间及状态
 
 import {
   jsonResponse, errorResponse, handleOptions,
   verifyToken, dbGuard, withErrorGuard,
-  requireRole, maskName,
+  requireRole,
 } from '../_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
@@ -16,13 +16,12 @@ export const onRequest = withErrorGuard(async (context) => {
   dbGuard(env);
 
   const payload = await verifyToken(request, env);
-  requireRole(payload, ['admin', 'teacher']);
+  requireRole(payload, ['admin']);
 
   const db = env.DB;
   const url = new URL(request.url);
   const action = url.searchParams.get('action');
 
-  // Room detail: specific room
   if (action === 'detail') {
     const roomId = url.searchParams.get('id');
     if (!roomId) return errorResponse('缺少 room id', 400);
@@ -52,23 +51,15 @@ export const onRequest = withErrorGuard(async (context) => {
        WHERE rm.room_id = ? ORDER BY rm.created_at DESC LIMIT 50`
     ).bind(roomId).all();
 
-    // Mask student names for teacher role
-    const isAdmin = payload.role === 'admin';
-    const maskedStates = states.results.map(s => ({
-      ...s,
-      student_name: isAdmin ? s.student_name : maskName(s.student_name),
-    }));
-
     return jsonResponse({
       room,
-      states: maskedStates,
+      states: states.results,
       logs: logs.results,
       members: members.results,
       messages: messages.results,
     });
   }
 
-  // List all rooms
   const { results: rooms } = await db.prepare(
     `SELECT r.*,
       (SELECT COUNT(*) FROM room_members WHERE room_id = r.id) as member_count,
@@ -78,7 +69,6 @@ export const onRequest = withErrorGuard(async (context) => {
      LIMIT 100`
   ).all();
 
-  // Get creator names
   const creatorIds = [...new Set(rooms.filter(r => r.creator_id).map(r => r.creator_id))];
   const creatorNames = {};
   if (creatorIds.length) {
@@ -95,7 +85,6 @@ export const onRequest = withErrorGuard(async (context) => {
     creator_name: creatorNames[r.creator_id] || String(r.creator_id),
   }));
 
-  // Total student count
   let totalStudents = 0;
   try {
     const countResult = await db.prepare(

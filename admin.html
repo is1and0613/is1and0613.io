@@ -779,7 +779,6 @@
             <option value="student_delete">学生删除</option>
             <option value="room_create">房间创建</option>
             <option value="status_change">状态变更</option>
-            <option value="export">数据导出</option>
             <option value="role_change">角色修改</option>
           </select>
           <input type="text" class="neu-input neu-input-sm" placeholder="操作人" id="logUserFilter" style="max-width:120px;">
@@ -866,9 +865,7 @@
           <select class="neu-select" id="userRoleFilter" onchange="loadUsers(1)">
             <option value="all">全部角色</option>
             <option value="admin">管理员</option>
-            <option value="teacher">教师</option>
             <option value="inspector">查寝员</option>
-            <option value="student">学生</option>
           </select>
           <button class="neu-btn neu-btn-sm" onclick="loadUsers(1)">
             <i class="fas fa-search"></i> 查询
@@ -929,14 +926,10 @@
   let logPage = 1, logPageSize = 20;
   let roomAutoRefreshTimer = null;
 
-  const ROLE_TABS = {
-    admin:  ['upload', 'manage', 'rooms', 'logs', 'settings', 'users'],
-    teacher: ['overview', 'rooms', 'export', 'logs']
-  };
+  const TABS = ['upload', 'manage', 'rooms', 'logs', 'settings', 'users'];
   const TAB_LABELS = {
     upload: '数据上传', manage: '数据管理', rooms: '房间监控',
-    logs: '操作日志', settings: '系统设置', users: '用户管理',
-    overview: '全局概览', export: '报表导出'
+    logs: '操作日志', settings: '系统设置', users: '用户管理'
   };
 
   // ============================================
@@ -969,164 +962,29 @@
     document.getElementById('mainHeader').style.display = 'flex';
     document.getElementById('contentArea').style.display = 'block';
     document.getElementById('displayUsername').textContent = currentUser.display_name || currentUser.username;
+    document.getElementById('roleBadge').textContent = '管理员';
 
-    const roleNames = { admin: '管理员', teacher: '教师', inspector: '查寝员', student: '学生' };
-    document.getElementById('roleBadge').textContent = roleNames[currentUser.role] || currentUser.role;
-
-    // Role-aware tab rendering
     renderTabs();
-
-    // Set header title
-    if (currentUser.role === 'teacher') {
-      document.getElementById('headerTitle').textContent = '教师监管后台';
-    }
-
-    // Show first tab
-    const tabs = ROLE_TABS[currentUser.role] || ROLE_TABS.admin;
-    switchTab(tabs[0]);
+    switchTab('upload');
   }
 
   function renderTabs() {
-    const role = currentUser.role || 'admin';
-    const tabs = ROLE_TABS[role] || ROLE_TABS.admin;
     const tabContainer = document.getElementById('adminTabs');
-    const thumb = tabContainer.querySelector('.tab-thumb');
-
-    // Build tab buttons
     let html = '<div class="tab-thumb"></div>';
-    tabs.forEach((t, i) => {
+    TABS.forEach((t, i) => {
       html += `<button class="neu-tab${i === 0 ? ' active' : ''}" data-tab="${t}">${TAB_LABELS[t] || t}</button>`;
     });
     tabContainer.innerHTML = html;
 
-    // Build tab content panels
-    const contentArea = document.getElementById('contentArea');
-    let contentHtml = '';
-    tabs.forEach((t, i) => {
-      if (t === 'overview') {
-        // Teacher overview tab
-        contentHtml += `
-          <div class="tab-content${i === 0 ? ' active' : ''}" id="tab-${t}">
-            <div class="neu-card">
-              <h3><i class="fas fa-chart-bar"></i> 全局概览</h3>
-              <div class="stats-grid" id="overviewStats">
-                <div class="stat-card"><div class="num">--</div><div class="label">今日房间数</div></div>
-                <div class="stat-card"><div class="num">--</div><div class="label">学生总数</div></div>
-                <div class="stat-card"><div class="num">--</div><div class="label">在寝</div></div>
-                <div class="stat-card"><div class="num">--</div><div class="label">离校</div></div>
-                <div class="stat-card"><div class="num">--</div><div class="label">未归</div></div>
-              </div>
-              <p style="font-size:12px;color:var(--neu-text-secondary);" id="overviewUpdated"></p>
-            </div>
-          </div>`;
-      } else if (t === 'export') {
-        // Teacher export tab
-        contentHtml += `
-          <div class="tab-content${i === 0 ? ' active' : ''}" id="tab-${t}">
-            <div class="neu-card">
-              <h3><i class="fas fa-file-export"></i> 报表导出</h3>
-              <p style="font-size:13px;color:var(--neu-text-secondary);margin-bottom:16px;">
-                导出筛选范围内的学生数据。教师导出时姓名将自动脱敏。
-              </p>
-              <div class="filter-row">
-                <select class="neu-select" id="exportGradeFilter">
-                  <option value="all">全部年级</option>
-                </select>
-                <select class="neu-select" id="exportFloorFilter">
-                  <option value="all">全部楼层</option>
-                  <option value="1">1F</option><option value="4">4F</option>
-                  <option value="5">5F</option><option value="6">6F</option>
-                </select>
-                <button class="neu-btn neu-btn-sm" onclick="exportTeacherReport()">
-                  <i class="fas fa-download"></i> 导出 Excel
-                </button>
-              </div>
-              <div style="font-size:13px;color:var(--neu-text-secondary);" id="exportResult"></div>
-            </div>
-          </div>`;
-      } else {
-        // Reuse existing tab content panels (upload, manage, rooms, logs, settings)
-        // They are hardcoded in HTML, show/hide via id matching
-      }
-    });
-    // Only add overview and export panels (existing tabs are in HTML already)
-    if (tabs.includes('overview') || tabs.includes('export')) {
-      const existingPanels = ['upload','manage','rooms','logs','settings'];
-      const newPanels = tabs.filter(t => !existingPanels.includes(t));
-      newPanels.forEach(t => {
-        const existing = document.getElementById(`tab-${t}`);
-        if (!existing) {
-          // Create the panel via innerHTML — careful not to overwrite existing panels
-        }
-      });
-      // For simplicity, handle overview/export specially
-      if (tabs.includes('overview')) {
-        ensureTabPanel('overview', createOverviewPanel());
-      }
-      if (tabs.includes('export')) {
-        ensureTabPanel('export', createExportPanel());
-      }
-    }
-
     document.getElementById('tabNav').style.display = 'block';
 
-    // Rebind tab clicks
     tabContainer.querySelectorAll('.neu-tab').forEach(btn => {
       btn.addEventListener('click', function() {
-        const tab = this.dataset.tab;
-        switchTab(tab);
+        switchTab(this.dataset.tab);
       });
     });
 
-    // Position thumb
     setTimeout(() => positionTabThumb(tabContainer), 50);
-  }
-
-  function ensureTabPanel(tabId, html) {
-    const existing = document.getElementById(`tab-${tabId}`);
-    if (existing) return;
-    const div = document.createElement('div');
-    div.className = 'tab-content';
-    div.id = `tab-${tabId}`;
-    div.innerHTML = html;
-    document.getElementById('contentArea').appendChild(div);
-  }
-
-  function createOverviewPanel() {
-    return `<div class="neu-card">
-      <h3><i class="fas fa-chart-bar"></i> 全局概览</h3>
-      <div class="stats-grid" id="overviewStats">
-        <div class="stat-card"><div class="num">--</div><div class="label">今日房间数</div></div>
-        <div class="stat-card"><div class="num">--</div><div class="label">学生总数</div></div>
-        <div class="stat-card"><div class="num">--</div><div class="label">在寝</div></div>
-        <div class="stat-card"><div class="num">--</div><div class="label">离校</div></div>
-        <div class="stat-card"><div class="num">--</div><div class="label">未归</div></div>
-      </div>
-      <p style="font-size:12px;color:var(--neu-text-secondary);" id="overviewUpdated"></p>
-    </div>`;
-  }
-
-  function createExportPanel() {
-    return `<div class="neu-card">
-      <h3><i class="fas fa-file-export"></i> 报表导出</h3>
-      <p style="font-size:13px;color:var(--neu-text-secondary);margin-bottom:16px;">
-        导出筛选范围内的学生数据。教师导出时姓名将自动脱敏。
-      </p>
-      <div class="filter-row">
-        <select class="neu-select" id="exportGradeFilter">
-          <option value="all">全部年级</option>
-        </select>
-        <select class="neu-select" id="exportFloorFilter">
-          <option value="all">全部楼层</option>
-          <option value="1">1F</option><option value="4">4F</option>
-          <option value="5">5F</option><option value="6">6F</option>
-        </select>
-        <button class="neu-btn neu-btn-sm" onclick="exportTeacherReport()">
-          <i class="fas fa-download"></i> 导出 Excel
-        </button>
-      </div>
-      <div style="font-size:13px;color:var(--neu-text-secondary);" id="exportResult"></div>
-    </div>`;
   }
 
   function switchTab(tab) {
@@ -1149,7 +1007,6 @@
     if (tab === 'rooms') loadRoomMonitor();
     if (tab === 'logs') loadLogs(1);
     if (tab === 'users') loadUsers(1);
-    if (tab === 'overview') loadOverview();
   }
 
   function positionTabThumb(container) {
@@ -1192,8 +1049,8 @@
       const payload = JSON.parse(atob(data.token.split('.')[1]));
       const role = payload.role || 'inspector';
 
-      if (role !== 'admin' && role !== 'teacher') {
-        errEl.textContent = '您没有后台管理权限，请联系管理员';
+      if (role !== 'admin') {
+        errEl.textContent = '无权访问管理后台，仅限管理员';
         errEl.style.display = 'block';
         return;
       }
@@ -1206,14 +1063,7 @@
       authToken = data.token;
       currentUser = { username, role, display_name: data.user?.display_name || username };
       onAuthSuccess();
-
-      // Load sensitive word stats for settings tab
       loadSensitiveWordStats();
-
-      // Load teacher overview if teacher
-      if (role === 'teacher') {
-        setTimeout(loadOverview, 500);
-      }
     } catch (e) {
       errEl.textContent = '网络错误，请重试';
       errEl.style.display = 'block';
@@ -1530,12 +1380,6 @@
     const sel = document.getElementById('manageGradeFilter');
     sel.innerHTML = '<option value="all">全部年级</option>' +
       grades.map(g => `<option value="${g}">${g}</option>`).join('');
-    // Also populate export filter if exists
-    const exportSel = document.getElementById('exportGradeFilter');
-    if (exportSel) {
-      exportSel.innerHTML = '<option value="all">全部年级</option>' +
-        grades.map(g => `<option value="${g}">${g}</option>`).join('');
-    }
   }
 
   function getFilteredData() {
@@ -1906,7 +1750,6 @@
     if (roomAutoRefreshTimer) clearInterval(roomAutoRefreshTimer);
     roomAutoRefreshTimer = setInterval(() => {
       if (currentTab === 'rooms') loadRoomMonitor();
-      if (currentTab === 'overview') loadOverview();
     }, 30000);
   }
 
@@ -2077,11 +1920,11 @@
   let userEditRow = null; // user_id currently being edited
 
   function roleColor(role) {
-    const map = { admin: '#DC2626', teacher: '#7C3AED', inspector: '#2563EB', student: '#6B7280' };
+    const map = { admin: '#DC2626', inspector: '#2563EB' };
     return map[role] || '#6B7280';
   }
   function roleName(role) {
-    const map = { admin: '管理员', teacher: '教师', inspector: '查寝员', student: '学生' };
+    const map = { admin: '管理员', inspector: '查寝员' };
     return map[role] || role;
   }
 
@@ -2126,9 +1969,7 @@
           <td>${escHtml(u.display_name || '')}</td>
           <td>
             <select class="neu-select" id="roleSelect-${u.id}">
-              <option value="student" ${u.role === 'student' ? 'selected' : ''}>student</option>
               <option value="inspector" ${u.role === 'inspector' ? 'selected' : ''}>inspector</option>
-              <option value="teacher" ${u.role === 'teacher' ? 'selected' : ''}>teacher</option>
               <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
             </select>
           </td>
@@ -2275,99 +2116,6 @@
   // ============================================
   // Teacher: 全局概览
   // ============================================
-
-  async function loadOverview() {
-    try {
-      const res = await fetch('/api/admin/rooms', {
-        headers: { 'Authorization': 'Bearer ' + authToken }
-      });
-      if (!res.ok) {
-        document.getElementById('overviewStats').innerHTML =
-          '<div class="stat-card"><div class="num">--</div><div class="label">需要 /api/admin/rooms 接口</div></div>';
-        return;
-      }
-      const data = await res.json();
-      const rooms = data.rooms || [];
-      const activeRooms = rooms.filter(r => r.status === 'active');
-
-      document.getElementById('overviewStats').innerHTML = `
-        <div class="stat-card"><div class="num">${activeRooms.length}</div><div class="label">活跃房间</div></div>
-        <div class="stat-card"><div class="num">${rooms.length}</div><div class="label">总房间</div></div>
-        <div class="stat-card"><div class="num">${data.total_students || '--'}</div><div class="label">学生总数</div></div>
-        <div class="stat-card"><div class="num">--</div><div class="label">--</div></div>
-      `;
-      document.getElementById('overviewUpdated').textContent =
-        '更新于 ' + new Date().toLocaleTimeString('zh-CN');
-    } catch (e) {
-      console.error('Overview error:', e);
-    }
-  }
-
-  // ============================================
-  // Teacher: 报表导出
-  // ============================================
-
-  async function exportTeacherReport() {
-    const grade = document.getElementById('exportGradeFilter')?.value || 'all';
-    const floor = document.getElementById('exportFloorFilter')?.value || 'all';
-    const resultEl = document.getElementById('exportResult');
-    resultEl.textContent = '正在导出...';
-
-    let records = dormDataCache;
-    if (records.length === 0) {
-      try {
-        const res = await fetch('/api/dorm-data', {
-          headers: { 'Authorization': 'Bearer ' + authToken }
-        });
-        const data = await res.json();
-        if (data.success && data.dormData) {
-          records = [];
-          for (const [dorm, students] of Object.entries(data.dormData)) {
-            students.forEach(s => {
-              records.push({
-                dorm_name: dorm, floor: s.floor || (parseInt(dorm[0]) || 0),
-                student_name: s.name || s.student_name, bed: s.bed,
-                class_name: s.class_name || s.class || '',
-                grade: s.grade || '', grade_name: s.grade_name || '',
-                status: s.status || '在校'
-              });
-            });
-          }
-          dormDataCache = records;
-        }
-      } catch (e) { /* use empty */ }
-    }
-
-    // Filter
-    if (grade !== 'all') records = records.filter(r => (r.grade_name || r.grade) === grade);
-    if (floor !== 'all') records = records.filter(r => String(r.floor) === floor);
-
-    if (!records.length) {
-      resultEl.textContent = '无数据可导出';
-      resultEl.style.color = '#DC2626';
-      return;
-    }
-
-    const exportData = records.map(r => ({
-      '姓名': maskName(r.student_name || ''),
-      '年级': r.grade_name || r.grade || '',
-      '班级': r.class_name || '',
-      '宿舍号': r.dorm_name || '',
-      '床号': r.bed || '',
-      '状态': r.status || '',
-      '导出时间': new Date().toLocaleString('zh-CN')
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    ws['!cols'] = Object.keys(exportData[0]).map(() => ({ wch: 15 }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '学生数据');
-    const filename = 'teacher_export_' + new Date().toISOString().replace(/[:.]/g, '').slice(0, 15) + '.xlsx';
-    XLSX.writeFile(wb, filename);
-
-    resultEl.textContent = '导出完成: ' + records.length + ' 条记录';
-    resultEl.style.color = '#059669';
-  }
 
   // ============================================
   // 工具函数

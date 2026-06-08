@@ -4,7 +4,7 @@
 import {
   jsonResponse, errorResponse, handleOptions,
   verifyToken, dbGuard, withErrorGuard,
-  requireRole, logSystemAction, maskName,
+  requireRole, logSystemAction,
 } from '../_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
@@ -47,7 +47,7 @@ export const onRequest = withErrorGuard(async (context) => {
   await logSystemAction(env,
     { user_id: payload.user_id, username: payload.username, role: payload.role },
     'student_delete', 'student', String(existing.id),
-    `删除 ${maskName(student_name)} ${dorm_name}/${bed}`, request
+    `删除 ${student_name} ${dorm_name}/${bed}`, request
   );
 
   return jsonResponse({ message: '删除成功' });

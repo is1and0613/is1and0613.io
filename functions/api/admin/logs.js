@@ -4,7 +4,7 @@
 import {
   jsonResponse, errorResponse, handleOptions,
   verifyToken, dbGuard, withErrorGuard,
-  requireRole, maskName,
+  requireRole,
 } from '../_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
@@ -16,10 +16,7 @@ export const onRequest = withErrorGuard(async (context) => {
   dbGuard(env);
 
   const payload = await verifyToken(request, env);
-
-  // Admin: all logs. Teacher: room-related only
-  const isAdmin = payload.role === 'admin';
-  requireRole(payload, isAdmin ? ['admin'] : ['admin', 'teacher']);
+  requireRole(payload, ['admin']);
 
   const url = new URL(request.url);
   const action = url.searchParams.get('action');
@@ -31,14 +28,8 @@ export const onRequest = withErrorGuard(async (context) => {
 
   const db = env.DB;
 
-  // Build query
   let whereClauses = [];
   let params = [];
-
-  // Teacher: only see room-related + status_change logs
-  if (!isAdmin) {
-    whereClauses.push("action IN ('room_create','room_join','room_close','room_status_change','status_change')");
-  }
 
   if (action && action !== 'all') {
     whereClauses.push('action = ?');
@@ -73,14 +64,8 @@ export const onRequest = withErrorGuard(async (context) => {
      LIMIT ? OFFSET ?`
   ).bind(...params, pageSize, offset).all();
 
-  // Mask student names in detail for non-admin
-  const maskedLogs = logs.map(l => ({
-    ...l,
-    detail: isAdmin ? l.detail : maskName(l.detail || ''),
-  }));
-
   return jsonResponse({
-    logs: maskedLogs,
+    logs,
     total,
     page,
     pageSize,

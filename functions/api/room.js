@@ -4,7 +4,7 @@
 import {
   jsonResponse, errorResponse, handleOptions,
   verifyToken, dbGuard, withErrorGuard,
-  requireRole, logSystemAction, maskName,
+  requireRole, logSystemAction,
 } from './_utils.js';
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/I/1
@@ -152,7 +152,7 @@ export const onRequest = withErrorGuard(async (context) => {
 
 async function handleCreate(request, env) {
   const payload = await verifyToken(request, env);
-  requireRole(payload, ['inspector', 'teacher', 'admin']);
+  requireRole(payload, ['inspector', 'admin']);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -222,7 +222,7 @@ async function handleCreate(request, env) {
 
 async function handleJoin(request, env, body) {
   const payload = await verifyToken(request, env);
-  requireRole(payload, ['inspector', 'teacher', 'admin']);
+  requireRole(payload, ['inspector', 'admin']);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -383,7 +383,7 @@ async function handleSync(request, env, code) {
 
 async function handleState(request, env, body) {
   const payload = await verifyToken(request, env);
-  requireRole(payload, ['inspector', 'teacher', 'admin']);
+  requireRole(payload, ['inspector', 'admin']);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -453,7 +453,7 @@ async function handleState(request, env, body) {
 
 async function handleMessage(request, env, body) {
   const payload = await verifyToken(request, env);
-  requireRole(payload, ['inspector', 'teacher', 'admin']);
+  requireRole(payload, ['inspector', 'admin']);
 
   const userId = payload.user_id;
   const { code, content } = body;

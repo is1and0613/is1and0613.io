@@ -7,7 +7,7 @@ import {
   requireRole, logSystemAction, maskName,
 } from '../_utils.js';
 
-const VALID_ROLES = ['student', 'inspector', 'teacher', 'admin'];
+const VALID_ROLES = ['inspector', 'admin'];
 
 export const onRequest = withErrorGuard(async (context) => {
   const { request, env } = context;

@@ -3,7 +3,7 @@
 
 import {
   jsonResponse, errorResponse, handleOptions,
-  verifyToken, dbGuard, withErrorGuard, maskName,
+  verifyToken, dbGuard, withErrorGuard,
 } from './_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
@@ -18,7 +18,6 @@ export const onRequest = withErrorGuard(async (context) => {
   }
 
   const payload = await verifyToken(request, context.env);
-  const isAdmin = payload.role === 'admin';
   dbGuard(context.env);
 
   const { results: students } = await context.env.DB.prepare(`
@@ -58,9 +57,7 @@ export const onRequest = withErrorGuard(async (context) => {
     }
 
     if (name && bed && bed >= 1 && bed <= 4) {
-      // v20: 非 admin 用户姓名脱敏
-      const displayName = isAdmin ? name : maskName(name);
-      dormData[grade][className][dorm][bed - 1] = displayName;
+      dormData[grade][className][dorm][bed - 1] = name;
       nameIndex[name] = {
         grade,
         className,
