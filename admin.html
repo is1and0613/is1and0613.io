@@ -120,7 +120,11 @@
     .tab-nav .neu-tabs {
       max-width: 800px; margin: 0 auto;
     }
-    .tab-nav .neu-tab { font-size: 13px; padding: 10px 4px; }
+    .tab-nav .neu-tab {
+      font-size: 13px; padding: 10px 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      text-align: center; white-space: nowrap;
+    }
 
     /* ===== Content Area ===== */
     .content-area {
@@ -938,19 +942,21 @@
       window.location.replace('login.html');
       return;
     }
-    // Decode JWT to get role
+    // Decode JWT to get role (UTF-8 safe, atob 不支持中文)
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = decodeJWTPayload(token);
       // 角色检查：仅 admin 可访问管理后台
       if (payload.role !== 'admin') {
         alert('无权访问管理后台，仅限管理员');
         window.location.replace('index.html');
         return;
       }
+      // displayName 优先从 sessionStorage 取（login.js 从 JSON 响应写入，无编码问题）
+      const displayName = sessionStorage.getItem('displayName') || payload.display_name || payload.username || username;
       currentUser = {
         username: payload.username || username,
-        role: payload.role || 'inspector',
-        display_name: payload.display_name || payload.username || username
+        role: payload.role || 'admin',
+        display_name: displayName
       };
       authToken = token;
       onAuthSuccess();
@@ -1442,7 +1448,7 @@
         const key = r.student_name + '|' + r.dorm_name + '|' + r.bed;
         const statusKey = statusMap[r.status] || 'in';
         if (editingRow === key) {
-          html += `<tr class="edit-row" id="edit-${btoa(key).replace(/[+=/]/g,'').slice(0,10)}">
+          html += `<tr class="edit-row" id="edit-${safeId(key)}">
             <td></td>
             <td><input class="neu-input neu-input-sm" value="${escHtml(r.student_name || '')}" id="editName"></td>
             <td><input class="neu-input neu-input-sm" value="${escHtml(r.grade_name || r.grade || '')}" id="editGrade"></td>
@@ -1460,8 +1466,8 @@
             </td>
           </tr>`;
         } else {
-          html += `<tr onclick="startEdit('${escAttr(key)}')" id="row-${btoa(key).replace(/[+=/]/g,'').slice(0,10)}">
-            <td onclick="event.stopPropagation();toggleRowSelect('${escAttr(key)}', this)"><span class="neu-checkbox" id="cb-${btoa(key).replace(/[+=/]/g,'').slice(0,10)}"></span></td>
+          html += `<tr onclick="startEdit('${escAttr(key)}')" id="row-${safeId(key)}">
+            <td onclick="event.stopPropagation();toggleRowSelect('${escAttr(key)}', this)"><span class="neu-checkbox" id="cb-${safeId(key)}"></span></td>
             <td>${escHtml(r.student_name || '')}</td>
             <td>${escHtml(r.grade_name || r.grade || '')}</td>
             <td>${escHtml(r.class_name || '')}</td>
@@ -2192,6 +2198,23 @@
 
   function escAttr(str) {
     return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  }
+
+  // Unicode-safe DOM ID generator (btoa 不支持中文)
+  function safeId(str) {
+    return 's' + encodeURIComponent(str).replace(/%/g, '').slice(0, 24);
+  }
+
+  // UTF-8 safe JWT payload decoder (atob 不支持中文)
+  function decodeJWTPayload(token) {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64).split('').map(c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join('')
+    );
+    return JSON.parse(jsonPayload);
   }
 
   // ============================================
