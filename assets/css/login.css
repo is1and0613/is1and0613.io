@@ -125,42 +125,34 @@ body {
   pointer-events: none;
 }
 
-/* v20: Two-button login group */
-.login-btn-group {
-  display: flex;
-  gap: 12px;
+/* v21: Single main login button — neumorphic raised */
+.login-btn-main {
   width: 100%;
-}
-
-.login-btn-group .login-btn {
-  flex: 1;
-  font-size: 14px;
-  padding: 14px 12px;
-}
-
-.login-btn-group .inspector-btn {
-  /* default neumorphic style */
-}
-
-.login-btn-group .admin-btn {
-  color: var(--neu-text-secondary);
-  font-weight: 500;
+  padding: 18px;
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 8px;
 }
 
 .switch-mode {
-  margin-top: 16px;
+  margin-top: 20px;
   font-size: 13px;
   color: var(--neu-text-secondary);
+  text-align: center;
 }
 
 .switch-mode a {
   color: var(--neu-text);
   text-decoration: none;
   font-weight: 500;
-  margin-left: 4px;
   transition: color 0.2s ease;
 }
 
 .switch-mode a:active {
   opacity: 0.7;
+}
+
+.switch-sep {
+  margin: 0 6px;
+  color: var(--neu-text-secondary);
 }

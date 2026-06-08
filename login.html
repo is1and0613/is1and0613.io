@@ -14,11 +14,11 @@
     <i class="fas fa-moon"></i>
   </button>
   <div class="login-card">
-    <div class="login-icon">
+    <div class="login-icon" id="loginIcon">
       <i class="fas fa-bed"></i>
     </div>
-    <div class="login-title">晚寝查寝系统</div>
-    <div class="login-subtitle">登录或注册以继续使用</div>
+    <div class="login-title" id="loginTitle">晚寝查寝系统</div>
+    <div class="login-subtitle" id="loginSubtitle">登录或注册以继续使用</div>
 
     <div class="input-group">
       <label class="input-label">用户名</label>
@@ -36,24 +36,16 @@
       </div>
     </div>
 
-    <div class="login-btn-group" id="loginBtnGroup">
-      <button class="login-btn inspector-btn" onclick="doLogin()">
-        <i class="fas fa-user-check"></i>
-        <span>查寝员登录</span>
-      </button>
-      <button class="login-btn admin-btn" onclick="doLogin()">
-        <i class="fas fa-shield-alt"></i>
-        <span>管理员登录</span>
-      </button>
-    </div>
-    <button class="login-btn" id="registerBtn" onclick="doLogin()" style="display:none;">
-      <i class="fas fa-user-plus"></i>
-      <span>注册新账户</span>
+    <button class="login-btn login-btn-main" id="mainLoginBtn" onclick="doLogin()">
+      <i class="fas fa-user-check"></i>
+      <span id="mainLoginBtnText">查寝员登录</span>
     </button>
 
-    <div class="switch-mode">
+    <div class="switch-mode" id="switchModeRow">
       <span id="switchText">没有账户？</span>
-      <a href="javascript:void(0)" id="switchLink" onclick="toggleMode()">注册新账户</a>
+      <a href="javascript:void(0)" id="switchLink1" onclick="toggleMode()">注册新账户</a>
+      <span class="switch-sep">·</span>
+      <a href="javascript:void(0)" id="switchLink2" onclick="switchToAdminMode()">管理员登录</a>
     </div>
   </div>
 

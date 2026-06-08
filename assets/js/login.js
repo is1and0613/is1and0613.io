@@ -1,28 +1,69 @@
-// assets/js/login.js — 登录/注册页逻辑
+// assets/js/login.js — 登录/注册页逻辑 (v21: 单按钮 + admin 模式切换)
 
-let currentMode = 'login'; // 'login' | 'register'
+let currentMode = 'login';   // 'login' | 'register'
+let loginRole = 'inspector'; // 'inspector' | 'admin'
+
+function updateUI() {
+  const title = document.getElementById('loginTitle');
+  const subtitle = document.getElementById('loginSubtitle');
+  const icon = document.getElementById('loginIcon');
+  const btnIcon = document.querySelector('#mainLoginBtn i');
+  const btnText = document.getElementById('mainLoginBtnText');
+  const switchRow = document.getElementById('switchModeRow');
+
+  if (loginRole === 'admin') {
+    // Admin mode
+    title.textContent = '管理后台登录';
+    subtitle.textContent = '请输入管理员账号密码';
+    if (icon) icon.innerHTML = '<i class="fas fa-shield-alt"></i>';
+    btnIcon.className = 'fas fa-shield-alt';
+    btnText.textContent = '管理员登录';
+    // Bottom: only "返回查寝员登录"
+    switchRow.innerHTML = '<a href="javascript:void(0)" onclick="switchToInspectorMode()">← 返回查寝员登录</a>';
+  } else if (currentMode === 'register') {
+    // Register mode
+    title.textContent = '晚寝查寝系统';
+    subtitle.textContent = '注册新账户以继续使用';
+    if (icon) icon.innerHTML = '<i class="fas fa-bed"></i>';
+    btnIcon.className = 'fas fa-user-plus';
+    btnText.textContent = '注册新账户';
+    switchRow.innerHTML =
+      '<span>已有账户？</span>' +
+      '<a href="javascript:void(0)" onclick="toggleMode()">返回登录</a>';
+  } else {
+    // Default: inspector login
+    title.textContent = '晚寝查寝系统';
+    subtitle.textContent = '登录或注册以继续使用';
+    if (icon) icon.innerHTML = '<i class="fas fa-bed"></i>';
+    btnIcon.className = 'fas fa-user-check';
+    btnText.textContent = '查寝员登录';
+    switchRow.innerHTML =
+      '<span id="switchText">没有账户？</span>' +
+      '<a href="javascript:void(0)" id="switchLink1" onclick="toggleMode()">注册新账户</a>' +
+      '<span class="switch-sep">·</span>' +
+      '<a href="javascript:void(0)" id="switchLink2" onclick="switchToAdminMode()">管理员登录</a>';
+  }
+}
+
+function switchToAdminMode() {
+  currentMode = 'login';
+  loginRole = 'admin';
+  document.getElementById('username').focus();
+  updateUI();
+}
+
+function switchToInspectorMode() {
+  currentMode = 'login';
+  loginRole = 'inspector';
+  document.getElementById('username').focus();
+  updateUI();
+}
 
 function toggleMode() {
   currentMode = currentMode === 'login' ? 'register' : 'login';
-  const loginGroup = document.getElementById('loginBtnGroup');
-  const registerBtn = document.getElementById('registerBtn');
-  const switchText = document.getElementById('switchText');
-  const switchLink = document.getElementById('switchLink');
-  const title = document.querySelector('.login-subtitle');
-
-  if (currentMode === 'register') {
-    loginGroup.style.display = 'none';
-    registerBtn.style.display = 'flex';
-    switchText.textContent = '已有账户？';
-    switchLink.textContent = '返回登录';
-    title.textContent = '注册新账户以继续使用';
-  } else {
-    loginGroup.style.display = 'flex';
-    registerBtn.style.display = 'none';
-    switchText.textContent = '没有账户？';
-    switchLink.textContent = '注册新账户';
-    title.textContent = '登录或注册以继续使用';
-  }
+  loginRole = 'inspector'; // register mode is always inspector
+  document.getElementById('username').focus();
+  updateUI();
 }
 
 async function doLogin() {
@@ -41,7 +82,7 @@ async function doLogin() {
     return;
   }
 
-  const btn = document.querySelector('.login-btn');
+  const btn = document.getElementById('mainLoginBtn');
   const originalHTML = btn.innerHTML;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>处理中...';
   btn.disabled = true;
@@ -67,12 +108,20 @@ async function doLogin() {
         sessionStorage.setItem('displayName', data.user.display_name || data.user.username);
       }
 
-      // 根据 role 自动跳转
+      // 根据 JWT role 自动跳转
       let role = 'inspector';
       try {
         const payload = JSON.parse(atob(data.token.split('.')[1]));
         role = payload.role || 'inspector';
       } catch (e) { /* use default */ }
+
+      // v21: 如果是 admin 模式但后端返回非 admin，给出提示
+      if (loginRole === 'admin' && role !== 'admin') {
+        showToast('该账户非管理员，请使用查寝员登录', 'error');
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        return;
+      }
 
       showToast(currentMode === 'register' ? '注册成功' : '登录成功');
       const target = role === 'admin' ? 'admin.html' : 'index.html';
@@ -97,6 +146,7 @@ async function doLogin() {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('username').focus();
+  updateUI();
 });
 
 // Enter key support
