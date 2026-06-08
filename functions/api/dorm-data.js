@@ -40,6 +40,9 @@ export const onRequest = withErrorGuard(async (context) => {
   const dormData = {};
   const nameIndex = {};
 
+  // v20: 同时构建扁平化学生列表供管理后台使用
+  const studentsFlat = [];
+
   for (const student of students) {
     // 构造 grade key：前端期望 "2022级" 格式
     const grade = student.year_code
@@ -65,7 +68,22 @@ export const onRequest = withErrorGuard(async (context) => {
         bed,
       };
     }
+
+    // 构建扁平记录
+    studentsFlat.push({
+      id: student.dorm_name + '_' + student.bed,
+      dorm_name: student.dorm_name,
+      floor: student.floor,
+      student_name: student.student_name,
+      bed: student.bed,
+      class_name: student.class_name || '',
+      grade: grade,
+      grade_name: student.grade_name || '',
+      status: student.status || '在校',
+      year_code: student.year_code,
+      display_order: student.display_order,
+    });
   }
 
-  return jsonResponse({ dormData, nameIndex });
+  return jsonResponse({ dormData, nameIndex, students: studentsFlat });
 });

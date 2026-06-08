@@ -939,12 +939,18 @@
     const token = sessionStorage.getItem('authToken');
     const username = sessionStorage.getItem('username');
     if (!token) {
-      document.getElementById('loginOverlay').classList.remove('hidden');
+      window.location.replace('login.html');
       return;
     }
     // Decode JWT to get role
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
+      // 角色检查：仅 admin 可访问管理后台
+      if (payload.role !== 'admin') {
+        alert('无权访问管理后台，仅限管理员');
+        window.location.replace('index.html');
+        return;
+      }
       currentUser = {
         username: payload.username || username,
         role: payload.role || 'inspector',
@@ -966,6 +972,7 @@
 
     renderTabs();
     switchTab('upload');
+    loadSensitiveWordStats();
   }
 
   function renderTabs() {
@@ -1050,8 +1057,10 @@
       const role = payload.role || 'inspector';
 
       if (role !== 'admin') {
-        errEl.textContent = '无权访问管理后台，仅限管理员';
-        errEl.style.display = 'block';
+        alert('无权访问管理后台，仅限管理员\n正在跳转到查寝界面...');
+        sessionStorage.setItem('authToken', data.token);
+        sessionStorage.setItem('username', username);
+        window.location.replace('index.html');
         return;
       }
 
@@ -1347,23 +1356,40 @@
         headers: { 'Authorization': 'Bearer ' + authToken }
       });
       const data = await res.json();
-      if (data.success && data.dormData) {
-        // Flatten dormData into records
+      // v20: 使用扁平化 students 列表（后端新增字段）
+      if (data.success && data.students && Array.isArray(data.students)) {
+        dormDataCache = data.students;
+        populateFilters();
+        renderDataTable();
+      } else if (data.success && data.dormData) {
+        // 向后兼容：如果是旧版嵌套格式，尝试扁平化
         dormDataCache = [];
-        for (const [dorm, students] of Object.entries(data.dormData)) {
-          students.forEach(s => {
-            dormDataCache.push({
-              id: s.id || (dorm + '_' + s.bed),
-              dorm_name: dorm,
-              floor: s.floor || (parseInt(dorm[0]) || 0),
-              student_name: s.name || s.student_name,
-              bed: s.bed,
-              class_name: s.class_name || s.class || '',
-              grade: s.grade || '',
-              grade_name: s.grade_name || '',
-              status: s.status || '在校'
-            });
-          });
+        for (const [gradeKey, classes] of Object.entries(data.dormData)) {
+          if (classes && typeof classes === 'object') {
+            for (const [className, dorms] of Object.entries(classes)) {
+              if (dorms && typeof dorms === 'object') {
+                for (const [dormName, beds] of Object.entries(dorms)) {
+                  if (Array.isArray(beds)) {
+                    beds.forEach((name, idx) => {
+                      if (name) {
+                        dormDataCache.push({
+                          id: dormName + '_' + (idx + 1),
+                          dorm_name: dormName,
+                          floor: parseInt(dormName[0]) || 0,
+                          student_name: name,
+                          bed: idx + 1,
+                          class_name: className,
+                          grade: gradeKey,
+                          grade_name: gradeKey,
+                          status: '在校'
+                        });
+                      }
+                    });
+                  }
+                }
+              }
+            }
+          }
         }
         populateFilters();
         renderDataTable();
@@ -1719,9 +1745,27 @@
           <th>姓名</th><th>宿舍</th><th>床号</th><th>状态</th><th>修改人</th>
         </tr></thead><tbody>` + data.states.slice(0, 100).map(s => {
           const statusNames = { present: '在寝', absent: '未归', leaveSchool: '离校', leaveInside: '事假', leaveOutside: '外出' };
-          return `<tr><td>${maskName(s.student_name)}</td><td>${s.dorm_number}</td><td>${s.bed_number}</td>
+          return `<tr><td>${escHtml(s.student_name)}</td><td>${s.dorm_number}</td><td>${s.bed_number}</td>
             <td>${statusNames[s.status] || s.status}</td><td>${escHtml(s.updated_by_name || '')}</td></tr>`;
         }).join('') + '</tbody></table></div>';
+      }
+
+      let chatHtml = '';
+      if (data.messages && data.messages.length) {
+        // 倒序显示，最新消息在前（方便管理员监控）
+        const msgs = [...data.messages].reverse();
+        chatHtml = '<div style="max-height:300px;overflow-y:auto;">' + msgs.map(msg => {
+          const time = (msg.created_at || '').replace('T', ' ').slice(0, 19);
+          return `<div class="preview-item" style="margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <strong style="font-size:13px;">${escHtml(msg.display_name || msg.username)}</strong>
+              <span style="font-size:11px;color:var(--neu-text-secondary);">${time}</span>
+            </div>
+            <div style="font-size:13px;color:var(--neu-text);margin-top:4px;">${escHtml(msg.content)}</div>
+          </div>`;
+        }).join('') + '</div>';
+      } else {
+        chatHtml = '<div style="color:var(--neu-text-secondary);">暂无聊天记录</div>';
       }
 
       panel.innerHTML = `<div class="detail-header">
@@ -1735,6 +1779,10 @@
       <div class="detail-section">
         <h4>学生状态 (${data.states ? data.states.length : 0}条)</h4>
         ${statesHtml || '<div style="color:var(--neu-text-secondary);">无状态数据</div>'}
+      </div>
+      <div class="detail-section">
+        <h4>聊天记录 (${data.messages ? data.messages.length : 0}条)</h4>
+        ${chatHtml}
       </div>`;
     } catch (e) {
       panel.innerHTML = '<div class="detail-header"><h3>加载失败</h3><button class="detail-close" onclick="closeRoomDetail()"><i class="fas fa-times"></i></button></div><p style="color:#DC2626;">' + e.message + '</p>';
@@ -1828,18 +1876,33 @@
   // ============================================
 
   async function loadSensitiveWordStats() {
+    const totalEl = document.getElementById('swTotal');
+    const updatedEl = document.getElementById('swUpdated');
     try {
       const res = await fetch('/api/settings?action=sensitive-words-stats', {
         headers: { 'Authorization': 'Bearer ' + authToken }
       });
       if (res.ok) {
         const data = await res.json();
-        document.getElementById('swTotal').textContent = data.total || '--';
-        document.getElementById('swUpdated').textContent = data.updated_at || '--';
+        const total = data.total;
+        if (total === '--' || total === null || total === undefined) {
+          totalEl.textContent = '未部署';
+        } else {
+          totalEl.textContent = total;
+        }
+        const updated = data.updated_at;
+        if (updated === '--' || updated === null || updated === undefined) {
+          updatedEl.textContent = '未知';
+        } else {
+          updatedEl.textContent = updated;
+        }
+      } else {
+        totalEl.textContent = '加载失败';
+        updatedEl.textContent = '加载失败';
       }
     } catch (e) {
-      document.getElementById('swTotal').textContent = '--';
-      document.getElementById('swUpdated').textContent = '未部署';
+      totalEl.textContent = '加载失败';
+      updatedEl.textContent = '加载失败';
     }
   }
 

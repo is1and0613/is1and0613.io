@@ -36,9 +36,19 @@
       </div>
     </div>
 
-    <button class="login-btn" onclick="doLogin()">
-      <i class="fas fa-sign-in-alt"></i>
-      <span id="loginBtnText">登录</span>
+    <div class="login-btn-group" id="loginBtnGroup">
+      <button class="login-btn inspector-btn" onclick="doLogin()">
+        <i class="fas fa-user-check"></i>
+        <span>查寝员登录</span>
+      </button>
+      <button class="login-btn admin-btn" onclick="doLogin()">
+        <i class="fas fa-shield-alt"></i>
+        <span>管理员登录</span>
+      </button>
+    </div>
+    <button class="login-btn" id="registerBtn" onclick="doLogin()" style="display:none;">
+      <i class="fas fa-user-plus"></i>
+      <span>注册新账户</span>
     </button>
 
     <div class="switch-mode">

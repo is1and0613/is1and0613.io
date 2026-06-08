@@ -98,7 +98,6 @@ body {
 
 /* v17.5: 登录按钮 — 新拟态凸起 */
 .login-btn {
-  width: 100%;
   padding: 16px;
   background: var(--neu-bg);
   color: var(--neu-text);
@@ -124,6 +123,28 @@ body {
 .login-btn:disabled {
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* v20: Two-button login group */
+.login-btn-group {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.login-btn-group .login-btn {
+  flex: 1;
+  font-size: 14px;
+  padding: 14px 12px;
+}
+
+.login-btn-group .inspector-btn {
+  /* default neumorphic style */
+}
+
+.login-btn-group .admin-btn {
+  color: var(--neu-text-secondary);
+  font-weight: 500;
 }
 
 .switch-mode {

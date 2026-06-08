@@ -316,6 +316,11 @@
     </div>
     <div class="drawer-body" id="roomMessages"></div>
     <div class="drawer-body" id="roomLogs" style="display:none;"></div>
+    <!-- v20: 聊天提示条 -->
+    <div class="chat-warning-bar" id="chatWarningBar">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span>聊天仅用于查寝协同，请勿发送无关内容</span>
+    </div>
     <div class="chat-input-bar" id="chatInputBar">
       <input type="text" class="chat-input" id="roomMessageInput" placeholder="输入消息..." onkeypress="if(event.key==='Enter')sendRoomMessage()">
       <button class="chat-send-btn" onclick="sendRoomMessage()">发送</button>

@@ -60,11 +60,19 @@ export const onRequest = withErrorGuard(async (context) => {
     });
   }
 
+  // 清理过期超过 7 天的房间（保留 7 天防误伤）
+  try {
+    await db.prepare(
+      "DELETE FROM rooms WHERE status = 'expired' AND expires_at < datetime('now', '-7 days')"
+    ).run();
+  } catch (e) { /* 清理失败不影响查询 */ }
+
   const { results: rooms } = await db.prepare(
     `SELECT r.*,
       (SELECT COUNT(*) FROM room_members WHERE room_id = r.id) as member_count,
       (SELECT COUNT(*) FROM room_states WHERE room_id = r.id) as student_count
      FROM rooms r
+     WHERE r.status = 'active'
      ORDER BY r.created_at DESC
      LIMIT 100`
   ).all();

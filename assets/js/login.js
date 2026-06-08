@@ -4,18 +4,21 @@ let currentMode = 'login'; // 'login' | 'register'
 
 function toggleMode() {
   currentMode = currentMode === 'login' ? 'register' : 'login';
-  const btnText = document.getElementById('loginBtnText');
+  const loginGroup = document.getElementById('loginBtnGroup');
+  const registerBtn = document.getElementById('registerBtn');
   const switchText = document.getElementById('switchText');
   const switchLink = document.getElementById('switchLink');
   const title = document.querySelector('.login-subtitle');
 
   if (currentMode === 'register') {
-    btnText.textContent = '注册';
+    loginGroup.style.display = 'none';
+    registerBtn.style.display = 'flex';
     switchText.textContent = '已有账户？';
     switchLink.textContent = '返回登录';
     title.textContent = '注册新账户以继续使用';
   } else {
-    btnText.textContent = '登录';
+    loginGroup.style.display = 'flex';
+    registerBtn.style.display = 'none';
     switchText.textContent = '没有账户？';
     switchLink.textContent = '注册新账户';
     title.textContent = '登录或注册以继续使用';
@@ -64,9 +67,17 @@ async function doLogin() {
         sessionStorage.setItem('displayName', data.user.display_name || data.user.username);
       }
 
+      // 根据 role 自动跳转
+      let role = 'inspector';
+      try {
+        const payload = JSON.parse(atob(data.token.split('.')[1]));
+        role = payload.role || 'inspector';
+      } catch (e) { /* use default */ }
+
       showToast(currentMode === 'register' ? '注册成功' : '登录成功');
+      const target = role === 'admin' ? 'admin.html' : 'index.html';
       setTimeout(() => {
-        window.location.replace('index.html');
+        window.location.replace(target);
       }, 500);
     } else {
       showToast(data.message || '操作失败', 'error');
