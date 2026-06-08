@@ -55,7 +55,7 @@ export const onRequest = withErrorGuard(async (context) => {
       if (env.SENSITIVE_WORDS) {
         const wordsText = await env.SENSITIVE_WORDS.get('sensitive_words', 'text');
         if (wordsText) {
-          total = wordsText.split('\n').filter(w => w.trim()).length;
+          total = wordsText.split(/\r?\n/).filter(w => w.trim().length > 0).length;
         } else {
           console.log('[SW-Stats] KV returned empty text');
         }
