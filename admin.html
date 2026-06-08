@@ -1886,18 +1886,8 @@
       });
       if (res.ok) {
         const data = await res.json();
-        const total = data.total;
-        if (total === '--' || total === null || total === undefined) {
-          totalEl.textContent = '未部署';
-        } else {
-          totalEl.textContent = total;
-        }
-        const updated = data.updated_at;
-        if (updated === '--' || updated === null || updated === undefined) {
-          updatedEl.textContent = '未知';
-        } else {
-          updatedEl.textContent = updated;
-        }
+        totalEl.textContent = (data.total != null) ? data.total : '0';
+        updatedEl.textContent = data.updated_at || '--';
       } else {
         totalEl.textContent = '加载失败';
         updatedEl.textContent = '加载失败';

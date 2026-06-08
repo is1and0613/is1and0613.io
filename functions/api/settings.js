@@ -50,15 +50,21 @@ export const onRequest = withErrorGuard(async (context) => {
       "SELECT value, updated_at FROM settings WHERE key = 'sensitive_words_version'"
     ).first();
 
-    let total = '--';
+    let total = 0;
     try {
       if (env.SENSITIVE_WORDS) {
         const wordsText = await env.SENSITIVE_WORDS.get('sensitive_words', 'text');
         if (wordsText) {
-          total = String(wordsText.split('\n').filter(w => w.trim()).length);
+          total = wordsText.split('\n').filter(w => w.trim()).length;
+        } else {
+          console.log('[SW-Stats] KV returned empty text');
         }
+      } else {
+        console.log('[SW-Stats] SENSITIVE_WORDS binding not found');
       }
-    } catch (e) { /* KV not configured yet */ }
+    } catch (e) {
+      console.error('[SW-Stats] KV error:', e.message);
+    }
 
     return jsonResponse({
       total,
