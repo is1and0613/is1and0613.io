@@ -1,6 +1,6 @@
 // Service Worker — NightShift 查寝系统
 // 版本更新时修改此常量（deploy checklist 第一项）
-const CACHE_NAME = 'nightshift-v2026-0608g';
+const CACHE_NAME = 'nightshift-v2026-0608h';
 
 // 安装：skipWaiting 立即激活，不预缓存
 self.addEventListener('install', () => {
@@ -34,7 +34,7 @@ function isCacheableAsset(url) {
   );
 }
 
-// 请求拦截：仅缓存静态资源（Stale-While-Revalidate）
+// 请求拦截：仅缓存静态资源（Network-First 策略）
 self.addEventListener('fetch', e => {
   const { request } = e;
 
@@ -55,26 +55,20 @@ self.addEventListener('fetch', e => {
   // 仅缓存静态资源
   if (!isCacheableAsset(url)) return;
 
+  // Network-first: 优先走网络获取最新版本，网络失败时回退到缓存
   e.respondWith(
     caches.open(CACHE_NAME).then(cache =>
-      cache.match(request).then(cached => {
-        const fetchPromise = fetch(request).then(networkRes => {
-          if (networkRes.ok) {
-            cache.put(request, networkRes.clone());
-          }
-          return networkRes;
-        }).catch(err => {
-          // 网络失败时，若有缓存则返回缓存（已在下方 cached || fetchPromise 处理）
-          // 若无缓存，返回一个友好错误响应
-          if (!cached) {
-            console.warn('SW: 静态资源加载失败且无缓存:', url.pathname, err);
-          }
-          throw err;
-        });
-
-        // 缓存优先返回，后台更新
-        return cached || fetchPromise;
-      })
+      fetch(request).then(networkRes => {
+        if (networkRes.ok) {
+          cache.put(request, networkRes.clone());
+        }
+        return networkRes;
+      }).catch(() =>
+        cache.match(request).then(cached => {
+          if (cached) return cached;
+          return new Response('', { status: 503, statusText: 'Offline' });
+        })
+      )
     )
   );
 });
