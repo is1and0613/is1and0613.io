@@ -464,8 +464,9 @@ function isTitleLine(current, prev, next) {
 
 function isPureTitle(line) {
   if (line.length > 20) return false;
-  // 排除分组标题（短行纯文字）
-  if (/^[一-龥a-zA-Z]{2,6}$/.test(line.replace(/\//g, '').trim())) return false;
+  // v19: 去掉冒号后再检测分组标题
+  const stripped = line.replace(/\//g, '').replace(/[：:]\s*$/, '').trim();
+  if (/^[一-龥a-zA-Z]{2,6}$/.test(stripped)) return false;
   const hasReason = detectReason(line).found;
   const hasName = extractNamesFromLine(line).length > 0;
   return hasReason && !hasName;
@@ -590,7 +591,7 @@ function parseSmartFormat(originalText, cleanedText) {
 
 function splitIntoSections(text) {
   const sections = [];
-  const lines = text.split('\n');
+  const lines = text.split(/\r?\n/);
   let currentSection = null;
   const allLines = lines.map(l => l.trim());
   for (let i = 0; i < allLines.length; i++) {
@@ -614,7 +615,8 @@ function splitIntoSections(text) {
 
 function parseSectionHeader(line) {
   const result = { isHeader: false, reason: null, leaveType: 'leaveInside' };
-  let cleanLine = line.replace(/\//g, '').trim();
+  // v19: 先去掉尾部的冒号再检测（兼容"请假离校："和"请假离校"两种格式）
+  let cleanLine = line.replace(/\//g, '').replace(/[：:]\s*$/, '').trim();
   const reasonInfo = detectReason(cleanLine);
   if (!reasonInfo.found) return result;
   const tokens = cleanLine.split(/[\s,，、]+/).filter(t => t.length >= 2);
@@ -633,9 +635,17 @@ function parseSectionHeader(line) {
 
 function isGroupTitleLine(line, nextLines) {
   // 短行（2-4字）且后续行含人名 → 优先视为分组标题
+  // v19: 排除请假离校/请假外出等 leave-type 关键词，它们应作为 section header 而非分组标题
   const trimmed = line.replace(/\//g, '').trim();
   if (trimmed.length < 2 || trimmed.length > 6) return false;
   if (!/^[一-龥a-zA-Z]+$/.test(trimmed)) return false;
+  // 排除已知的全局事由类型（请假离校、请假外出、事假等），这些应该作为 section header
+  if (isReasonKeyword(trimmed)) {
+    const reasonInfo = detectReason(trimmed);
+    if (reasonInfo.found && (reasonInfo.leaveType === 'leaveSchool' || reasonInfo.leaveType === 'leaveOutside')) {
+      return false;
+    }
+  }
   // 检查后续2行是否包含人名
   const checkLines = nextLines || [];
   for (const next of checkLines) {
@@ -720,7 +730,7 @@ function parseLine(line, sectionDefaultReason, sectionDefaultLeaveType) {
 // ============================================
 function parseStructuredFormat(originalText, cleanedText) {
   const groups = [];
-  const lines = originalText.split('\n');
+  const lines = originalText.split(/\r?\n/);
   let currentReason = '';
   let currentLeaveType = 'leaveInside';
   let currentBuffer = [];
@@ -752,7 +762,7 @@ function parseStructuredFormat(originalText, cleanedText) {
 
 function parseInlineFormat(originalText, cleanedText) {
   const groups = {};
-  const lines = originalText.split('\n');
+  const lines = originalText.split(/\r?\n/);
   lines.forEach(line => {
     line = line.trim();
     if (!line) return;
@@ -773,7 +783,7 @@ function parseMixedFormat(originalText, cleanedText) {
   const groups = {};
   const segments = originalText.split(/\n\s*\n/);
   segments.forEach(segment => {
-    const lines = segment.split('\n').filter(l => l.trim());
+    const lines = segment.split(/\r?\n/).filter(l => l.trim());
     if (lines.length === 0) return;
     let segmentReason = null;
     let segmentLeaveType = 'leaveInside';
@@ -809,7 +819,7 @@ function parseLooseFormat(originalText, cleanedText) {
   const groups = {};
   const segments = originalText.split(/\n\s*\n/);
   segments.forEach(segment => {
-    const lines = segment.split('\n').filter(l => l.trim());
+    const lines = segment.split(/\r?\n/).filter(l => l.trim());
     if (lines.length === 0) return;
     let segmentReason = null;
     let segmentLeaveType = 'leaveInside';

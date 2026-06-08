@@ -4,6 +4,7 @@
 import {
   jsonResponse, errorResponse, handleOptions,
   verifyToken, dbGuard, withErrorGuard,
+  requireRole, maskName,
 } from './_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
@@ -30,6 +31,7 @@ export const onRequest = withErrorGuard(async (context) => {
       return errorResponse('用户身份无效', 401);
     }
 
+    // v20: 只读查询 — 任何已认证用户可查看自己的记录
     if (queryAction === 'list') {
       const date = url.searchParams.get('date');
       if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -53,6 +55,7 @@ export const onRequest = withErrorGuard(async (context) => {
   // ============================================
   if (request.method === 'POST') {
     const payload = await verifyToken(request, env);
+    requireRole(payload, ['inspector', 'teacher', 'admin']);
     const userId = payload.user_id;
 
     if (!userId) {

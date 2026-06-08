@@ -20,6 +20,134 @@
   <link rel="stylesheet" href="assets/css/room.css">
 </head>
 <body>
+  <!-- v20: 前端密码墙 -->
+  <div class="password-wall-overlay" id="passwordWall" style="display:none;">
+    <div class="password-wall-card">
+      <div class="login-icon"><i class="fas fa-lock"></i></div>
+      <h2>请输入访问密码</h2>
+      <p style="font-size:13px;color:var(--neu-text-secondary);margin-bottom:20px;">继续使用需要输入系统访问密码</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px;">
+        <input type="password" class="pw-digit" id="pwDigit1" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="onPwDigitInput(1, this)" onkeydown="onPwDigitKeydown(1, event)" autocomplete="off">
+        <input type="password" class="pw-digit" id="pwDigit2" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="onPwDigitInput(2, this)" onkeydown="onPwDigitKeydown(2, event)" autocomplete="off">
+        <input type="password" class="pw-digit" id="pwDigit3" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="onPwDigitInput(3, this)" onkeydown="onPwDigitKeydown(3, event)" autocomplete="off">
+        <input type="password" class="pw-digit" id="pwDigit4" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="onPwDigitInput(4, this)" onkeydown="onPwDigitKeydown(4, event)" autocomplete="off">
+      </div>
+      <p class="pw-error" id="pwError" style="display:none;">密码错误</p>
+      <p style="font-size:11px;color:var(--neu-text-secondary);">忘记密码？请联系管理员</p>
+    </div>
+  </div>
+
+  <style>
+    .password-wall-overlay {
+      position: fixed; inset: 0;
+      background: rgba(26, 29, 60, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 10000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .password-wall-card {
+      background: var(--neu-bg);
+      border-radius: 24px;
+      padding: 40px 32px;
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 12px 12px 24px var(--neu-dark), -12px -12px 24px var(--neu-light);
+    }
+    .pw-digit {
+      width: 52px; height: 60px;
+      text-align: center;
+      font-size: 28px; font-weight: 700;
+      border: none;
+      border-radius: 14px;
+      background: var(--neu-bg);
+      color: var(--neu-text);
+      box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px var(--neu-light);
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .pw-digit:focus {
+      box-shadow: inset 8px 8px 16px var(--neu-dark), inset -8px -8px 16px var(--neu-light);
+    }
+    .pw-error {
+      color: #DC2626; font-size: 13px;
+      margin-bottom: 12px;
+    }
+    @keyframes pwShake {
+      0%, 100% { transform: translateX(0); }
+      25%      { transform: translateX(-8px); }
+      50%      { transform: translateX(8px); }
+      75%      { transform: translateX(-6px); }
+    }
+    .pw-shaking { animation: pwShake 0.4s ease; }
+  </style>
+
+  <script>
+  async function verifyPasswordWall() {
+    const d1 = document.getElementById('pwDigit1').value;
+    const d2 = document.getElementById('pwDigit2').value;
+    const d3 = document.getElementById('pwDigit3').value;
+    const d4 = document.getElementById('pwDigit4').value;
+    const password = d1 + d2 + d3 + d4;
+
+    if (password.length !== 4 || !/^\d{4}$/.test(password)) return;
+
+    try {
+      const res = await fetch('/api/settings?action=verify-access-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (data.valid) {
+        sessionStorage.setItem('access_password_verified', '1');
+        document.getElementById('passwordWall').style.display = 'none';
+      } else {
+        showPwError();
+      }
+    } catch (e) {
+      showPwError();
+    }
+  }
+
+  function showPwError() {
+    const err = document.getElementById('pwError');
+    err.style.display = 'block';
+    const card = document.querySelector('.password-wall-card');
+    card.classList.add('pw-shaking');
+    setTimeout(() => card.classList.remove('pw-shaking'), 400);
+    // Clear digits
+    ['pwDigit1','pwDigit2','pwDigit3','pwDigit4'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('pwDigit1').focus();
+  }
+
+  function showPasswordWall() {
+    document.getElementById('passwordWall').style.display = 'flex';
+    setTimeout(() => document.getElementById('pwDigit1').focus(), 300);
+  }
+
+  function onPwDigitInput(pos, el) {
+    // Allow only digits
+    el.value = el.value.replace(/[^0-9]/g, '');
+    if (el.value && pos < 4) {
+      document.getElementById('pwDigit' + (pos + 1)).focus();
+    }
+    if (pos === 4 && el.value) {
+      setTimeout(verifyPasswordWall, 100);
+    }
+  }
+
+  function onPwDigitKeydown(pos, e) {
+    if (e.key === 'Backspace' && !e.target.value && pos > 1) {
+      document.getElementById('pwDigit' + (pos - 1)).focus();
+    }
+  }
+  </script>
+
   <!-- 模式选择遮罩 -->
   <div class="mode-overlay active" id="modeOverlay">
     <div class="mode-card">
@@ -299,10 +427,28 @@
   <div class="toast" id="toast"></div>
 
   <script src="assets/js/utils.js"></script>
+  <script src="assets/js/trie-filter.js"></script>
   <script src="assets/js/sync-queue.js"></script>
   <script src="assets/js/name-matcher.js"></script>
   <script src="assets/js/index.js"></script>
   <script src="assets/js/room.js"></script>
   <script src="assets/js/dorm-swipe.js"></script>
+  <script>
+  // v20: 加载敏感词库
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof trieFilter !== 'undefined') {
+      trieFilter.loadFromURL('/sensitive-words/merged.txt').then(function() {
+        console.log('SW filter ready');
+      }).catch(function(e) {
+        console.error('SW load failed:', e);
+      });
+    }
+  });
+
+  // v20: 前端密码墙 — 已登录但未验证访问密码时显示
+  if (!sessionStorage.getItem('access_password_verified')) {
+    showPasswordWall();
+  }
+  </script>
 </body>
 </html>

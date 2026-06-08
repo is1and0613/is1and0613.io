@@ -1,6 +1,6 @@
 // functions/api/check-session.js — 跨设备查寝数据同步 API
 
-import { verifyToken, jsonResponse, errorResponse, handleOptions, withErrorGuard, dbGuard } from './_utils.js';
+import { verifyToken, jsonResponse, errorResponse, handleOptions, withErrorGuard, dbGuard, requireRole } from './_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
   const { request, env } = context;
@@ -69,6 +69,9 @@ export const onRequest = withErrorGuard(async (context) => {
   }
 
   if (request.method === 'POST') {
+    // v20: role check — only inspector/teacher/admin can modify
+    requireRole(user, ['inspector', 'teacher', 'admin']);
+
     let body = {};
     try {
       body = await request.json();

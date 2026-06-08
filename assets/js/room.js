@@ -184,6 +184,9 @@ async function showRoomView() {
   // Persist room code for refresh recovery
   sessionStorage.setItem('roomCode', roomState.code);
 
+  // v19: 恢复已读消息状态（避免页面跳转后红点重置）
+  roomState.lastReadId = getLastReadMsgId(roomState.code);
+
   // Load dorm data if not already loaded
   if (!window.dormData) {
     document.getElementById('loadingOverlay').classList.remove('hidden');
@@ -214,12 +217,21 @@ async function syncRoom() {
       roomState.messages = data.messages || [];
       roomState.members = data.members || [];
 
-      // Map room states to single-mode studentStatus
+      // v19: 增量更新 — 只更新变化的学生 DOM，不刷新整个页面
+      const statusMap = { present: 'in', absent: 'absent', leaveSchool: 'leaveSchool', leaveInside: 'leaveInside', leaveOutside: 'leaveOutside' };
       if (roomState.states.length > 0) {
         roomState.states.forEach(s => {
-          const statusMap = { present: 'in', absent: 'absent', leaveSchool: 'leaveSchool', leaveInside: 'leaveInside', leaveOutside: 'leaveOutside' };
           const mappedStatus = statusMap[s.status] || 'in';
-          state.studentStatus[s.student_name] = { status: mappedStatus, reason: s.reason || s.detail || '', reason_detail: s.reason_detail || '' };
+          const newStatusObj = { status: mappedStatus, reason: s.reason || s.detail || '', reason_detail: s.reason_detail || '' };
+          const oldStatusObj = state.studentStatus[s.student_name];
+          // Check if status actually changed
+          const oldStatus = oldStatusObj ? (Array.isArray(oldStatusObj.status) ? oldStatusObj.status.join(',') : oldStatusObj.status) : 'in';
+          const oldReason = oldStatusObj ? (oldStatusObj.reason || '') : '';
+          if (oldStatus !== mappedStatus || oldReason !== (s.reason || s.detail || '')) {
+            state.studentStatus[s.student_name] = newStatusObj;
+            // 只更新这个学生的 DOM 节点
+            updateStudentDOMIncremental(s.student_name);
+          }
         });
       }
 
@@ -230,15 +242,17 @@ async function syncRoom() {
         }
         const chatOpen = document.getElementById('chatDrawer').classList.contains('open');
         if (!chatOpen) {
+          // v19: 使用持久化的 lastReadId 计算未读数
           roomState.unreadCount = data.messages.filter(m => m.id > roomState.lastReadId).length;
         } else {
           roomState.unreadCount = 0;
           roomState.lastReadId = newLastId;
+          setLastReadMsgId(roomState.code, newLastId);
         }
       }
 
-      // Use single-mode renderer
-      if (typeof refreshView === 'function') refreshView();
+      // v19: 首次加载或非房间状态改变时才全量刷新
+      if (typeof refreshView === 'function' && roomState.states.length === 0) refreshView();
       renderRoomMessages();
       renderRoomLogs();
       renderRoomMembers();
@@ -274,10 +288,12 @@ async function syncRoomMessages() {
         }
         const chatOpen = document.getElementById('chatDrawer').classList.contains('open');
         if (!chatOpen) {
+          // v19: 使用持久化的 lastReadId 计算未读数
           roomState.unreadCount = data.messages.filter(m => m.id > roomState.lastReadId).length;
         } else {
           roomState.unreadCount = 0;
           roomState.lastReadId = newLastId;
+          setLastReadMsgId(roomState.code, newLastId);
         }
       }
       renderRoomMessages();
@@ -335,6 +351,12 @@ async function sendRoomMessage() {
   if (!content) return;
   if (content.length > 500) {
     showToast('消息不能超过500字');
+    return;
+  }
+
+  // v20: 敏感词前端拦截
+  if (window.trieFilter && window.trieFilter.isReady() && window.trieFilter.hasSensitive(content)) {
+    showToast('消息包含敏感内容，已禁止发送', 'error');
     return;
   }
 
@@ -488,6 +510,20 @@ function leaveRoom(silent) {
 }
 
 // ============================================
+// v19: 消息已读状态持久化（按房间隔离，避免页面跳转后重置）
+// ============================================
+
+function getLastReadMsgId(roomCode) {
+  const key = 'last_read_msg_' + (roomCode || 'default');
+  return parseInt(sessionStorage.getItem(key) || '0');
+}
+
+function setLastReadMsgId(roomCode, msgId) {
+  const key = 'last_read_msg_' + (roomCode || 'default');
+  sessionStorage.setItem(key, String(msgId));
+}
+
+// ============================================
 // UI toggles
 // ============================================
 
@@ -503,6 +539,7 @@ function toggleChatDrawer() {
     roomState.unreadCount = 0;
     if (roomState.messages.length > 0) {
       roomState.lastReadId = roomState.messages[roomState.messages.length - 1].id;
+      setLastReadMsgId(roomState.code, roomState.lastReadId);
     }
     updateChatBadge();
   } else {
@@ -582,6 +619,63 @@ function updateChatBadge() {
     badge.textContent = roomState.unreadCount > 99 ? '99+' : roomState.unreadCount;
   } else if (badge) {
     badge.remove();
+  }
+}
+
+// v19: 增量更新单个学生 DOM（只更新状态标签，不重建整个列表）
+function updateStudentDOMIncremental(studentName) {
+  // Find all student items with this name
+  const allItems = document.querySelectorAll('.student-item');
+  for (const item of allItems) {
+    const nameEl = item.querySelector('.student-name');
+    if (!nameEl) continue;
+    // Compare text (may contain highlight marks)
+    const nameText = nameEl.textContent.replace(/\s+/g, '').trim();
+    if (nameText !== studentName) continue;
+
+    // Found the student's DOM node — update status tags
+    const st = state.studentStatus[studentName] || { status: 'in' };
+    const statusText = typeof getStatusDisplay === 'function' ? getStatusDisplay(st) : '';
+    const hasAbsent = st.status === 'absent' || (Array.isArray(st.status) && st.status.includes('absent'));
+    const hasLeaveInside = st.status === 'leaveInside' || (Array.isArray(st.status) && st.status.includes('leaveInside'));
+
+    // Update status tag buttons
+    const tags = item.querySelectorAll('.status-tag');
+    tags.forEach(tag => {
+      if (tag.classList.contains('in')) {
+        tag.classList.toggle('active', st.status === 'in');
+      } else if (tag.classList.contains('leaveSchool')) {
+        tag.classList.toggle('active', st.status === 'leaveSchool');
+      } else if (tag.classList.contains('leaveInside')) {
+        tag.classList.toggle('active', hasLeaveInside);
+      } else if (tag.classList.contains('leaveOutside')) {
+        tag.classList.toggle('active', st.status === 'leaveOutside');
+      } else if (tag.classList.contains('absent')) {
+        tag.classList.toggle('active', hasAbsent);
+      }
+    });
+
+    // Update meta text with status
+    const metaEl = item.querySelector('.student-meta');
+    if (metaEl) {
+      // Preserve the non-status part of meta text
+      const existingText = metaEl.textContent || '';
+      const beforePipe = existingText.split('|')[0] || existingText;
+      if (st.status !== 'in' && statusText) {
+        metaEl.textContent = beforePipe.trim() + ' | ' + statusText;
+      } else {
+        metaEl.textContent = beforePipe.trim();
+      }
+    }
+
+    // Flash effect to hint the update
+    item.style.transition = 'background-color 0.3s ease';
+    item.style.backgroundColor = 'rgba(37, 99, 235, 0.05)';
+    setTimeout(function() {
+      item.style.backgroundColor = '';
+    }, 500);
+
+    break; // Only update first match (same student can only appear once)
   }
 }
 

@@ -1,7 +1,10 @@
 // functions/api/dorm-data.js
 // 宿舍数据查询（D1）
 
-import { jsonResponse, errorResponse, handleOptions, verifyToken, dbGuard, withErrorGuard } from './_utils.js';
+import {
+  jsonResponse, errorResponse, handleOptions,
+  verifyToken, dbGuard, withErrorGuard, maskName,
+} from './_utils.js';
 
 export const onRequest = withErrorGuard(async (context) => {
   const request = context.request;
@@ -14,7 +17,8 @@ export const onRequest = withErrorGuard(async (context) => {
     return errorResponse('Method not allowed', 405);
   }
 
-  await verifyToken(request, context.env);
+  const payload = await verifyToken(request, context.env);
+  const isAdmin = payload.role === 'admin';
   dbGuard(context.env);
 
   const { results: students } = await context.env.DB.prepare(`
@@ -54,7 +58,9 @@ export const onRequest = withErrorGuard(async (context) => {
     }
 
     if (name && bed && bed >= 1 && bed <= 4) {
-      dormData[grade][className][dorm][bed - 1] = name;
+      // v20: 非 admin 用户姓名脱敏
+      const displayName = isAdmin ? name : maskName(name);
+      dormData[grade][className][dorm][bed - 1] = displayName;
       nameIndex[name] = {
         grade,
         className,

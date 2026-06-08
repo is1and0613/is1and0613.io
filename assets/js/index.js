@@ -1499,6 +1499,14 @@ function applyPendingLeaves() {
   const pendingData = localStorage.getItem('pendingLeaveRecords');
   if (!pendingData) return;
 
+  // v19: 统一状态映射表
+  const STATUS_MAP = {
+    '在寝': 'in', '离校': 'leaveSchool', '请假离校': 'leaveSchool',
+    '事假': 'leaveInside', '病假': 'leaveInside',
+    '外出': 'leaveOutside', '请假外出': 'leaveOutside',
+    '未归': 'absent', '晚归': 'absent'
+  };
+
   try {
     let updates;
     let dateRange = null;
@@ -1533,11 +1541,25 @@ function applyPendingLeaves() {
     let count = 0;
     Object.keys(updates).forEach(name => {
       const record = updates[name];
+      // v19: 标准化状态值（中文 → 英文 key）
+      let normalizedStatus = record.status;
+      if (STATUS_MAP[normalizedStatus]) {
+        normalizedStatus = STATUS_MAP[normalizedStatus];
+      }
+
       if (state.studentStatus[name] || studentNameExists(name)) {
         state.studentStatus[name] = {
-          status: record.status,
+          status: normalizedStatus,
           reason: record.reason || ''
         };
+        // v19: 多人模式下同步到房间
+        if (roomState.mode === 'multi' && roomState.code && typeof syncToRoomIfMulti === 'function') {
+          const roomStatusMap = { in: 'present', absent: 'absent', leaveSchool: 'leaveSchool', leaveInside: 'leaveInside', leaveOutside: 'leaveOutside' };
+          const roomStatus = roomStatusMap[normalizedStatus] || 'present';
+          if (typeof updateRoomStudentState === 'function') {
+            updateRoomStudentState(name, roomStatus, record.reason || '');
+          }
+        }
         count++;
       }
     });

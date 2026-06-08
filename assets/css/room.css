@@ -258,7 +258,9 @@
   opacity: 0.7;
 }
 #headerRoomCode::after {
-  content: '📋';
+  content: '\f328'; /* Font Awesome fa-clipboard */
+  font-family: 'Font Awesome 6 Free', 'Font Awesome 5 Free', 'FontAwesome';
+  font-weight: 900;
   font-size: 14px;
   margin-left: 6px;
   opacity: 0.8;

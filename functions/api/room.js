@@ -4,6 +4,7 @@
 import {
   jsonResponse, errorResponse, handleOptions,
   verifyToken, dbGuard, withErrorGuard,
+  requireRole, logSystemAction, maskName,
 } from './_utils.js';
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/I/1
@@ -11,6 +12,59 @@ const CODE_LENGTH = 6;
 const ROOM_TTL_MINUTES = 2 * 24 * 60; // 2 days
 const MAX_SYNC_LOGS = 50;
 const MAX_SYNC_MESSAGES = 50;
+
+// ============================================
+// v20: 敏感词 KV 后端过滤（全局缓存，热更新）
+// ============================================
+let _swTrieRoot = null;
+let _swTrieVersion = null;
+
+async function getSensitiveTrie(env) {
+  try {
+    if (!env.SENSITIVE_WORDS) return null;
+    const version = await env.SENSITIVE_WORDS.get('version', 'text') || '0';
+    if (_swTrieRoot && _swTrieVersion === version) return _swTrieRoot;
+
+    const text = await env.SENSITIVE_WORDS.get('sensitive_words', 'text');
+    if (!text) return null;
+    const words = text.split('\n').map(w => w.trim()).filter(w => w.length > 0);
+    _swTrieRoot = buildBackendTrie(words);
+    _swTrieVersion = version;
+    console.log('[SW-Filter] Loaded ' + words.length + ' sensitive words, version=' + version);
+    return _swTrieRoot;
+  } catch (e) {
+    console.error('[SW-Filter] Failed to load KV:', e.message);
+    return null;
+  }
+}
+
+function buildBackendTrie(words) {
+  const root = {};
+  for (const word of words) {
+    let node = root;
+    for (const ch of word.toLowerCase()) {
+      if (!node[ch]) node[ch] = {};
+      node = node[ch];
+    }
+    node._end = true;
+  }
+  return root;
+}
+
+function checkBackendTrie(text, trie) {
+  if (!text || !trie) return false;
+  const lower = text.toLowerCase();
+  const n = lower.length;
+  for (let i = 0; i < n; i++) {
+    let node = trie;
+    for (let j = i; j < n; j++) {
+      node = node[lower[j]];
+      if (!node) break;
+      if (node._end) return true;
+    }
+  }
+  return false;
+}
 
 function generateCode() {
   let code = '';
@@ -98,6 +152,7 @@ export const onRequest = withErrorGuard(async (context) => {
 
 async function handleCreate(request, env) {
   const payload = await verifyToken(request, env);
+  requireRole(payload, ['inspector', 'teacher', 'admin']);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -147,6 +202,12 @@ async function handleCreate(request, env) {
      VALUES (?, ?, 'system', ?)`
   ).bind(room.id, userId, `${username} 创建了房间`).run();
 
+  // v20: system_log
+  await logSystemAction(env,
+    { user_id: userId, username, role: payload.role || 'inspector' },
+    'room_create', 'room', String(room.id), `创建房间 ${code}`, request
+  );
+
   return jsonResponse({
     message: '房间创建成功',
     code,
@@ -161,6 +222,7 @@ async function handleCreate(request, env) {
 
 async function handleJoin(request, env, body) {
   const payload = await verifyToken(request, env);
+  requireRole(payload, ['inspector', 'teacher', 'admin']);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -214,6 +276,12 @@ async function handleJoin(request, env, body) {
     `INSERT INTO room_logs (room_id, user_id, action_type, detail)
      VALUES (?, ?, 'join', ?)`
   ).bind(room.id, userId, `${username} 加入了房间`).run();
+
+  // v20: system_log
+  await logSystemAction(env,
+    { user_id: userId, username, role: payload.role || 'inspector' },
+    'room_join', 'room', String(room.id), `加入房间 ${code}`, request
+  );
 
   return jsonResponse({
     message: '成功加入房间',
@@ -315,6 +383,7 @@ async function handleSync(request, env, code) {
 
 async function handleState(request, env, body) {
   const payload = await verifyToken(request, env);
+  requireRole(payload, ['inspector', 'teacher', 'admin']);
 
   const userId = payload.user_id;
   const username = payload.username;
@@ -362,6 +431,13 @@ async function handleState(request, env, body) {
      VALUES (?, ?, 'status_change', ?, ?, ?, ?)`
   ).bind(room.id, userId, student_name, oldStatus, new_status, detail || null).run();
 
+  // v20: system_log
+  await logSystemAction(env,
+    { user_id: userId, username, role: payload.role || 'inspector' },
+    'room_status_change', 'room_states', String(room.id),
+    `学生:${student_name} 状态:${oldStatus}→${new_status}`, request
+  );
+
   return jsonResponse({
     message: '状态更新成功',
     student_name,
@@ -377,6 +453,7 @@ async function handleState(request, env, body) {
 
 async function handleMessage(request, env, body) {
   const payload = await verifyToken(request, env);
+  requireRole(payload, ['inspector', 'teacher', 'admin']);
 
   const userId = payload.user_id;
   const { code, content } = body;
@@ -387,6 +464,17 @@ async function handleMessage(request, env, body) {
 
   if (content.length > 500) {
     return errorResponse('消息内容不能超过500字', 400);
+  }
+
+  // v20: 后端敏感词二次过滤（KV）
+  const trie = await getSensitiveTrie(env);
+  if (trie && checkBackendTrie(content.trim(), trie)) {
+    // 记录拦截日志（不记录完整消息内容）
+    await logSystemAction(env,
+      { user_id: userId, username: payload.username, role: payload.role || 'inspector' },
+      'sensitive_blocked', 'room_message', code, 'chat消息被拦截', request
+    );
+    return errorResponse('消息包含敏感内容', 400);
   }
 
   const room = await env.DB.prepare(

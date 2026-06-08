@@ -2,9 +2,95 @@
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
+
+// Security response headers (applied to all JSON responses)
+export const securityHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+};
+
+// ============================================
+// 数据脱敏 & 角色权限
+// ============================================
+
+/**
+ * 学生姓名脱敏：保留首字，其余替换为 *
+ * 2字: 张*  3字: 张**  4字+: 张***
+ */
+export function maskName(name) {
+  if (!name || typeof name !== 'string' || name.length <= 1) return name || '';
+  return name[0] + '*'.repeat(name.length - 1);
+}
+
+/**
+ * 角色权限检查：role 不在 allowedRoles 中则抛 403
+ */
+export function requireRole(payload, allowedRoles) {
+  const role = payload.role || 'student';
+  if (!allowedRoles.includes(role)) {
+    const err = new Error('Forbidden');
+    err.status = 403;
+    throw err;
+  }
+}
+
+/**
+ * 获取客户端 IP
+ */
+export function getClientIP(request) {
+  return request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+}
+
+/**
+ * 写入系统日志（不抛异常，失败静默忽略）
+ */
+export async function logSystemAction(env, userInfo, action, targetType, targetId, detail, request) {
+  try {
+    if (!env || !env.DB) return;
+    const ip = request ? getClientIP(request) : 'system';
+    const ua = request ? (request.headers.get('User-Agent') || '').slice(0, 200) : '';
+    // 脱敏 detail 中的姓名
+    const safeDetail = detail ? maskNamesInText(detail) : null;
+    await env.DB.prepare(
+      `INSERT INTO system_logs (user_id, username, role, action, target_type, target_id, detail, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      userInfo.user_id || null,
+      userInfo.username || 'system',
+      userInfo.role || 'unknown',
+      action,
+      targetType || null,
+      targetId ? String(targetId) : null,
+      safeDetail ? safeDetail.slice(0, 500) : null,
+      ip,
+      ua
+    ).run();
+  } catch (e) {
+    // 静默失败，不影响主业务
+    console.error('logSystemAction failed:', e.message);
+  }
+}
+
+/**
+ * 对文本中疑似姓名的部分做脱敏（简易版：匹配常见中文姓名位置）
+ * 主要用于日志 detail 字段
+ */
+function maskNamesInText(text) {
+  if (!text || typeof text !== 'string') return text;
+  // 简单策略：对 2-4 个连续中文字符做脱敏
+  return text.replace(/[一-龥]{2,4}/g, (match) => {
+    // 排除一些常见非姓名词汇
+    const nonNames = ['修改', '删除', '创建', '加入', '导出', '查询', '上传', '更新', '成功', '失败',
+      '状态', '房间', '数据', '学生', '日志', '宿舍', '班级', '年级', '记录', '导入'];
+    if (nonNames.includes(match)) return match;
+    return maskName(match);
+  });
+}
 
 // ============================================
 // JWT
@@ -165,18 +251,18 @@ export function dbGuard(env) {
 export function jsonResponse(data, status = 200) {
   return new Response(
     JSON.stringify({ success: true, ...data }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    { status, headers: { ...corsHeaders, ...securityHeaders, 'Content-Type': 'application/json' } }
   );
 }
 
 export function errorResponse(message, status = 400) {
   return new Response(
-    JSON.stringify({ success: false, message }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    JSON.stringify({ success: false, error: message }),
+    { status, headers: { ...corsHeaders, ...securityHeaders, 'Content-Type': 'application/json' } }
   );
 }
 
-export function handleOptions(allowedMethods = 'GET, POST, OPTIONS') {
+export function handleOptions(allowedMethods = 'GET, POST, PUT, OPTIONS') {
   return new Response(null, {
     status: 204,
     headers: {
