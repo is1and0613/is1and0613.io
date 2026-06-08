@@ -115,9 +115,15 @@ async function doLogin() {
         role = payload.role || 'inspector';
       } catch (e) { /* use default */ }
 
-      // v21: 如果是 admin 模式但后端返回非 admin，给出提示
+      // v21: 模式与角色不匹配时拦截，防止误进
       if (loginRole === 'admin' && role !== 'admin') {
         showToast('该账户非管理员，请使用查寝员登录', 'error');
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        return;
+      }
+      if (loginRole === 'inspector' && role === 'admin') {
+        showToast('这是管理员账户，请使用底部「管理员登录」入口', 'error');
         btn.innerHTML = originalHTML;
         btn.disabled = false;
         return;
