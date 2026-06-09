@@ -306,7 +306,7 @@ async function handleSync(request, env, code) {
     return errorResponse('房间不存在', 404);
   }
 
-  // Update expiry if room still active
+  // Update expiry if room still active, and track last_activity_at
   if (room.status === 'active') {
     const expiresAt = new Date(room.expires_at + 'Z');
     if (expiresAt < new Date()) {
@@ -314,8 +314,25 @@ async function handleSync(request, env, code) {
         "UPDATE rooms SET status = 'expired' WHERE id = ?"
       ).bind(room.id).run();
       room.status = 'expired';
+    } else {
+      // 更新最后活动时间（心跳）
+      try {
+        await env.DB.prepare(
+          "UPDATE rooms SET last_activity_at = datetime('now') WHERE id = ?"
+        ).bind(room.id).run();
+      } catch (e) { /* last_activity_at 字段可能尚未迁移，忽略 */ }
     }
   }
+
+  // v20: 自动过期 24 小时无活动的房间
+  try {
+    await env.DB.prepare(
+      `UPDATE rooms SET status = 'expired'
+       WHERE status = 'active'
+       AND last_activity_at IS NOT NULL
+       AND datetime(last_activity_at, '+24 hours') < datetime('now')`
+    ).run();
+  } catch (e) { /* last_activity_at 字段可能尚未迁移，忽略 */ }
 
   // Get states
   const states = await env.DB.prepare(

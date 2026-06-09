@@ -121,9 +121,13 @@
       max-width: 800px; margin: 0 auto;
     }
     .tab-nav .neu-tab {
-      font-size: 13px; padding: 10px 4px;
+      font-size: 13px; padding: 10px 6px;
       display: inline-flex; align-items: center; justify-content: center;
       text-align: center; white-space: nowrap;
+      flex: 1 1 0; min-width: 0;
+    }
+    .tab-nav .neu-tab .tab-label {
+      display: inline-block; width: 100%; text-align: center;
     }
 
     /* ===== Content Area ===== */
@@ -583,12 +587,166 @@
     }
     .batch-bar.hidden { display: none; }
 
-    /* ===== Responsive ===== */
+    /* ===== Responsive: Mobile Adaptation (v20) ===== */
+    @media (max-width: 768px) {
+      /* --- Global --- */
+      html { font-size: 15px; }
+      button, .neumorphic-btn, .neu-btn, .neu-btn-sm, .tab-nav-item, .neu-tab {
+        min-height: 44px; min-width: 44px;
+      }
+      input, select, textarea, .neu-input, .neu-input-sm, .neu-select {
+        font-size: 16px; min-height: 44px;
+      }
+      .admin-container { padding: 12px; }
+      .content-area { padding: 0 8px; }
+
+      /* --- Header --- */
+      .header {
+        flex-direction: column; align-items: flex-start;
+        padding: 10px 14px; height: auto; min-height: 100px;
+        gap: 8px;
+      }
+      .header h1 {
+        font-size: 16px; line-height: 1.4;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .header .user-info {
+        font-size: 12px; flex-shrink: 0;
+      }
+      .header .role-badge {
+        font-size: 11px; padding: 2px 8px; margin-left: 8px; flex-shrink: 0;
+      }
+      .header-actions {
+        display: flex; gap: 8px; width: 100%; justify-content: flex-end;
+      }
+      .header-actions button, .header-actions .header-btn {
+        font-size: 13px; padding: 8px 12px; min-height: 36px;
+      }
+
+      /* --- Tab Nav: Horizontal Scroll --- */
+      .tab-nav {
+        position: sticky; top: 0; z-index: 99;
+        padding: 8px 8px;
+      }
+      .tab-nav .neu-tabs {
+        display: flex; overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; gap: 6px;
+      }
+      .tab-nav .neu-tabs::-webkit-scrollbar { display: none; }
+      .tab-nav .neu-tab {
+        flex: 0 0 auto; min-width: 72px;
+        padding: 10px 12px; font-size: 13px;
+        white-space: nowrap; justify-content: center;
+        align-items: center; text-align: center;
+      }
+      .tab-nav .neu-tab .tab-label {
+        display: inline-block; width: 100%; text-align: center;
+      }
+
+      /* --- Cards --- */
+      .neu-card { padding: 14px; border-radius: 16px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .stat-card { padding: 12px 10px; }
+      .stat-card .num { font-size: 22px; }
+      .stat-card .label { font-size: 11px; }
+
+      /* --- Radio Group (Upload Mode) --- */
+      .radio-group { flex-direction: column; gap: 8px; }
+      .radio-option { padding: 14px 16px; font-size: 14px; }
+
+      /* --- Upload Dropzone --- */
+      .upload-zone { min-height: 140px; padding: 24px 16px; }
+      .upload-zone i { font-size: 40px; }
+      .upload-zone .filename { font-size: 14px; }
+      .upload-zone .hint { font-size: 12px; }
+
+      /* --- Filter Row --- */
+      .filter-row {
+        flex-direction: column; gap: 8px; align-items: stretch;
+      }
+      .filter-row .neu-input-sm { width: 100%; max-width: none; }
+      .search-wrap { width: 100%; }
+      .search-wrap input { width: 100%; }
+
+      /* --- Table → Card (Data Management) --- */
+      .table-wrap table thead { display: none; }
+      .table-wrap table, .table-wrap table tbody,
+      .table-wrap table tr, .table-wrap table td {
+        display: block; width: 100%;
+      }
+      .table-wrap table tr {
+        margin-bottom: 12px; padding: 12px;
+        border-radius: 12px;
+        box-shadow: 6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px rgba(255,255,255,0.7);
+        cursor: default;
+      }
+      .table-wrap table td {
+        display: flex; justify-content: space-between;
+        align-items: center; padding: 8px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        font-size: 14px; border-radius: 0;
+      }
+      .table-wrap table td:last-child { border-bottom: none; }
+      .table-wrap table td::before {
+        content: attr(data-label);
+        font-weight: 600; color: #666;
+        font-size: 13px; flex-shrink: 0; margin-right: 12px;
+      }
+      .table-wrap table td.actions-cell { justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+      .table-wrap table td.actions-cell::before { content: '操作'; }
+      .table-wrap table td.actions-cell button { font-size: 13px; padding: 6px 12px; min-height: 36px; }
+
+      /* For logs table: prevent vertical text in operation type */
+      .table-wrap table td.operation-type {
+        white-space: normal; word-break: break-word;
+        max-width: 60%; text-align: right;
+      }
+
+      /* Role badge in user table */
+      .table-wrap table td .role-badge {
+        display: inline-block; padding: 2px 8px;
+        border-radius: 4px; font-size: 12px; white-space: nowrap;
+      }
+
+      /* --- Settings Page --- */
+      .settings-grid { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+      .settings-card { padding: 16px; }
+      .settings-card .stat-number { font-size: 28px; }
+      .settings-card .stat-label { font-size: 13px; }
+
+      /* Sensitive word test row */
+      .word-test-row { flex-direction: column; gap: 8px; }
+      .word-test-row input { width: 100%; min-height: 44px; }
+      .word-test-row button { width: 100%; min-height: 44px; }
+
+      /* --- Detail Panel --- */
+      .detail-panel {
+        max-height: 90vh; padding: 14px;
+        border-radius: 16px 16px 0 0;
+      }
+
+      /* --- Pagination --- */
+      .pagination { flex-wrap: wrap; gap: 6px; justify-content: center; }
+      .pagination button, .page-btn {
+        min-width: 36px; min-height: 36px; font-size: 13px;
+      }
+
+      /* --- Batch Bar --- */
+      .batch-bar { flex-wrap: wrap; gap: 6px; }
+
+      /* --- Edit Row --- */
+      .edit-row td { flex-direction: column; align-items: stretch; }
+      .edit-row td::before { margin-bottom: 4px; }
+      .edit-row .neu-input-sm { width: 100%; }
+    }
+
+    /* ===== Small Mobile (≤480px) ===== */
     @media (max-width: 480px) {
       .header h1 { font-size: 15px; }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .radio-group { flex-direction: column; }
-      .tab-nav .neu-tab { font-size: 11px; padding: 8px 2px; }
+      .tab-nav .neu-tab { font-size: 12px; padding: 8px 10px; }
       .neu-card { padding: 14px; }
       .detail-panel { max-height: 90vh; padding: 14px; }
     }
@@ -1449,32 +1607,32 @@
         const statusKey = statusMap[r.status] || 'in';
         if (editingRow === key) {
           html += `<tr class="edit-row" id="edit-${safeId(key)}">
-            <td></td>
-            <td><input class="neu-input neu-input-sm" value="${escHtml(r.student_name || '')}" id="editName"></td>
-            <td><input class="neu-input neu-input-sm" value="${escHtml(r.grade_name || r.grade || '')}" id="editGrade"></td>
-            <td><input class="neu-input neu-input-sm" value="${escHtml(r.class_name || '')}" id="editClass"></td>
-            <td><input class="neu-input neu-input-sm" value="${escHtml(r.dorm_name || '')}" id="editDorm"></td>
-            <td><input class="neu-input neu-input-sm" value="${r.bed || ''}" id="editBed" type="number" min="1" max="6"></td>
-            <td>
+            <td data-label=""></td>
+            <td data-label="姓名"><input class="neu-input neu-input-sm" value="${escHtml(r.student_name || '')}" id="editName"></td>
+            <td data-label="年级"><input class="neu-input neu-input-sm" value="${escHtml(r.grade_name || r.grade || '')}" id="editGrade"></td>
+            <td data-label="班级"><input class="neu-input neu-input-sm" value="${escHtml(r.class_name || '')}" id="editClass"></td>
+            <td data-label="宿舍"><input class="neu-input neu-input-sm" value="${escHtml(r.dorm_name || '')}" id="editDorm"></td>
+            <td data-label="床号"><input class="neu-input neu-input-sm" value="${r.bed || ''}" id="editBed" type="number" min="1" max="6"></td>
+            <td data-label="状态">
               <select class="neu-select" id="editStatus">
                 ${Object.entries(statusNames).map(([k,v]) => `<option value="${k}" ${statusKey === k ? 'selected' : ''}>${v}</option>`).join('')}
               </select>
             </td>
-            <td>
+            <td data-label="操作" class="actions-cell">
               <button class="neu-btn neu-btn-sm" onclick="saveEditRow('${escAttr(key)}')">保存</button>
               <button class="neu-btn neu-btn-sm" onclick="cancelEdit()" style="color:var(--neu-text-secondary);">取消</button>
             </td>
           </tr>`;
         } else {
           html += `<tr onclick="startEdit('${escAttr(key)}')" id="row-${safeId(key)}">
-            <td onclick="event.stopPropagation();toggleRowSelect('${escAttr(key)}', this)"><span class="neu-checkbox" id="cb-${safeId(key)}"></span></td>
-            <td>${escHtml(r.student_name || '')}</td>
-            <td>${escHtml(r.grade_name || r.grade || '')}</td>
-            <td>${escHtml(r.class_name || '')}</td>
-            <td>${escHtml(r.dorm_name || '')}</td>
-            <td>${r.bed || ''}</td>
-            <td><span class="status-label"><span class="status-dot ${statusKey}"></span>${statusNames[statusKey] || r.status}</span></td>
-            <td>
+            <td data-label="" onclick="event.stopPropagation();toggleRowSelect('${escAttr(key)}', this)"><span class="neu-checkbox" id="cb-${safeId(key)}"></span></td>
+            <td data-label="姓名">${escHtml(r.student_name || '')}</td>
+            <td data-label="年级">${escHtml(r.grade_name || r.grade || '')}</td>
+            <td data-label="班级">${escHtml(r.class_name || '')}</td>
+            <td data-label="宿舍">${escHtml(r.dorm_name || '')}</td>
+            <td data-label="床号">${r.bed || ''}</td>
+            <td data-label="状态"><span class="status-label"><span class="status-dot ${statusKey}"></span>${statusNames[statusKey] || r.status}</span></td>
+            <td data-label="操作" class="actions-cell">
               <button class="neu-btn neu-btn-sm neu-btn-danger" onclick="event.stopPropagation();deleteRecord('${escAttr(key)}')" style="font-size:12px;padding:6px 10px;">删除</button>
             </td>
           </tr>`;
@@ -1747,8 +1905,8 @@
           <th>姓名</th><th>宿舍</th><th>床号</th><th>状态</th><th>修改人</th>
         </tr></thead><tbody>` + data.states.slice(0, 100).map(s => {
           const statusNames = { present: '在寝', absent: '未归', leaveSchool: '离校', leaveInside: '事假', leaveOutside: '外出' };
-          return `<tr><td>${escHtml(s.student_name)}</td><td>${s.dorm_number}</td><td>${s.bed_number}</td>
-            <td>${statusNames[s.status] || s.status}</td><td>${escHtml(s.updated_by_name || '')}</td></tr>`;
+          return `<tr><td data-label="姓名">${escHtml(s.student_name)}</td><td data-label="宿舍">${s.dorm_number}</td><td data-label="床号">${s.bed_number}</td>
+            <td data-label="状态">${statusNames[s.status] || s.status}</td><td data-label="修改人">${escHtml(s.updated_by_name || '')}</td></tr>`;
         }).join('') + '</tbody></table></div>';
       }
 
@@ -1852,12 +2010,12 @@
     };
 
     let html = logs.map(l => `<tr>
-      <td style="white-space:nowrap;">${(l.created_at || '').replace('T',' ').slice(0,19)}</td>
-      <td>${escHtml(l.username || '')}</td>
-      <td>${escHtml(l.role || '')}</td>
-      <td>${actionNames[l.action] || l.action}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.detail || '')}</td>
-      <td>${escHtml(l.ip || '')}</td>
+      <td data-label="时间" style="white-space:nowrap;">${(l.created_at || '').replace('T',' ').slice(0,19)}</td>
+      <td data-label="操作人">${escHtml(l.username || '')}</td>
+      <td data-label="角色">${escHtml(l.role || '')}</td>
+      <td data-label="操作类型" class="operation-type">${actionNames[l.action] || l.action}</td>
+      <td data-label="详情" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.detail || '')}</td>
+      <td data-label="IP">${escHtml(l.ip || '')}</td>
     </tr>`).join('');
 
     document.getElementById('logTableBody').innerHTML = html;
@@ -2020,29 +2178,29 @@
       const lastLogin = u.last_login_at ? u.last_login_at.replace('T', ' ').slice(0, 16) : '--';
       if (isEditing) {
         html += `<tr class="edit-row">
-          <td><strong style="cursor:pointer;" onclick="openUserDetail(${u.id})">${escHtml(u.username)}</strong></td>
-          <td>${escHtml(u.display_name || '')}</td>
-          <td>
+          <td data-label="用户名"><strong style="cursor:pointer;" onclick="openUserDetail(${u.id})">${escHtml(u.username)}</strong></td>
+          <td data-label="显示名">${escHtml(u.display_name || '')}</td>
+          <td data-label="角色">
             <select class="neu-select" id="roleSelect-${u.id}">
               <option value="inspector" ${u.role === 'inspector' ? 'selected' : ''}>inspector</option>
               <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
             </select>
           </td>
-          <td>${lastLogin}</td>
-          <td>${escHtml(u.last_login_ip || '--')}</td>
-          <td>
+          <td data-label="最后登录">${lastLogin}</td>
+          <td data-label="IP">${escHtml(u.last_login_ip || '--')}</td>
+          <td data-label="操作" class="actions-cell">
             <button class="neu-btn neu-btn-sm" onclick="confirmRoleChange(${u.id}, '${escAttr(u.username)}')">确认</button>
             <button class="neu-btn neu-btn-sm" onclick="cancelRoleEdit()" style="color:var(--neu-text-secondary);">取消</button>
           </td>
         </tr>`;
       } else {
         html += `<tr>
-          <td><strong style="cursor:pointer;color:var(--neu-text);" onclick="openUserDetail(${u.id})">${escHtml(u.username)}</strong></td>
-          <td>${escHtml(u.display_name || '')}</td>
-          <td><span style="color:${roleColor(u.role)};font-weight:500;"><span class="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${roleColor(u.role)};margin-right:4px;"></span>${roleName(u.role)}</span></td>
-          <td>${lastLogin}</td>
-          <td>${escHtml(u.last_login_ip || '--')}</td>
-          <td>
+          <td data-label="用户名"><strong style="cursor:pointer;color:var(--neu-text);" onclick="openUserDetail(${u.id})">${escHtml(u.username)}</strong></td>
+          <td data-label="显示名">${escHtml(u.display_name || '')}</td>
+          <td data-label="角色"><span style="color:${roleColor(u.role)};font-weight:500;"><span class="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${roleColor(u.role)};margin-right:4px;"></span><span class="role-badge">${roleName(u.role)}</span></span></td>
+          <td data-label="最后登录">${lastLogin}</td>
+          <td data-label="IP">${escHtml(u.last_login_ip || '--')}</td>
+          <td data-label="操作" class="actions-cell">
             <button class="neu-btn neu-btn-sm" onclick="startRoleEdit(event, ${u.id})">修改角色</button>
           </td>
         </tr>`;
@@ -2119,16 +2277,16 @@
       const systemLogs = data.system_logs || [];
 
       const loginHtml = loginLogs.length ? loginLogs.map(l => `<tr>
-        <td>${(l.login_at || '').replace('T',' ').slice(0,19)}</td>
-        <td>${escHtml(l.ip || '--')}</td>
-        <td><span style="color:${l.status === 'success' ? '#059669' : '#DC2626'};">${l.status}</span></td>
-        <td>${escHtml(l.fail_reason || '')}</td>
+        <td data-label="时间">${(l.login_at || '').replace('T',' ').slice(0,19)}</td>
+        <td data-label="IP">${escHtml(l.ip || '--')}</td>
+        <td data-label="状态"><span style="color:${l.status === 'success' ? '#059669' : '#DC2626'};">${l.status}</span></td>
+        <td data-label="原因">${escHtml(l.fail_reason || '')}</td>
       </tr>`).join('') : '<tr><td colspan="4" style="color:var(--neu-text-secondary);">无记录</td></tr>';
 
       const sysHtml = systemLogs.length ? systemLogs.map(l => `<tr>
-        <td>${(l.created_at || '').replace('T',' ').slice(0,19)}</td>
-        <td>${escHtml(l.action || '')}</td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.detail || '')}</td>
+        <td data-label="时间">${(l.created_at || '').replace('T',' ').slice(0,19)}</td>
+        <td data-label="操作">${escHtml(l.action || '')}</td>
+        <td data-label="详情" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(l.detail || '')}</td>
       </tr>`).join('') : '<tr><td colspan="3" style="color:var(--neu-text-secondary);">无记录</td></tr>';
 
       panel.innerHTML = `<div class="detail-header">

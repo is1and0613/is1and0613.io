@@ -176,8 +176,8 @@ function cleanInputText(rawText) {
   // 4.3 增强班级前缀去除
   cleaned = cleaned.replace(/[一-龥]{2,8}\d{4}/g, ' ');
 
-  // 4.4 去除残留的孤立冒号和顿号
-  cleaned = cleaned.replace(/\s*[：:、]\s*/g, ' ');
+  // 4.4 去除残留的孤立冒号和顿号（保留换行，防止状态标题行与首个人名行合并）
+  cleaned = cleaned.replace(/[^\S\n]*[：:、][^\S\n]*/g, ' ');
 
   // 4.5 去除引导语本身
   cleaned = cleaned.replace(/(?:具体)?\s*人员[如]?[下]?[是为]?[：:\n]*/gi, '\n');
