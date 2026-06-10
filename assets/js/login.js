@@ -88,17 +88,9 @@ async function doLogin() {
   btn.disabled = true;
 
   try {
-    const response = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: currentMode,
-        username,
-        password,
-      }),
-    });
-
-    const data = await response.json();
+    const data = currentMode === 'login'
+      ? await loginUser(username, password)
+      : await registerUser(username, password);
 
     if (data.success) {
       sessionStorage.setItem('authToken', data.token);

@@ -31,24 +31,20 @@ async function loadDormData() {
       return;
     }
 
-    const response = await fetch('/api/dorm-data', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-
-    if (response.status === 401) {
-      sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('loggedIn');
-      showToast('登录已过期，请重新登录');
-      hideDormLoading();
-      setTimeout(() => { window.location.replace('login.html'); }, 1500);
-      return;
+    let data;
+    try {
+      data = await getDormData();
+    } catch (e) {
+      if (e.message.includes('401')) {
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('loggedIn');
+        showToast('登录已过期，请重新登录');
+        hideDormLoading();
+        setTimeout(() => { window.location.replace('login.html'); }, 1500);
+        return;
+      }
+      throw e;
     }
-
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-
-    const data = await response.json();
     window.dormData = data.dormData;
     window.nameIndex = data.nameIndex;
 

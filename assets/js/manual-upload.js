@@ -112,22 +112,18 @@ async function loadDormData() {
       return;
     }
 
-    const response = await fetch('/api/dorm-data', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-
-    if (response.status === 401) {
-      sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('loggedIn');
-      window.location.replace('login.html');
-      return;
+    let data;
+    try {
+      data = await getDormData();
+    } catch (e) {
+      if (e.message.includes('401')) {
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('loggedIn');
+        window.location.replace('login.html');
+        return;
+      }
+      throw e;
     }
-
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-
-    const data = await response.json();
     window.dormData = data.dormData;
     window.nameIndex = data.nameIndex;
 
@@ -896,12 +892,7 @@ async function parseInput() {
   showToast('正在智能分组...');
 
   try {
-    const response = await fetch('/api/smart-group', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: cleanedText })
-    });
-    const data = await response.json();
+    const data = await smartGroup(cleanedText);
 
     if (!data.success || !data.groups || data.groups.length === 0) {
       throw new Error('智能分组失败');

@@ -1,0 +1,15 @@
+name: Daily Log Cleanup
+on:
+  schedule:
+    - cron: '17 18 * * *'  # 每天凌晨 2 点 北京时间 (UTC+8 → UTC 18:00)
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Cleanup API
+        run: |
+          curl -X POST https://niteshift.cn/api/cleanup \
+            -H "Content-Type: application/json" \
+            -H "X-Cleanup-Secret: ${{ secrets.CLEANUP_SECRET }}"

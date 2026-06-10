@@ -6,6 +6,7 @@
   <title>管理后台 - 晚寝查寝系统</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="assets/css/theme.css">
+  <script src="api-client.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <style>
     /* ===== Admin Page — Neumorphism Styles ===== */
@@ -121,13 +122,31 @@
       max-width: 800px; margin: 0 auto;
     }
     .tab-nav .neu-tab {
-      font-size: 13px; padding: 10px 6px;
-      display: inline-flex; align-items: center; justify-content: center;
-      text-align: center; white-space: nowrap;
-      flex: 1 1 0; min-width: 0;
+      flex: 1 1 0;           /* 等分宽度 */
+      min-width: 0;          /* 允许压缩 */
+      display: flex;         /* 关键：flex 才能撑满等分空间 */
+      flex-direction: column;/* 图标在上文字在下 */
+      align-items: center;   /* 水平居中 */
+      justify-content: center;/* 垂直居中 */
+      text-align: center;    /* 文字居中 */
+      font-size: 13px;
+      padding: 10px 4px;     /* 减少横向 padding 给文字留空间 */
+      overflow: hidden;      /* 防止文字溢出 */
+      white-space: nowrap;   /* 禁止换行 */
     }
     .tab-nav .neu-tab .tab-label {
-      display: inline-block; width: 100%; text-align: center;
+      display: block;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tab-nav .neu-tab .tab-icon {
+      display: block;
+      margin-bottom: 4px;
+      text-align: center;
     }
 
     /* ===== Content Area ===== */
@@ -635,13 +654,19 @@
       }
       .tab-nav .neu-tabs::-webkit-scrollbar { display: none; }
       .tab-nav .neu-tab {
-        flex: 0 0 auto; min-width: 72px;
-        padding: 10px 12px; font-size: 13px;
-        white-space: nowrap; justify-content: center;
-        align-items: center; text-align: center;
+        flex: 0 0 auto;      /* 移动端不压缩，自然宽度 */
+        min-width: 80px;
+        padding: 10px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
       }
       .tab-nav .neu-tab .tab-label {
-        display: inline-block; width: 100%; text-align: center;
+        display: block; width: 100%; text-align: center;
       }
 
       /* --- Cards --- */
@@ -1012,6 +1037,13 @@
           <button class="neu-btn neu-btn-sm" onclick="changeAdminPassword()">修改密码</button>
         </div>
         <div style="font-size:13px;color:var(--neu-text-secondary);" id="passwordChangeMsg"></div>
+
+        <h4 style="font-size:14px;color:var(--neu-text-secondary);margin-bottom:8px;margin-top:24px;">日志清理</h4>
+        <p style="font-size:12px;color:var(--neu-text-secondary);margin-bottom:12px;">system_logs / login_logs 保留 3 天，room_messages 保留 7 天，inactive 房间保留 7 天</p>
+        <button class="neu-btn neu-btn-sm neu-btn-danger" id="btnCleanupLogs" onclick="triggerCleanup()">
+          <i class="fas fa-broom"></i> 立即清理过期日志
+        </button>
+        <p style="font-size:13px;margin-top:8px;display:none;" id="cleanupResult"></p>
       </div>
     </div>
 
@@ -1199,12 +1231,7 @@
     }
 
     try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', username, password })
-      });
-      const data = await res.json();
+      const data = await loginUser(username, password);
 
       if (!data.success) {
         errEl.textContent = data.message || '登录失败';
@@ -1461,26 +1488,17 @@
     showStatus('正在上传数据...', 'loading');
 
     try {
-      const res = await fetch('/api/admin/dorm-upload-json', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + authToken
-        },
-        body: JSON.stringify({
-          records: records.map(r => ({
-            dorm_name: r.dorm_name, floor: r.floor,
-            class_name: r.class_name, student_name: r.student_name,
-            bed: r.bed, year_code: r.year_code,
-            grade_name: r.grade_name, grade: r.grade,
-            status: r.status
-          })),
-          mode: uploadMode,
-          confirm: uploadMode === 'replace'
-        })
-      });
-
-      const data = await res.json();
+      const data = await uploadDormJson(
+        records.map(r => ({
+          dorm_name: r.dorm_name, floor: r.floor,
+          class_name: r.class_name, student_name: r.student_name,
+          bed: r.bed, year_code: r.year_code,
+          grade_name: r.grade_name, grade: r.grade,
+          status: r.status
+        })),
+        uploadMode,
+        uploadMode === 'replace'
+      );
       if (data.success) {
         showStatus('导入完成: 新增 ' + (data.inserted || 0) + ' 条, 更新 ' + (data.updated || 0) + ' 条' +
           (data.errors && data.errors.length ? ', 失败 ' + data.errors.length + ' 条' : ''), 'success');
@@ -1512,10 +1530,7 @@
   async function loadDataManagement() {
     if (dormDataCache.length > 0) { renderDataTable(); return; }
     try {
-      const res = await fetch('/api/dorm-data', {
-        headers: { 'Authorization': 'Bearer ' + authToken }
-      });
-      const data = await res.json();
+      const data = await getDormData();
       // v20: 使用扁平化 students 列表（后端新增字段）
       if (data.success && data.students && Array.isArray(data.students)) {
         dormDataCache = data.students;
@@ -1690,16 +1705,11 @@
     const [sName, sDorm, sBed] = key.split('|');
 
     try {
-      const res = await fetch('/api/admin/student-update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-        body: JSON.stringify({
-          student_name: sName, dorm_name: sDorm, bed: parseInt(sBed),
-          new_student_name: name, new_dorm_name: dorm, new_bed: bed,
-          class_name: cls, grade_name: grade, status: status
-        })
+      const data = await updateStudent({
+        student_name: sName, dorm_name: sDorm, bed: parseInt(sBed),
+        new_student_name: name, new_dorm_name: dorm, new_bed: bed,
+        class_name: cls, grade_name: grade, status: status
       });
-      const data = await res.json();
       if (data.success) {
         // Refresh cache
         dormDataCache = [];
@@ -1721,12 +1731,7 @@
     const [sName, sDorm, sBed] = key.split('|');
 
     try {
-      const res = await fetch('/api/admin/student-delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-        body: JSON.stringify({ student_name: sName, dorm_name: sDorm, bed: parseInt(sBed) })
-      });
-      const data = await res.json();
+      const data = await deleteStudent({ student_name: sName, dorm_name: sDorm, bed: parseInt(sBed) });
       if (data.success) {
         dormDataCache = [];
         await loadDataManagement();
@@ -1781,12 +1786,7 @@
     for (const key of selectedRows) {
       const [sName, sDorm, sBed] = key.split('|');
       try {
-        const res = await fetch('/api/admin/student-update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-          body: JSON.stringify({ student_name: sName, dorm_name: sDorm, bed: parseInt(sBed), status: status })
-        });
-        const data = await res.json();
+        const data = await updateStudent({ student_name: sName, dorm_name: sDorm, bed: parseInt(sBed), status: status });
         if (data.success) done++; else fail++;
       } catch (e) { fail++; }
     }
@@ -1803,12 +1803,7 @@
     for (const key of selectedRows) {
       const [sName, sDorm, sBed] = key.split('|');
       try {
-        const res = await fetch('/api/admin/student-delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-          body: JSON.stringify({ student_name: sName, dorm_name: sDorm, bed: parseInt(sBed) })
-        });
-        const data = await res.json();
+        const data = await deleteStudent({ student_name: sName, dorm_name: sDorm, bed: parseInt(sBed) });
         if (data.success) done++; else fail++;
       } catch (e) { fail++; }
     }
@@ -1824,16 +1819,7 @@
 
   async function loadRoomMonitor() {
     try {
-      const res = await fetch('/api/admin/rooms', {
-        headers: { 'Authorization': 'Bearer ' + authToken }
-      });
-      if (!res.ok) {
-        // Fallback: try sync endpoint per room (not efficient but works)
-        document.getElementById('roomCards').innerHTML =
-          '<div class="empty-state"><i class="fas fa-inbox"></i>暂无活跃房间<br><small style="color:var(--neu-text-secondary);">（需要 /api/admin/rooms 接口支持）</small></div>';
-        return;
-      }
-      const data = await res.json();
+      const data = await getAdminRooms();
       renderRoomCards(data.rooms || []);
       updateRoomRefreshLabel();
     } catch (e) {
@@ -1885,10 +1871,7 @@
     panel.innerHTML = '<div style="text-align:center;padding:40px;color:var(--neu-text-secondary);"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
 
     try {
-      const res = await fetch('/api/room?action=sync&code=' + code, {
-        headers: { 'Authorization': 'Bearer ' + authToken }
-      });
-      const data = await res.json();
+      const data = await syncRoomByCode(code);
 
       let membersHtml = '';
       if (data.members && data.members.length) {
@@ -1978,15 +1961,7 @@
     if (username) params.set('username', username);
 
     try {
-      const res = await fetch('/api/admin/logs?' + params.toString(), {
-        headers: { 'Authorization': 'Bearer ' + authToken }
-      });
-      if (!res.ok) {
-        document.getElementById('logTableBody').innerHTML =
-          '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--neu-text-secondary);">日志接口暂未部署<br><small>需要 /api/admin/logs 支持 (Phase 5)</small></td></tr>';
-        return;
-      }
-      const data = await res.json();
+      const data = await getAdminLogs(Object.fromEntries(params));
       renderLogsTable(data.logs || [], data.total || 0);
     } catch (e) {
       document.getElementById('logTableBody').innerHTML =
@@ -2039,11 +2014,8 @@
     const totalEl = document.getElementById('swTotal');
     const updatedEl = document.getElementById('swUpdated');
     try {
-      const res = await fetch('/api/settings?action=sensitive-words-stats', {
-        headers: { 'Authorization': 'Bearer ' + authToken }
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await getSensitiveWordStats();
+      if (data) {
         totalEl.textContent = (data.total != null) ? data.total : '0';
         updatedEl.textContent = data.updated_at || '--';
       } else {
@@ -2079,12 +2051,7 @@
       return;
     }
     try {
-      const res = await fetch('/api/settings?action=access-password', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-        body: JSON.stringify({ password: pw })
-      });
-      const data = await res.json();
+      const data = await updateAccessPassword(pw);
       if (data.success) showToast('访问密码已更新');
       else showToast(data.message || '更新失败', 'error');
     } catch (e) {
@@ -2103,12 +2070,7 @@
     if (newPw.length < 6) { msgEl.textContent = '密码长度至少6位'; return; }
 
     try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-        body: JSON.stringify({ action: 'change_password', old_password: oldPw, new_password: newPw })
-      });
-      const data = await res.json();
+      const data = await changePassword(oldPw, newPw, currentUser.username);
       if (data.success) {
         msgEl.textContent = '密码修改成功';
         msgEl.style.color = '#059669';
@@ -2122,6 +2084,42 @@
     } catch (e) {
       msgEl.textContent = '网络错误';
       msgEl.style.color = '#DC2626';
+    }
+  }
+
+  async function triggerCleanup() {
+    const btn = document.getElementById('btnCleanupLogs');
+    const result = document.getElementById('cleanupResult');
+
+    if (!confirm('确认清理所有过期日志？\n\n- 操作日志 / 登录日志：删除 3 天前的记录\n- 聊天记录：删除 7 天前的记录\n- 已关闭房间：删除 inactive 超过 7 天的房间\n\n此操作不可撤销。')) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 清理中...';
+    result.style.display = 'none';
+
+    try {
+      const data = await runCleanup();
+
+      if (data.success) {
+        const parts = [];
+        if (data.system_logs_deleted > 0) parts.push('操作日志 ' + data.system_logs_deleted + ' 条');
+        if (data.login_logs_deleted > 0) parts.push('登录日志 ' + data.login_logs_deleted + ' 条');
+        if (data.room_messages_deleted > 0) parts.push('聊天记录 ' + data.room_messages_deleted + ' 条');
+        if (data.inactive_rooms_deleted > 0) parts.push('过期房间 ' + data.inactive_rooms_deleted + ' 个');
+        result.textContent = parts.length > 0 ? '✅ 清理完成：' + parts.join('，') : '✅ 清理完成，没有需要删除的过期数据';
+        result.style.color = '#059669';
+      } else {
+        result.textContent = '清理失败：' + (data.error || '未知错误');
+        result.style.color = '#DC2626';
+      }
+      result.style.display = 'block';
+    } catch (err) {
+      result.textContent = '网络错误：' + err.message;
+      result.style.color = '#DC2626';
+      result.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-broom"></i> 立即清理过期日志';
     }
   }
 
@@ -2148,15 +2146,7 @@
     if (role !== 'all') params.set('role', role);
 
     try {
-      const res = await fetch('/api/admin/users?' + params.toString(), {
-        headers: { 'Authorization': 'Bearer ' + authToken }
-      });
-      if (!res.ok) {
-        document.getElementById('userTableBody').innerHTML =
-          '<tr><td colspan="6" style="text-align:center;padding:40px;color:#DC2626;">加载失败</td></tr>';
-        return;
-      }
-      const data = await res.json();
+      const data = await getAdminUsers(Object.fromEntries(params));
       renderUserTable(data.users || [], data.total || 0);
     } catch (e) {
       document.getElementById('userTableBody').innerHTML =
@@ -2238,12 +2228,7 @@
     if (!confirm('确定将 ' + username + ' 的角色改为 ' + roleName(newRole) + ' 吗？')) return;
 
     try {
-      const res = await fetch('/api/admin/users?action=set-role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-        body: JSON.stringify({ user_id: userId, role: newRole })
-      });
-      const data = await res.json();
+      const data = await setUserRole(userId, newRole);
       if (data.success) {
         showToast('角色修改成功');
         userEditRow = null;
@@ -2263,10 +2248,7 @@
     panel.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
 
     try {
-      const res = await fetch('/api/admin/users?action=detail&user_id=' + userId, {
-        headers: { 'Authorization': 'Bearer ' + authToken }
-      });
-      const data = await res.json();
+      const data = await getUserDetail(userId);
       if (!data.success) {
         panel.innerHTML = '<div class="detail-header"><h3>加载失败</h3><button class="detail-close" onclick="closeUserDetail()"><i class="fas fa-times"></i></button></div><p style="color:#DC2626;">' + (data.message || '未知错误') + '</p>';
         return;
