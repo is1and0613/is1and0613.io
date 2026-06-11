@@ -165,7 +165,7 @@ exports.main = async (event, context) => {
         // update 保持原样：SDK 的 data 参数是更新指令，不是文档字段
         if (path === '/api/update') {
             const { _id, ...updateData } = data;
-            const res = await getDb().collection(collection).doc(_id).update({ data: updateData });
+            const res = await getDb().collection(collection).doc(_id).update(updateData);
             return response(200, { code: 0, data: res });
         }
 
@@ -258,9 +258,9 @@ exports.main = async (event, context) => {
             const coll = getDb().collection(COLLECTIONS.settings);
             const { data: existing } = await coll.where({ key: key }).limit(1).get();
             if (existing.length > 0) {
-                await coll.doc(existing[0]._id).update({ data: { value: value, updated_at: new Date().toISOString() } });
+                await coll.doc(existing[0]._id).update({ value: value, updated_at: new Date().toISOString() });
             } else {
-                await coll.add({ data: { key: key, value: value, updated_at: new Date().toISOString() } });
+                await coll.add({ key: key, value: value, updated_at: new Date().toISOString() });
             }
             return response(200, { code: 0, message: 'Setting updated' });
         }
@@ -301,7 +301,7 @@ exports.main = async (event, context) => {
                 const ua = ((event.headers || {})['user-agent'] || '').slice(0, 200);
 
                 await getDb().collection(COLLECTIONS.users).doc(user._id).update({
-                    data: { last_login_at: now, last_login_ip: ip }
+                    last_login_at: now, last_login_ip: ip
                 }).catch(() => {});
 
                 try {
@@ -426,10 +426,12 @@ exports.main = async (event, context) => {
                 .where(where).orderBy('created_at', 'desc')
                 .skip((page - 1) * pageSize).limit(pageSize).get();
 
-            // 🔒 安全：过滤敏感字段，只返回安全信息
+            // 🔒 安全：过滤 password_hash，但保留登录信息供管理查看
             const safe = users.map(u => ({
                 id: u._id, username: u.username, display_name: u.display_name,
-                role: u.role || 'inspector', created_at: u.created_at
+                role: u.role || 'inspector', created_at: u.created_at,
+                last_login_at: u.last_login_at || null,
+                last_login_ip: u.last_login_ip || null
             }));
             return response(200, { code: 0, success: true, users: safe, total, page, pageSize });
         }
@@ -518,12 +520,10 @@ exports.main = async (event, context) => {
                     const batch = toUpdate.slice(i, i + 5);
                     await Promise.all(batch.map(r =>
                         getDb().collection(COLLECTIONS.dorm_students).doc(r._id).update({
-                            data: {
-                                class_name: r.class_name || null, grade: r.grade || null,
-                                grade_name: r.grade_name || '', year_code: r.year_code || null,
-                                floor: r.floor || null, status: r.status || '在校',
-                                updated_at: new Date().toISOString()
-                            }
+                            class_name: r.class_name || null, grade: r.grade || null,
+                            grade_name: r.grade_name || '', year_code: r.year_code || null,
+                            floor: r.floor || null, status: r.status || '在校',
+                            updated_at: new Date().toISOString()
                         }).catch(() => {})
                     ));
                 }
@@ -667,7 +667,7 @@ exports.main = async (event, context) => {
             const { data: existing } = await coll.where({ key: 'access_password' }).limit(1).get();
             const now = new Date().toISOString();
             if (existing.length > 0) {
-                await coll.doc(existing[0]._id).update({ data: { value: password, updated_at: now } });
+                await coll.doc(existing[0]._id).update({ value: password, updated_at: now });
             } else {
                 await coll.add({ key: 'access_password', value: password, updated_at: now, migrated_from: 'd1' });
             }
@@ -746,7 +746,9 @@ exports.main = async (event, context) => {
             const oldRole = targetUser.role || 'inspector';
             if (oldRole === role) return response(200, { code: 0, message: '角色未变更' });
 
-            await getDb().collection(COLLECTIONS.users).doc(targetUser._id).update({ data: { role } });
+            // CloudBase SDK update: 直接传字段对象，不用 { data: ... } 包装
+            const updateRes = await getDb().collection(COLLECTIONS.users).doc(targetUser._id).update({ role });
+            console.log('[set-role] update result:', JSON.stringify(updateRes));
 
             // 记录操作日志
             try {
@@ -830,12 +832,12 @@ exports.main = async (event, context) => {
             // Check expiry & auto-expire
             if (room.status === 'active' && room.expires_at) {
                 if (new Date(room.expires_at) < new Date()) {
-                    await getDb().collection(COLLECTIONS.rooms).doc(room._id).update({ data: { status: 'expired' } });
+                    await getDb().collection(COLLECTIONS.rooms).doc(room._id).update({ status: 'expired' });
                     room.status = 'expired';
                 } else {
                     // Update last_activity_at (heartbeat)
                     await getDb().collection(COLLECTIONS.rooms).doc(room._id).update({
-                        data: { last_activity_at: new Date().toISOString() }
+                        last_activity_at: new Date().toISOString()
                     }).catch(() => {});
                 }
             }
@@ -888,7 +890,7 @@ exports.main = async (event, context) => {
                 const memberDoc = members.find(m => String(m.user_id) === String(authUser.user_id));
                 if (memberDoc && memberDoc._id) {
                     await getDb().collection(COLLECTIONS.room_members).doc(memberDoc._id).update({
-                        data: { last_read_msg_id: lastMsg }
+                        last_read_msg_id: lastMsg
                     }).catch(() => {});
                 }
             }
@@ -960,7 +962,7 @@ exports.main = async (event, context) => {
             if (r.new_student_name !== undefined) updateData.student_name = r.new_student_name;
             if (r.new_bed !== undefined) updateData.bed = Number(r.new_bed);
 
-            await getDb().collection(COLLECTIONS.dorm_students).doc(existing[0]._id).update({ data: updateData });
+            await getDb().collection(COLLECTIONS.dorm_students).doc(existing[0]._id).update(updateData);
             return response(200, { code: 0, success: true, message: '更新成功' });
         }
 
@@ -1012,7 +1014,7 @@ exports.main = async (event, context) => {
                         if (update.grade !== undefined) upd.grade = update.grade;
                         if (update.grade_name !== undefined) upd.grade_name = update.grade_name;
                         if (update.class_name !== undefined) upd.class_name = update.class_name;
-                        await getDb().collection(COLLECTIONS.dorm_students).doc(existing[0]._id).update({ data: upd });
+                        await getDb().collection(COLLECTIONS.dorm_students).doc(existing[0]._id).update(upd);
                         done++;
                     } else { fail++; }
                 } catch (e) { fail++; }
