@@ -330,15 +330,18 @@ exports.main = async (event, context) => {
             return response(400, { code: 400, message: 'Invalid action: ' + (action || 'none') });
         }
 
-        // ============ P0: 宿舍数据（主页核心，需访问密码）============
+        // ============ P0: 宿舍数据（主页核心，需认证）============
         if (path === '/api/dorm-data') {
-            // 🔒 安全：服务端校验访问密码（PIN），防止前端绕过
-            const pin = params.pin || (data && data.pin);
-            const { data: pinSettings } = await getDb().collection(COLLECTIONS.settings)
-                .where({ key: 'access_password' }).limit(1).get();
-            if (pinSettings.length > 0 && pinSettings[0].value) {
-                if (!pin || String(pin) !== String(pinSettings[0].value)) {
-                    return response(403, { code: 403, message: '访问密码错误' });
+            // 🔒 安全：已登录用户（有效 JWT）直接放行；未登录请求需要 PIN
+            const authUser = requireAuth(event);
+            if (!authUser) {
+                const pin = params.pin || (data && data.pin);
+                const { data: pinSettings } = await getDb().collection(COLLECTIONS.settings)
+                    .where({ key: 'access_password' }).limit(1).get();
+                if (pinSettings.length > 0 && pinSettings[0].value) {
+                    if (!pin || String(pin) !== String(pinSettings[0].value)) {
+                        return response(403, { code: 403, message: '访问密码错误' });
+                    }
                 }
             }
 
