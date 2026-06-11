@@ -2372,6 +2372,11 @@
     if (typeof trieFilter !== 'undefined') {
       trieFilter.loadFromURL('/sensitive-words/merged.txt').then(function() {
         console.log('SW filter ready');
+        // v21: 更新词库统计显示
+        var totalEl = document.getElementById('swTotal');
+        if (totalEl && trieFilter.getWordCount) {
+          totalEl.textContent = trieFilter.getWordCount();
+        }
       }).catch(function(e) {
         console.error('SW load failed:', e);
       });

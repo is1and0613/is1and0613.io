@@ -211,6 +211,11 @@ const trieFilter = {
   /** 获取词总数 */
   wordCount() {
     return this._wordCount || 0;
+  },
+
+  /** 获取词总数（别名） */
+  getWordCount() {
+    return this._wordCount || 0;
   }
 };
 

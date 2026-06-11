@@ -233,12 +233,16 @@ function compressImage(file, maxWidth = 1024, quality = 0.7) {
 async function processSingleImage(file) {
   try {
     const compressed = await compressImage(file);
-    const formData = new FormData();
-    formData.append('image', compressed);
+    // Convert to base64 (CloudBase API uses JSON, not FormData)
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(compressed);
+    });
 
-    const response = await fetchWithTimeout('/api/ocr', { method: 'POST', body: formData }, 18000);
-    const data = await response.json();
-    if (data.success && data.formattedText && data.formattedText.trim().length > 10) {
+    const data = await apiRequest('/api/ocr', { image: base64 });
+    if (data.code === 0 && data.formattedText && data.formattedText.trim().length > 10) {
       return data.formattedText;
     }
     return null;

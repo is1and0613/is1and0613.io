@@ -2,12 +2,5 @@ name = "niteshift"
 pages_build_output_dir = "./"
 compatibility_date = "2026-05-21"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "nightshift-db"
-database_id = "dc0645ff-429c-479d-8d14-fdd831d36254"
-
-# v20: 敏感词库 KV 存储（前后端一致性过滤）
-[[kv_namespaces]]
-binding = "SENSITIVE_WORDS"
-id = "cf3b46eb129649d38b491b46f0320c92"
+# v21: D1/KV bindings removed — database migrated to Tencent CloudBase
+# Frontend static files + sensitive_words.txt continue to be served by Cloudflare Pages

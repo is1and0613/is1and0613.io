@@ -1,0 +1,39 @@
+# Python 虚拟环境
+venv/
+
+# 历史导出数据（仅本地参考）
+data/
+
+# 迁移脚本（一次性工具）
+scripts/
+
+# 旧 CF Functions（不参与 CloudBase 部署）
+functions/
+
+# 敏感词库大文件（前端从 CF Pages 读取，不部署到云函数）
+sensitive-words/
+
+# 文档
+docs/
+
+# 数据库迁移 SQL
+migrations/
+
+# Cloudflare 相关
+.wrangler/
+_headers
+wrangler.toml
+
+# 非云函数的 node_modules（clean 后已不存在，防复发）
+node_modules/
+
+# 编辑器 & Claude
+.vscode/
+.idea/
+.claude/
+
+# 其他
+.github/
+*.html
+assets/
+DEPLOY.md

@@ -1064,19 +1064,7 @@ async function restoreState() {
       restored = Object.keys(result).length > 0;
     }
 
-    // 本地无状态时，尝试从 D1 加载跨设备数据
-    // 仅在用户曾有查寝记录时才发起请求（避免首次访问触发无效 API 调用）
-    if (!restored && localStorage.getItem('nightshift_has_checked') === '1') {
-      const d1Data = await loadFromD1();
-      if (d1Data && Object.keys(d1Data).length > 0) {
-        state.studentStatus = d1Data;
-        autoSaveState(); // 同步到本地
-        refreshView();
-        if (typeof showToast === 'function') {
-          showToast('已从云端恢复查寝进度');
-        }
-      }
-    }
+    // v21: D1 已废弃，移除云端恢复逻辑。状态仅存储在 localStorage。
 
     // Also migrate old dormCheckState if exists
     const old = localStorage.getItem('dormCheckState');
@@ -1094,99 +1082,15 @@ async function restoreState() {
       } catch (e) { /* ignore */ }
       localStorage.removeItem('dormCheckState');
     }
+
+    // v21: D1 已废弃，移除云端恢复逻辑。状态仅存储在 localStorage。
   } catch (e) {
     console.error('恢复状态失败', e);
   }
 }
 
-// D1 sync debounce timer
-let d1SyncTimer = null;
-let d1SyncPending = false;
 
-function getTodayDate() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-async function syncToD1() {
-  if (d1SyncPending) return;
-  d1SyncPending = true;
-
-  try {
-    const token = sessionStorage.getItem('authToken');
-    if (!token) { d1SyncPending = false; return; }
-
-    const checkDate = getTodayDate();
-    const records = [];
-
-    for (const name in state.studentStatus) {
-      const st = state.studentStatus[name];
-      const status = Array.isArray(st.status) ? st.status.join(',') : (st.status || 'in');
-      const info = (window.nameIndex && window.nameIndex[name]) || {};
-
-      records.push({
-        student_id: name,
-        student_name: name,
-        dorm_number: info.dorm ? String(info.dorm) : null,
-        bed_number: info.bed ? String(info.bed) : null,
-        grade: info.grade || null,
-        class_name: info.className || null,
-        status: status,
-        reason: st.reason || null
-      });
-    }
-
-    if (records.length > 0) {
-      await apiFetch('/api/single-check?action=update', {
-        method: 'POST',
-        body: JSON.stringify({
-          check_date: checkDate,
-          records: records
-        })
-      });
-    }
-  } catch (e) {
-    console.error('D1 sync failed:', e);
-    // 网络失败时入队离线重试
-    if (typeof enqueueSync === 'function') {
-      enqueueSync({
-        url: '/api/single-check?action=update',
-        body: JSON.stringify({ check_date: checkDate, records: records })
-      }).catch(function () { /* silent */ });
-    }
-  } finally {
-    d1SyncPending = false;
-  }
-}
-
-async function loadFromD1() {
-  try {
-    const token = sessionStorage.getItem('authToken');
-    if (!token) return null;
-
-    const checkDate = getTodayDate();
-    const resp = await apiFetch('/api/single-check?action=list&date=' + encodeURIComponent(checkDate));
-    if (!resp || !resp.records || resp.records.length === 0) return null;
-
-    const restored = {};
-    for (const rec of resp.records) {
-      if (window.nameIndex && window.nameIndex[rec.student_id]) {
-        const statuses = rec.status.split(',');
-        restored[rec.student_id] = {
-          status: statuses.length === 1 ? statuses[0] : statuses,
-          reason: rec.reason || undefined
-        };
-      }
-    }
-    return restored;
-  } catch (e) {
-    console.error('D1 load failed:', e);
-    return null;
-  }
-}
+// v21: D1 已废弃，移除所有 D1 同步相关代码（syncToD1、loadFromD1、getTodayDate 及定时器）
 
 function autoSaveState() {
   const data = {
@@ -1194,14 +1098,7 @@ function autoSaveState() {
     lastSaveTime: new Date().toLocaleString()
   };
   localStorage.setItem(getStateKey(), JSON.stringify(data));
-  // 标记用户曾有查寝记录，供 restoreState 判断是否从 D1 拉取
-  localStorage.setItem('nightshift_has_checked', '1');
-
-  // D1 同步（防抖：每 3 秒最多同步一次）
-  if (d1SyncTimer) clearTimeout(d1SyncTimer);
-  d1SyncTimer = setTimeout(() => {
-    syncToD1();
-  }, 3000);
+  // v21: D1 已废弃，状态仅保存在 localStorage
 }
 
 function clearSavedState() {

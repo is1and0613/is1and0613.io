@@ -1,11 +1,12 @@
 {
   "name": "nightshift-dorm-check",
   "version": "1.1.0",
-  "description": "晚寝查寝系统 - Cloudflare Pages",
+  "description": "晚寝查寝系统 - Cloudflare Pages (前端静态) + CloudBase (数据库/API)",
   "type": "module",
   "scripts": {
     "dev": "wrangler pages dev .",
-    "deploy": "wrangler pages deploy ."
+    "deploy": "wrangler pages deploy .",
+    "deploy:api": "cd cloudbase/api && tcb fn deploy api --dir . -e nightshift-d0gong2x832b1270e --force"
   },
   "dependencies": {},
   "devDependencies": {}
