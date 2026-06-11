@@ -270,6 +270,7 @@ async function getAdminRooms() { return apiRequest('/api/admin/rooms'); }
 async function getAdminLogs(params = {}) { return apiRequest('/api/admin/logs', params); }
 async function getAdminUsers(params = {}) { return apiRequest('/api/admin/users', params); }
 async function setUserRole(user_id, role) { return apiRequest('/api/admin/users/set-role', { user_id, role }); }
+async function deleteUser(user_id) { return apiRequest('/api/admin/user-delete', { user_id }); }
 async function getUserDetail(user_id) { return apiRequest('/api/admin/users/detail', { user_id }); }
 async function uploadDormJson(records, mode, confirm) { return apiRequest('/api/admin/dorm-upload-json', { records, mode, confirm }); }
 async function updateStudent(payload) { return apiRequest('/api/admin/student-update', payload); }

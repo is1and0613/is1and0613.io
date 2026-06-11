@@ -911,7 +911,15 @@
           </select>
         </div>
         <div class="batch-bar hidden" id="batchBar">
-          <button class="neu-btn neu-btn-sm" onclick="batchSetStatus()">批量修改状态</button>
+          <select class="neu-select" id="batchStatusSelect" style="max-width:120px;">
+            <option value="">选择状态...</option>
+            <option value="在校">在校</option>
+            <option value="离校">离校</option>
+            <option value="事假">事假</option>
+            <option value="外出">外出</option>
+            <option value="未归">未归</option>
+          </select>
+          <button class="neu-btn neu-btn-sm" onclick="batchSetStatus()">应用</button>
           <button class="neu-btn neu-btn-sm neu-btn-danger" onclick="batchDelete()">批量删除</button>
           <span style="font-size:12px;color:var(--neu-text-secondary);" id="batchCount"></span>
         </div>
@@ -969,6 +977,7 @@
             <option value="7">最近7天</option>
             <option value="30">最近30天</option>
             <option value="90" selected>最近90天</option>
+            <option value="0">全部时间</option>
           </select>
           <button class="neu-btn neu-btn-sm" onclick="loadLogs(1)">
             <i class="fas fa-search"></i> 查询
@@ -1779,8 +1788,9 @@
   }
 
   async function batchSetStatus() {
-    const status = prompt('请输入新状态（在校/离校/事假/外出/未归）:');
-    if (!status) return;
+    const status = document.getElementById('batchStatusSelect')?.value;
+    if (!status) { showToast('请选择目标状态'); return; }
+    if (!confirm('确认将选中的 ' + selectedRows.size + ' 条记录状态改为「' + status + '」？')) return;
 
     let done = 0, fail = 0;
     for (const key of selectedRows) {
@@ -1953,10 +1963,13 @@
     const action = document.getElementById('logActionFilter')?.value || 'all';
     const username = document.getElementById('logUserFilter')?.value?.trim() || '';
     const days = document.getElementById('logDateFilter')?.value || '90';
-    const end = new Date().toISOString().split('T')[0];
-    const start = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
-
-    const params = new URLSearchParams({ page, pageSize: logPageSize, startDate: start, endDate: end });
+    const params = new URLSearchParams({ page, pageSize: logPageSize });
+    if (days !== '0') {
+      const end = new Date().toISOString().split('T')[0];
+      const start = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+      params.set('startDate', start);
+      params.set('endDate', end);
+    }
     if (action !== 'all') params.set('action', action);
     if (username) params.set('username', username);
 
@@ -2017,7 +2030,15 @@
       const data = await getSensitiveWordStats();
       if (data) {
         totalEl.textContent = (data.total != null) ? data.total : '0';
-        updatedEl.textContent = data.updated_at || '--';
+        // v21: 区分"从未更新"和具体时间
+        const updated = data.updated_at;
+        if (updated && updated !== '--') {
+          updatedEl.textContent = updated.replace('T', ' ').slice(0, 16);
+        } else if (data.total > 0) {
+          updatedEl.textContent = '已加载';
+        } else {
+          updatedEl.textContent = '从未更新';
+        }
       } else {
         totalEl.textContent = '加载失败';
         updatedEl.textContent = '加载失败';
@@ -2179,7 +2200,7 @@
           <td data-label="最后登录">${lastLogin}</td>
           <td data-label="IP">${escHtml(u.last_login_ip || '--')}</td>
           <td data-label="操作" class="actions-cell">
-            <button class="neu-btn neu-btn-sm" onclick="confirmRoleChange(${u.id}, '${escAttr(u.username)}')">确认</button>
+            <button class="neu-btn neu-btn-sm" onclick="confirmRoleChange('${escAttr(u.id)}', '${escAttr(u.username)}')">确认</button>
             <button class="neu-btn neu-btn-sm" onclick="cancelRoleEdit()" style="color:var(--neu-text-secondary);">取消</button>
           </td>
         </tr>`;
@@ -2191,7 +2212,8 @@
           <td data-label="最后登录">${lastLogin}</td>
           <td data-label="IP">${escHtml(u.last_login_ip || '--')}</td>
           <td data-label="操作" class="actions-cell">
-            <button class="neu-btn neu-btn-sm" onclick="startRoleEdit(event, ${u.id})">修改角色</button>
+            <button class="neu-btn neu-btn-sm" onclick="startRoleEdit(event, '${escAttr(u.id)}')">修改角色</button>
+            <button class="neu-btn neu-btn-sm" style="color:#DC2626;margin-left:4px;" onclick="deleteUserRow('${escAttr(u.id)}', '${escAttr(u.username)}')">删除</button>
           </td>
         </tr>`;
       }
@@ -2235,6 +2257,21 @@
         loadUsers(userPage);
       } else {
         showToast(data.message || '修改失败', 'error');
+      }
+    } catch (e) {
+      showToast('网络错误: ' + e.message, 'error');
+    }
+  }
+
+  async function deleteUserRow(userId, username) {
+    if (!confirm('确定删除用户「' + username + '」？\n\n此操作不可恢复，该用户将无法登录系统。')) return;
+    try {
+      const data = await deleteUser(userId);
+      if (data.success) {
+        showToast('用户 ' + username + ' 已删除');
+        loadUsers(userPage);
+      } else {
+        showToast(data.message || '删除失败', 'error');
       }
     } catch (e) {
       showToast('网络错误: ' + e.message, 'error');

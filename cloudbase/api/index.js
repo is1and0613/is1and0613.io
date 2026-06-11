@@ -747,7 +747,69 @@ exports.main = async (event, context) => {
             if (oldRole === role) return response(200, { code: 0, message: '角色未变更' });
 
             await getDb().collection(COLLECTIONS.users).doc(targetUser._id).update({ data: { role } });
+
+            // 记录操作日志
+            try {
+                await getDb().collection(COLLECTIONS.system_logs).add({
+                    user_id: admin.user_id, username: admin.username,
+                    role: admin.role, action: 'role_change',
+                    detail: `将 ${targetUser.username} 的角色由 ${oldRole} 改为 ${role}`,
+                    target_id: targetUser._id,
+                    ip: (event.headers || {})['x-forwarded-for'] || '',
+                    created_at: new Date().toISOString()
+                });
+            } catch (e) { /* non-critical */ }
+
             return response(200, { code: 0, success: true, message: '角色修改成功', old_role: oldRole, new_role: role });
+        }
+
+        // ============ P3: 删除用户（admin） ============
+        if (path === '/api/admin/user-delete') {
+            const admin = requireAdmin(event);
+            if (!admin) return response(403, { code: 403, message: '需要管理员权限' });
+
+            const user_id = params.user_id || (data && data.user_id);
+            if (!user_id) return response(400, { code: 400, message: '缺少 user_id' });
+
+            // 不能删除自己
+            if (String(user_id) === String(admin.user_id)) {
+                return response(403, { code: 403, message: '不能删除自己的账号' });
+            }
+
+            // 查找目标用户
+            let targetUser = null;
+            const { data: users } = await getDb().collection(COLLECTIONS.users).where({ _id: user_id }).limit(1).get();
+            targetUser = users[0];
+            if (!targetUser) {
+                const { data: users2 } = await getDb().collection(COLLECTIONS.users).where({ _old_id: parseInt(user_id) || user_id }).limit(1).get();
+                targetUser = users2[0];
+            }
+            if (!targetUser) return response(404, { code: 404, message: '用户不存在' });
+
+            // 检查是否是最后一个 admin
+            if (targetUser.role === 'admin') {
+                const { total } = await getDb().collection(COLLECTIONS.users).where({ role: 'admin' }).count();
+                if (total <= 1) {
+                    return response(403, { code: 403, message: '不能删除最后一个管理员，系统将无法管理' });
+                }
+            }
+
+            const deletedUser = { username: targetUser.username, role: targetUser.role || 'inspector' };
+            await getDb().collection(COLLECTIONS.users).doc(targetUser._id).remove();
+
+            // 记录操作日志
+            try {
+                await getDb().collection(COLLECTIONS.system_logs).add({
+                    user_id: admin.user_id, username: admin.username,
+                    role: admin.role, action: 'user_delete',
+                    detail: `删除用户 ${deletedUser.username}（原角色: ${deletedUser.role}）`,
+                    target_id: targetUser._id,
+                    ip: (event.headers || {})['x-forwarded-for'] || '',
+                    created_at: new Date().toISOString()
+                });
+            } catch (e) { /* non-critical */ }
+
+            return response(200, { code: 0, success: true, message: '用户已删除', deleted: deletedUser });
         }
 
         // ============ P3: 房间同步（compose 已有接口） ============
@@ -922,6 +984,73 @@ exports.main = async (event, context) => {
             return response(200, { code: 0, success: true, message: '删除成功' });
         }
 
+        // ============ P1: 批量更新学生（admin） ============
+        if (path === '/api/admin/students-batch-update') {
+            const admin = requireAdmin(event);
+            if (!admin) return response(403, { code: 403, message: '需要管理员权限' });
+
+            const ids = params.ids || (data && data.ids);
+            const update = params.update || (data && data.update) || {};
+            if (!Array.isArray(ids) || ids.length === 0) {
+                return response(400, { code: 400, message: '缺少 ids 数组' });
+            }
+
+            let done = 0, fail = 0;
+            for (const id of ids) {
+                try {
+                    // id 格式: "student_name|dorm_name|bed"
+                    const [sName, sDorm, sBed] = id.split('|');
+                    if (!sName || !sDorm || !sBed) { fail++; continue; }
+
+                    const { data: existing } = await getDb().collection(COLLECTIONS.dorm_students)
+                        .where({ student_name: String(sName).trim(), dorm_name: String(sDorm).trim(), bed: Number(sBed) })
+                        .limit(1).get();
+
+                    if (existing.length > 0) {
+                        const upd = { updated_at: new Date().toISOString() };
+                        if (update.status !== undefined) upd.status = update.status;
+                        if (update.grade !== undefined) upd.grade = update.grade;
+                        if (update.grade_name !== undefined) upd.grade_name = update.grade_name;
+                        if (update.class_name !== undefined) upd.class_name = update.class_name;
+                        await getDb().collection(COLLECTIONS.dorm_students).doc(existing[0]._id).update({ data: upd });
+                        done++;
+                    } else { fail++; }
+                } catch (e) { fail++; }
+            }
+
+            return response(200, { code: 0, success: true, done, fail, message: `批量更新: ${done} 成功, ${fail} 失败` });
+        }
+
+        // ============ P1: 批量删除学生（admin） ============
+        if (path === '/api/admin/students-batch-delete') {
+            const admin = requireAdmin(event);
+            if (!admin) return response(403, { code: 403, message: '需要管理员权限' });
+
+            const ids = params.ids || (data && data.ids);
+            if (!Array.isArray(ids) || ids.length === 0) {
+                return response(400, { code: 400, message: '缺少 ids 数组' });
+            }
+
+            let done = 0, fail = 0;
+            for (const id of ids) {
+                try {
+                    const [sName, sDorm, sBed] = id.split('|');
+                    if (!sName || !sDorm || !sBed) { fail++; continue; }
+
+                    const { data: existing } = await getDb().collection(COLLECTIONS.dorm_students)
+                        .where({ student_name: String(sName).trim(), dorm_name: String(sDorm).trim(), bed: Number(sBed) })
+                        .limit(1).get();
+
+                    if (existing.length > 0) {
+                        await getDb().collection(COLLECTIONS.dorm_students).doc(existing[0]._id).remove();
+                        done++;
+                    } else { fail++; }
+                } catch (e) { fail++; }
+            }
+
+            return response(200, { code: 0, success: true, done, fail, message: `批量删除: ${done} 成功, ${fail} 失败` });
+        }
+
         // ============ P3: 定时清理 ============
         if (path === '/api/cleanup') {
             // Auth: admin JWT or CLEANUP_SECRET header
@@ -989,7 +1118,8 @@ exports.main = async (event, context) => {
                 '/api/admin/dorm-upload-json', '/api/ocr', '/api/smart-group',
                 '/api/verify-access-password', '/api/access-password', '/api/sensitive-words-stats',
                 '/api/admin/users/detail', '/api/admin/users/set-role', '/api/room/sync',
-                '/api/admin/logs', '/api/admin/student-update', '/api/admin/student-delete', '/api/cleanup'
+                '/api/admin/logs', '/api/admin/student-update', '/api/admin/student-delete',
+                '/api/admin/user-delete', '/api/admin/students-batch-update', '/api/admin/students-batch-delete', '/api/cleanup'
             ]
         });
 
