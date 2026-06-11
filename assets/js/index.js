@@ -33,7 +33,8 @@ async function loadDormData() {
 
     let data;
     try {
-      data = await getDormData();
+      const pin = sessionStorage.getItem('access_password_value') || '';
+      data = await getDormData(pin);
     } catch (e) {
       if (e.message.includes('401')) {
         sessionStorage.removeItem('authToken');

@@ -113,7 +113,7 @@ async function syncRoomByCode(code) { return apiRequest('/api/room/sync', { code
 
 async function getDormByFloor(floor) { return apiRequest('/api/dormByFloor', { data: { floor } }); }
 async function getDormByName(dorm_name) { return apiRequest('/api/dormByName', { data: { dorm_name } }); }
-async function getDormData() { return apiRequest('/api/dorm-data'); }
+async function getDormData(pin) { return apiRequest('/api/dorm-data', { pin }); }
 async function getGradeMapping() { return apiRequest('/api/gradeMapping'); }
 
 // ============================================

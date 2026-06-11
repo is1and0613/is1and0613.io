@@ -97,6 +97,8 @@
       const data = await verifyAccessPassword(password);
       if (data.valid) {
         sessionStorage.setItem('access_password_verified', '1');
+        // 🔒 保存 PIN 原文，供 dorm-data 请求服务端校验
+        sessionStorage.setItem('access_password_value', password);
         document.getElementById('passwordWall').style.display = 'none';
       } else {
         showPwError();

@@ -127,7 +127,9 @@ exports.main = async (event, context) => {
 
         // 修改点 1：add 直接传入 data，不加 { data: ... } 包装
         if (path === '/api/add') {
-            const res = await getDb().collection(collection).add(data);
+            // 🔒 安全：users 表强制 role='inspector'，防止客户端提权注册 admin 账号
+            const docData = collection === 'users' ? { ...data, role: 'inspector' } : data;
+            const res = await getDb().collection(collection).add(docData);
             return response(200, { code: 0, data: { id: res.id || res._id }, message: 'Added' });
         }
 
@@ -136,12 +138,17 @@ exports.main = async (event, context) => {
             const items = data || [];
             if (items.length === 0) return response(200, { code: 0, results: [] });
 
+            // 🔒 安全：users 表强制 role='inspector'，防止客户端提权
+            const safeItems = collection === 'users'
+                ? items.map(item => ({ ...item, role: 'inspector' }))
+                : items;
+
             const results = [];
             const CONCURRENCY = 5;
 
-            for (let i = 0; i < items.length; i += CONCURRENCY) {
-                const batch = items.slice(i, i + CONCURRENCY);
-                const promises = batch.map(item => 
+            for (let i = 0; i < safeItems.length; i += CONCURRENCY) {
+                const batch = safeItems.slice(i, i + CONCURRENCY);
+                const promises = batch.map(item =>
                     getDb().collection(collection).add(item)
                         .then(res => ({ success: true, _id: res.id || res._id, old_id: item._old_id || null }))
                         .catch(err => ({ success: false, error: err.message, old_id: item._old_id || null }))
@@ -151,7 +158,7 @@ exports.main = async (event, context) => {
             }
 
             const successCount = results.filter(r => r.success).length;
-            console.log('addBatch:', items.length, 'items,', successCount, 'success');
+            console.log('addBatch:', safeItems.length, 'items,', successCount, 'success');
             return response(200, { code: 0, results });
         }
 
@@ -323,8 +330,18 @@ exports.main = async (event, context) => {
             return response(400, { code: 400, message: 'Invalid action: ' + (action || 'none') });
         }
 
-        // ============ P0: 宿舍数据（主页核心） ============
+        // ============ P0: 宿舍数据（主页核心，需访问密码）============
         if (path === '/api/dorm-data') {
+            // 🔒 安全：服务端校验访问密码（PIN），防止前端绕过
+            const pin = params.pin || (data && data.pin);
+            const { data: pinSettings } = await getDb().collection(COLLECTIONS.settings)
+                .where({ key: 'access_password' }).limit(1).get();
+            if (pinSettings.length > 0 && pinSettings[0].value) {
+                if (!pin || String(pin) !== String(pinSettings[0].value)) {
+                    return response(403, { code: 403, message: '访问密码错误' });
+                }
+            }
+
             const { data: students } = await getDb().collection(COLLECTIONS.dorm_students)
                 .orderBy('dorm_name', 'asc').orderBy('bed', 'asc').limit(2000).get();
             const { data: mappings } = await getDb().collection(COLLECTIONS.grade_mapping)
@@ -388,8 +405,12 @@ exports.main = async (event, context) => {
             return response(200, { code: 0, success: true, rooms: enriched });
         }
 
-        // ============ P0: 管理员用户管理 ============
+        // ============ P0: 管理员用户管理（仅 admin 可调用）============
         if (path === '/api/admin/users') {
+            // 🔒 安全：仅 admin 角色可查看用户列表
+            const admin = requireAdmin(event);
+            if (!admin) return response(403, { code: 403, message: '需要管理员权限' });
+
             const role = params.role;
             const page = Math.max(1, parseInt(params.page) || 1);
             const pageSize = Math.min(Math.max(1, parseInt(params.pageSize) || 20), 100);
@@ -402,7 +423,11 @@ exports.main = async (event, context) => {
                 .where(where).orderBy('created_at', 'desc')
                 .skip((page - 1) * pageSize).limit(pageSize).get();
 
-            const safe = users.map(u => { const { password_hash, ...s } = u; return s; });
+            // 🔒 安全：过滤敏感字段，只返回安全信息
+            const safe = users.map(u => ({
+                id: u._id, username: u.username, display_name: u.display_name,
+                role: u.role || 'inspector', created_at: u.created_at
+            }));
             return response(200, { code: 0, success: true, users: safe, total, page, pageSize });
         }
 
