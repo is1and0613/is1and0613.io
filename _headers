@@ -8,10 +8,14 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' https://*.tcloudbase.com; img-src 'self' data: blob:
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' https://*.tcloudbase.com; img-src 'self' data: blob:
 
 # ========== 确保浏览器频繁检查 Service Worker 更新 ==========
 /sw.js
+  Cache-Control: max-age=0, no-cache
+
+# ========== API Client 禁止缓存（防止 JS 更新后前端不生效） ==========
+/api-client.js
   Cache-Control: max-age=0, no-cache
 
 # ========== 静态 HTML 短期缓存 ==========
