@@ -322,10 +322,10 @@ exports.main = async (event, context) => {
             return response(200, { code: 0, found: found, count: found.length });
         }
 
-        // ============ P0: 认证（服务端验证密码）============
+        // ============ P0: 认证（服务端验证密码）v2026-0612b ============
         if (path === '/api/auth') {
             const { action, username, password } = params;
-            console.log('[auth] action:', action, 'username:', username, 'hasPassword:', !!password, 'passwordLen:', password ? password.length : 0);
+            console.log('[auth v2026-0612b] action:', action, 'username:', username, 'hasPassword:', !!password, 'passwordLen:', password ? password.length : 0);
 
             // ===== 登录 =====
             if (action === 'login') {
@@ -436,7 +436,7 @@ exports.main = async (event, context) => {
                 });
             }
 
-            return response(400, { code: 400, message: 'Invalid action: ' + (action || 'none') });
+            return response(400, { code: 400, message: '[v2026-0612b] Invalid action: ' + (action || 'none') });
         }
 
         // ============ P0: 宿舍数据（主页核心，需认证）============
