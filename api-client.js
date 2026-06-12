@@ -153,73 +153,27 @@ async function getUserByUsername(username) {
 // ============================================
 
 /**
- * 登录：先从 CloudBase 取用户 → 本地 PBKDF2 验证 → 请求 token
+ * 登录：直接发送用户名和明文密码到服务端，由服务端验证并签发 Token
+ * 🔒 绝不信任客户端传入的 role，服务端从数据库读取真实角色
  */
 async function loginUser(username, password) {
-  // Step 1: 获取用户记录（含 password_hash）
-  const userRes = await getUserByUsername(username);
-  if (!userRes.data) {
-    return { success: false, message: '用户名或密码错误' };
-  }
-  const user = userRes.data;
-
-  // Step 2: 本地验证密码
-  const valid = await verifyPassword(password, user.password_hash);
-  if (!valid) {
-    return { success: false, message: '用户名或密码错误' };
-  }
-
-  // Step 3: 请求 CloudBase 签发 token（不再传密码）
-  const tokenRes = await apiRequest('/api/auth', {
+  return apiRequest('/api/auth', {
     action: 'login',
-    username: user.username,
-    user_id: user._id || user.id,
-    role: user.role || 'inspector',
-    display_name: user.display_name || user.username
+    username,
+    password
   });
-
-  return tokenRes;
 }
 
 /**
- * 注册：本地 PBKDF2 哈希 → CloudBase 存储
+ * 注册：服务端哈希密码 + 创建用户 + 签发 Token（一步完成）
+ * 🔒 role 由服务端强制设为 inspector，客户端无法提权
  */
 async function registerUser(username, password) {
-  // Step 1: 检查是否已存在
-  const existRes = await getUserByUsername(username);
-  if (existRes.data) {
-    return { success: false, message: '用户名已被注册' };
-  }
-
-  // Step 2: 本地哈希密码
-  const password_hash = await hashPassword(password);
-
-  // Step 3: 创建用户
-  const createRes = await apiRequest('/api/add', {
-    collection: 'users',
-    data: {
-      username,
-      password_hash,
-      display_name: username,
-      role: 'inspector',
-      created_at: new Date().toISOString(),
-      is_temp: 0
-    }
+  return apiRequest('/api/auth', {
+    action: 'register',
+    username,
+    password
   });
-
-  if (createRes.data && createRes.data._id) {
-    // Step 4: 请求 token
-    const tokenRes = await apiRequest('/api/auth', {
-      action: 'login',
-      username,
-      user_id: createRes.data._id,
-      role: 'inspector',
-      display_name: username
-    });
-    return tokenRes;
-  }
-
-  return createRes;
 }
 
 /**

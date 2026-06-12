@@ -1,13 +1,24 @@
-# Cloudflare Pages Headers
-# 确保浏览器频繁检查 Service Worker 更新
+# Cloudflare Pages Headers — 安全 + 缓存策略
+
+# ========== 全局安全响应头 ==========
+/*
+  Access-Control-Allow-Origin: https://niteshift.cn
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' https://*.tcloudbase.com; img-src 'self' data: blob:
+
+# ========== 确保浏览器频繁检查 Service Worker 更新 ==========
 /sw.js
   Cache-Control: max-age=0, no-cache
 
-# 静态 HTML 短期缓存
+# ========== 静态 HTML 短期缓存 ==========
 /*.html
   Cache-Control: max-age=60
 
-# 静态资源长期缓存
+# ========== 静态资源长期缓存 ==========
 /*.js
   Cache-Control: max-age=3600
 /*.css

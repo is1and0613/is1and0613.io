@@ -51,6 +51,39 @@ function requireAdmin(event) {
     return user;
 }
 
+// PBKDF2-SHA256 密码验证（与前端 api-client.js hashPassword 格式一致）
+// 前端格式: saltBase64$hashBase64  (16-byte salt, 100k iter, SHA-256, 256-bit output)
+function verifyPassword(password, storedHash) {
+    try {
+        if (!storedHash || typeof storedHash !== 'string') return false;
+        const parts = storedHash.split('$');
+        if (parts.length !== 2) return false;
+        const [saltB64, hashB64] = parts;
+        const salt = Buffer.from(saltB64, 'base64');
+        const derived = crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256');
+        return derived.toString('base64') === hashB64;
+    } catch (e) {
+        console.error('verifyPassword error:', e.message);
+        return false;
+    }
+}
+
+// PBKDF2-SHA256 密码哈希（与前端 api-client.js hashPassword 格式一致）
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16);
+    const derived = crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256');
+    return salt.toString('base64') + '$' + derived.toString('base64');
+}
+
+// 🔒 无需 JWT 即可访问的公开路由
+const PUBLIC_PATHS = [
+    '/api/auth',
+    '/api/userByUsername',
+    '/api/verify-access-password',
+    '/api/dorm-data',   // 有自己的 JWT-or-PIN 逻辑
+    '/api/cleanup'      // 有自己的 JWT-or-Secret 双重认证
+];
+
 const COLLECTIONS = {
     users: 'users', rooms: 'rooms', room_members: 'room_members',
     room_states: 'room_states', room_logs: 'room_logs', room_messages: 'room_messages',
@@ -113,6 +146,17 @@ exports.main = async (event, context) => {
     if (collection && !ALLOWED_COLLECTIONS.includes(collection)) {
         return response(400, { code: 400, message: 'Invalid collection: ' + collection });
     }
+
+    // ========== 🔒 JWT 认证中间件 ==========
+    if (!PUBLIC_PATHS.includes(path)) {
+        const authUser = requireAuth(event);
+        if (!authUser) {
+            return response(401, { code: 401, message: '未授权访问，缺少有效 Token' });
+        }
+        // 将用户信息注入 params，供后续路由使用
+        params._user = authUser;
+    }
+    // =====================================
 
     try {
         if (path === '/api/list') {
@@ -278,24 +322,44 @@ exports.main = async (event, context) => {
             return response(200, { code: 0, found: found, count: found.length });
         }
 
-        // ============ P0: 认证 ============
+        // ============ P0: 认证（服务端验证密码）============
         if (path === '/api/auth') {
-            const { action, username, user_id, role, display_name } = params;
+            const { action, username, password } = params;
+
+            // ===== 登录 =====
             if (action === 'login') {
-                const userId = user_id || params.user_id;
-                let user = null;
-                if (userId) {
-                    const { data: users } = await getDb().collection(COLLECTIONS.users).where({ _id: userId }).limit(1).get();
-                    user = users[0];
-                }
-                if (!user && username) {
-                    const { data: users2 } = await getDb().collection(COLLECTIONS.users).where({ username }).limit(1).get();
-                    user = users2[0];
-                }
-                if (!user) {
-                    return response(401, { code: 401, message: '用户不存在' });
+                if (!username || !password) {
+                    return response(400, { code: 400, message: '缺少用户名或密码' });
                 }
 
+                // 1. 查用户（仅通过 username，不信任客户端传入的 user_id）
+                const { data: users } = await getDb().collection(COLLECTIONS.users)
+                    .where({ username }).limit(1).get();
+                if (users.length === 0) {
+                    return response(401, { code: 401, message: '用户名或密码错误' });
+                }
+                const user = users[0];
+
+                // 2. 🔒 服务端验证密码（绝不信任客户端）
+                const valid = verifyPassword(password, user.password_hash);
+                if (!valid) {
+                    // 记录失败登录日志
+                    const now = new Date().toISOString();
+                    const ip = (event.headers || {})['x-forwarded-for'] || '';
+                    const ua = ((event.headers || {})['user-agent'] || '').slice(0, 200);
+                    try {
+                        await getDb().collection(COLLECTIONS.login_logs).add({
+                            user_id: user._id, username: user.username,
+                            role: user.role || 'inspector',
+                            login_at: now, ip, user_agent: ua,
+                            status: 'fail', fail_reason: '密码错误',
+                            migrated_from: 'd1'
+                        });
+                    } catch (e) { /* non-critical */ }
+                    return response(401, { code: 401, message: '用户名或密码错误' });
+                }
+
+                // 3. 使用数据库中的 role，绝不信任客户端传入
                 const now = new Date().toISOString();
                 const ip = (event.headers || {})['x-forwarded-for'] || '';
                 const ua = ((event.headers || {})['user-agent'] || '').slice(0, 200);
@@ -327,6 +391,49 @@ exports.main = async (event, context) => {
                     user: { id: user._id, username: user.username, display_name: user.display_name || user.username, role: user.role || 'inspector' }
                 });
             }
+
+            // ===== 注册 =====
+            if (action === 'register') {
+                if (!username || !password) {
+                    return response(400, { code: 400, message: '缺少用户名或密码' });
+                }
+
+                // 检查是否已存在
+                const { data: existing } = await getDb().collection(COLLECTIONS.users)
+                    .where({ username }).limit(1).get();
+                if (existing.length > 0) {
+                    return response(400, { code: 400, message: '用户名已被注册' });
+                }
+
+                // 🔒 服务端哈希密码，role 强制 inspector
+                const password_hash = hashPassword(password);
+                const createRes = await getDb().collection(COLLECTIONS.users).add({
+                    username,
+                    password_hash,
+                    display_name: username,
+                    role: 'inspector',
+                    created_at: new Date().toISOString(),
+                    is_temp: 0
+                });
+
+                const userId = createRes.id || createRes._id;
+
+                // 签发 token（使用数据库中的真实 role）
+                const token = signJWT({
+                    user_id: userId,
+                    username,
+                    display_name: username,
+                    role: 'inspector',
+                    iat: Math.floor(Date.now() / 1000),
+                    exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
+                });
+
+                return response(200, {
+                    code: 0, success: true, message: '注册成功', token,
+                    user: { id: userId, username, display_name: username, role: 'inspector' }
+                });
+            }
+
             return response(400, { code: 400, message: 'Invalid action: ' + (action || 'none') });
         }
 
@@ -920,7 +1027,7 @@ exports.main = async (event, context) => {
 
             let query = getDb().collection(COLLECTIONS.system_logs);
             if (action && action !== 'all') { query = query.where({ action }); }
-            if (username) { query = query.where({ username: db.RegExp ? new db.RegExp({ regexp: username, options: 'i' }) : username }); }
+            if (username) { query = query.where({ username }); }
             // Note: CloudBase where doesn't support LIKE. For date ranges we filter post-query if needed.
 
             const { total } = await query.count();
