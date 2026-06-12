@@ -15,15 +15,25 @@ const API_BASE = 'https://nightshift-d0gong2x832b1270e-1412242998.ap-shanghai.ap
  */
 async function apiRequest(path, payload = {}) {
   const token = sessionStorage.getItem('authToken') || localStorage.getItem('token') || '';
+  const body = JSON.stringify({ path, ...payload });
   const resp = await fetch(API_BASE, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + token
     },
-    body: JSON.stringify({ path, ...payload })
+    body
   });
-  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  if (!resp.ok) {
+    // 尝试读取服务端返回的错误详情
+    let serverMsg = '';
+    try {
+      const errData = await resp.json();
+      serverMsg = errData.message || '';
+    } catch (e) { /* response not JSON */ }
+    const detail = serverMsg ? ' — ' + serverMsg : '';
+    throw new Error('HTTP ' + resp.status + detail);
+  }
   return resp.json();
 }
 

@@ -325,6 +325,7 @@ exports.main = async (event, context) => {
         // ============ P0: 认证（服务端验证密码）============
         if (path === '/api/auth') {
             const { action, username, password } = params;
+            console.log('[auth] action:', action, 'username:', username, 'hasPassword:', !!password, 'passwordLen:', password ? password.length : 0);
 
             // ===== 登录 =====
             if (action === 'login') {
@@ -342,6 +343,7 @@ exports.main = async (event, context) => {
 
                 // 2. 🔒 服务端验证密码（绝不信任客户端）
                 const valid = verifyPassword(password, user.password_hash);
+                console.log('[auth] login verifyPassword result:', valid);
                 if (!valid) {
                     // 记录失败登录日志
                     const now = new Date().toISOString();
