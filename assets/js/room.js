@@ -1,5 +1,35 @@
 // assets/js/room.js — 多人查寝房间逻辑
 
+// ===== 辅助函数 =====
+function parseDate(val) {
+  if (!val) return new Date(NaN);
+  if (typeof val === 'number') return new Date(val * 1000); // 秒级时间戳
+  if (typeof val === 'string') return new Date(val); // ISO 字符串，已含 Z
+  return new Date(val);
+}
+
+function formatTime(val) {
+  const d = parseDate(val);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatTimeFull(val) {
+  const d = parseDate(val);
+  if (isNaN(d.getTime())) return '';
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const time = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  return `${month}/${day} ${time}`;
+}
+
+// 规范化消息/日志：确保 id 字段存在（后端用 _id）
+function normalizeId(item) {
+  if (!item) return item;
+  if (!item.id && item._id) item.id = item._id;
+  return item;
+}
+
 const roomState = {
   mode: null,           // null | 'single' | 'multi'
   room: null,           // room_info from sync
@@ -92,18 +122,17 @@ async function createRoom() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>创建中...';
 
   try {
-    const data = await apiFetch('/api/room', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'create' }),
-    });
+    const data = await apiRequest('/api/room', { action: 'create' });
 
     if (data.success) {
       roomState.code = data.code;
       roomState.room = { code: data.code, expires_at: data.expires_at };
       showRoomView();
+    } else if (data.message) {
+      showToast(data.message, 'error');
     }
   } catch (e) {
-    // apiFetch handles toast
+    showToast('创建房间失败: ' + (e.message || '网络错误'), 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-plus-circle"></i>创建房间';
@@ -124,18 +153,17 @@ async function joinRoom() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>加入中...';
 
   try {
-    const data = await apiFetch('/api/room', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'join', code }),
-    });
+    const data = await apiRequest('/api/room', { action: 'join', code });
 
     if (data.success) {
       roomState.code = data.code;
       roomState.room = { code: data.code, expires_at: data.expires_at };
       showRoomView();
+    } else if (data.message) {
+      showToast(data.message, 'error');
     }
   } catch (e) {
-    // apiFetch handles toast
+    showToast('加入房间失败: ' + (e.message || '网络错误'), 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-sign-in-alt"></i>加入房间';
@@ -200,7 +228,7 @@ async function showRoomView() {
 
 async function syncRoom() {
   try {
-    const data = await apiFetch(`/api/room?action=sync&code=${roomState.code}`);
+    const data = await apiRequest('/api/room', { action: 'sync', code: roomState.code });
 
     if (data.success) {
       // Check if room expired during sync
@@ -213,9 +241,9 @@ async function syncRoom() {
 
       roomState.room = data.room_info;
       roomState.states = data.states || [];
-      roomState.logs = data.logs || [];
-      roomState.messages = data.messages || [];
-      roomState.members = data.members || [];
+      roomState.logs = (data.logs || []).map(normalizeId);
+      roomState.messages = (data.messages || []).map(normalizeId);
+      roomState.members = (data.members || []).map(normalizeId);
 
       // v19: 增量更新 — 只更新变化的学生 DOM，不刷新整个页面
       const statusMap = { present: 'in', absent: 'absent', leaveSchool: 'leaveSchool', leaveInside: 'leaveInside', leaveOutside: 'leaveOutside' };
@@ -260,7 +288,7 @@ async function syncRoom() {
       updateChatBadge();
     }
   } catch (e) {
-    // apiFetch handles toast
+    // error already handled
   }
 }
 
@@ -278,9 +306,9 @@ function startRoomPolling() {
 
 async function syncRoomMessages() {
   try {
-    const data = await apiFetch(`/api/room?action=sync&code=${roomState.code}&messages_only=1`);
+    const data = await apiRequest('/api/room', { action: 'sync', code: roomState.code, messages_only: 1 });
     if (data.success && data.messages) {
-      roomState.messages = data.messages;
+      roomState.messages = data.messages.map(normalizeId);
       if (data.messages.length > 0) {
         const newLastId = data.messages[data.messages.length - 1].id;
         if (newLastId > roomState.lastMsgId) {
@@ -326,17 +354,14 @@ async function updateRoomStudentState(studentName, newStatus, detail) {
   }
 
   try {
-    await apiFetch('/api/room', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'state',
-        code: roomState.code,
-        student_name: studentName,
-        new_status: newStatus,
-        detail: detail || null,
-        reason: detail || null,
-        reason_detail: null,
-      }),
+    await apiRequest('/api/room', {
+      action: 'state',
+      code: roomState.code,
+      student_name: studentName,
+      new_status: newStatus,
+      detail: detail || null,
+      reason: detail || null,
+      reason_detail: null,
     });
   } catch (e) {
     // Rollback on failure
@@ -365,18 +390,17 @@ async function sendRoomMessage() {
   // Optimistic local add
   const username = sessionStorage.getItem('displayName') || sessionStorage.getItem('username') || '我';
   roomState.messages.push({
-    id: Date.now(),
+    _id: 'local_' + Date.now(),
+    id: 'local_' + Date.now(),
     username,
+    display_name: username,
     content,
     created_at: new Date().toISOString(),
   });
   renderRoomMessages();
 
   try {
-    await apiFetch('/api/room', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'message', code: roomState.code, content }),
-    });
+    await apiRequest('/api/room', { action: 'message', code: roomState.code, content });
   } catch (e) {
     // Undo on failure
     roomState.messages.pop();
@@ -402,9 +426,10 @@ function renderRoomMessages() {
   container.innerHTML = roomState.messages.length === 0
     ? '<div class="room-chat-empty">暂无消息</div>'
     : roomState.messages.map(m => {
-        const time = m.created_at ? new Date(m.created_at + 'Z').toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
+        const time = formatTime(m.created_at);
+        const displayName = m.display_name || m.username || '未知';
         return `<div class="room-msg">
-          <span class="room-msg-user">${m.username || m.display_name || '未知'}</span>
+          <span class="room-msg-user">${displayName}</span>
           <span class="room-msg-text">${escapeHtml(m.content)}</span>
           <span class="room-msg-time">${time}</span>
         </div>`;
@@ -419,21 +444,47 @@ function renderRoomLogs() {
   container.innerHTML = roomState.logs.length === 0
     ? '<div class="room-log-empty">暂无操作记录</div>'
     : roomState.logs.slice(0, 20).map(l => {
-        const time = l.created_at ? new Date(l.created_at + 'Z').toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
-        let text = `[${time}] ${l.username || l.display_name || '系统'} `;
-        if (l.action_type === 'status_change') {
-          text += `将 ${l.target_student} 由 ${statusCn(l.old_status)} 更新为 ${statusCn(l.new_status)}`;
-        } else if (l.action_type === 'join') {
+        const time = formatTime(l.created_at);
+        const who = l.user_name || l.display_name || l.username || '系统';
+        let text = `[${time}] ${who} `;
+
+        if (l.action === 'state' || l.action === 'state_change') {
+          // 状态变更：显示 目标 + 旧状态→新状态
+          if (l.student_name) {
+            if (l.old_status && l.new_status) {
+              text += `将 ${l.student_name} 从 ${statusCn(l.old_status)} 改为 ${statusCn(l.new_status)}`;
+            } else if (l.new_status) {
+              text += `将 ${l.student_name} 设为 ${statusCn(l.new_status)}`;
+            } else {
+              text += `更新了 ${l.student_name}`;
+            }
+          } else {
+            text += '更新了查寝状态';
+          }
+          if (l.detail) text += `（${l.detail}）`;
+        } else if (l.action === 'join') {
           text += l.detail || '加入了房间';
+        } else if (l.action === 'leave') {
+          text += l.detail || '退出了房间';
+        } else if (l.action === 'message') {
+          text += l.content || l.detail || '发送了消息';
+        } else if (l.action === 'create') {
+          text += l.detail || '创建了房间';
         } else {
-          text += l.detail || l.action_type;
+          // 兜底：直接显示 detail 或原始 action
+          text += l.detail || (l.action ? `操作: ${l.action}` : '');
         }
         return `<div class="room-log-item">${escapeHtml(text)}</div>`;
       }).join('');
 }
 
 function statusCn(s) {
-  const map = { present: '在寝', absent: '未归', leaveSchool: '离校', leaveInside: '事假', leaveOutside: '外出' };
+  const map = {
+    present: '在寝', absent: '未归',
+    leaveSchool: '离校', leaveInside: '事假', leaveOutside: '外出',
+    // 兼容旧版键名 / 其他可能的英文状态值
+    leave: '离校', out: '外出', not_return: '未归'
+  };
   return map[s] || s;
 }
 
@@ -441,16 +492,18 @@ function updateRoomCountdown() {
   const el = document.getElementById('headerCountdown');
   if (!el || !roomState.room || !roomState.room.expires_at) return;
 
-  const expiresAt = new Date(roomState.room.expires_at + 'Z');
+  const expiresAt = parseDate(roomState.room.expires_at);
   const now = new Date();
   const diff = expiresAt - now;
 
-  if (diff <= 0) {
-    el.textContent = ' · 已过期';
+  if (isNaN(diff) || diff <= 0) {
+    el.textContent = ' · 即将过期';
     el.style.color = '#DC2626';
-    stopRoomPolling();
-    showToast('房间已过期（2天有效期）');
-    setTimeout(() => { leaveRoom(true); }, 1500);
+    if (!isNaN(diff) && diff <= 0) {
+      stopRoomPolling();
+      showToast('房间已过期（2天有效期）');
+      setTimeout(() => { leaveRoom(true); }, 1500);
+    }
     return;
   }
 

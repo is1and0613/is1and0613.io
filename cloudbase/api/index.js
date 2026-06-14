@@ -75,6 +75,39 @@ function hashPassword(password) {
     return salt.toString('base64') + '$' + derived.toString('base64');
 }
 
+// ============ 内存速率限制器（按 IP 统计）============
+const rateLimitMap = new Map();
+const RATE_LIMIT = {
+    login: { max: 1, windowMs: 5 * 1000 },      // 5秒内最多1次登录
+    register: { max: 1, windowMs: 5 * 1000 },   // 5秒内最多1次注册
+    general: { max: 60, windowMs: 60 * 1000 }   // 1分钟内60次通用请求
+};
+
+function checkRateLimit(ip, action) {
+    const key = `${ip}:${action}`;
+    const now = Date.now();
+    const config = RATE_LIMIT[action] || RATE_LIMIT.general;
+
+    if (!rateLimitMap.has(key)) {
+        rateLimitMap.set(key, { count: 1, resetTime: now + config.windowMs });
+        return { allowed: true };
+    }
+
+    const record = rateLimitMap.get(key);
+    if (now > record.resetTime) {
+        record.count = 1;
+        record.resetTime = now + config.windowMs;
+        return { allowed: true };
+    }
+
+    if (record.count >= config.max) {
+        return { allowed: false, retryAfter: Math.ceil((record.resetTime - now) / 1000) };
+    }
+
+    record.count++;
+    return { allowed: true };
+}
+
 // 🔒 无需 JWT 即可访问的公开路由
 const PUBLIC_PATHS = [
     '/api/auth',
@@ -158,21 +191,74 @@ exports.main = async (event, context) => {
     }
     // =====================================
 
+    // 🔒 获取客户端 IP + 对公开路由做速率限制
+    const clientIp = (event.headers || {})['x-forwarded-for'] || (event.headers || {})['x-real-ip'] || 'unknown';
+
+    if (['/api/auth', '/api/userByUsername'].includes(path)) {
+        const limitAction = (params.action === 'login') ? 'login' : (params.action === 'register' ? 'register' : 'general');
+        const limitResult = checkRateLimit(clientIp, limitAction);
+        if (!limitResult.allowed) {
+            return response(429, {
+                code: 429,
+                message: `请求过于频繁，请 ${limitResult.retryAfter} 秒后重试`
+            });
+        }
+    }
+
     try {
         if (path === '/api/list') {
-            let query = getDb().collection(collection).where(where || {});
+            const user = params._user;
+
+            // 🔒 集合白名单：非 admin 禁止查询敏感集合
+            const SENSITIVE_COLLECTIONS = ['users', 'settings', 'login_logs'];
+            if (user && user.role !== 'admin' && SENSITIVE_COLLECTIONS.includes(collection)) {
+                return response(403, { code: 403, message: '无权访问该集合' });
+            }
+
+            const whereClause = where || {};
+            const queryLimit = Math.min(parseInt(limit) || 50, 200);
+            let query = getDb().collection(collection).where(whereClause);
             if (orderBy) {
                 const [field, direction] = orderBy.split(':');
                 query = query.orderBy(field, direction || 'asc');
             }
-            const { data: resData } = await query.limit(parseInt(limit)).skip(parseInt(skip)).get();
-            return response(200, { code: 0, data: resData, count: resData.length });
+            const { data: resData, total } = await query.limit(queryLimit).skip(parseInt(skip)).get();
+
+            // 🔒 敏感字段过滤
+            let safeData = resData;
+            if (collection === 'users') {
+                safeData = resData.map(u => {
+                    const { password_hash, last_login_ip, ...safe } = u;
+                    return safe;
+                });
+            }
+            if (collection === 'settings') {
+                safeData = resData.map(s => {
+                    if (s.key === 'access_password') {
+                        return { ...s, value: '***' };
+                    }
+                    return s;
+                });
+            }
+
+            return response(200, { code: 0, data: safeData, total: total || safeData.length });
         }
 
         // 修改点 1：add 直接传入 data，不加 { data: ... } 包装
         if (path === '/api/add') {
-            // 🔒 安全：users 表强制 role='inspector'，防止客户端提权注册 admin 账号
-            const docData = collection === 'users' ? { ...data, role: 'inspector' } : data;
+            const user = params._user;
+
+            // 🔒 禁止通过通用接口往敏感集合添加数据
+            if (['users', 'settings'].includes(collection)) {
+                return response(403, { code: 403, message: '禁止通过通用接口添加该集合' });
+            }
+
+            // 🔒 创建房间：admin 和 inspector 均可操作（查寝员需要创建查寝房间）
+            if (collection === 'rooms' && user && user.role !== 'admin' && user.role !== 'inspector') {
+                return response(403, { code: 403, message: '无权创建房间' });
+            }
+
+            const docData = { ...(data || {}), creator_id: user?.user_id, created_at: new Date() };
             const res = await getDb().collection(collection).add(docData);
             return response(200, { code: 0, data: { id: res.id || res._id }, message: 'Added' });
         }
@@ -208,14 +294,45 @@ exports.main = async (event, context) => {
 
         // update 保持原样：SDK 的 data 参数是更新指令，不是文档字段
         if (path === '/api/update') {
+            const user = params._user;
+            const targetId = data?._id || data?.id;
+
+            // 🔒 禁止通过通用接口修改敏感集合
+            if (['users', 'settings'].includes(collection)) {
+                return response(403, { code: 403, message: '禁止通过通用接口修改该集合' });
+            }
+
+            // 🔒 非 admin 只能修改自己创建的记录
+            if (user && user.role !== 'admin') {
+                const { data: target } = await getDb().collection(collection).doc(targetId).get();
+                if (!target || target.creator_id !== user.user_id) {
+                    return response(403, { code: 403, message: '无权修改该记录' });
+                }
+            }
+
             const { _id, ...updateData } = data;
-            const res = await getDb().collection(collection).doc(_id).update(updateData);
+            const res = await getDb().collection(collection).doc(targetId).update(updateData);
             return response(200, { code: 0, data: res });
         }
 
         if (path === '/api/delete') {
-            const { _id } = data;
-            await getDb().collection(collection).doc(_id).remove();
+            const user = params._user;
+            const targetId = data?._id || data?.id;
+
+            // 🔒 禁止通过通用接口删除敏感集合
+            if (['users', 'settings'].includes(collection)) {
+                return response(403, { code: 403, message: '禁止通过通用接口删除该集合' });
+            }
+
+            // 🔒 非 admin 只能删除自己创建的记录
+            if (user && user.role !== 'admin') {
+                const { data: target } = await getDb().collection(collection).doc(targetId).get();
+                if (!target || target.creator_id !== user.user_id) {
+                    return response(403, { code: 403, message: '无权删除该记录' });
+                }
+            }
+
+            await getDb().collection(collection).doc(targetId).remove();
             return response(200, { code: 0, message: 'Deleted' });
         }
 
@@ -258,7 +375,12 @@ exports.main = async (event, context) => {
         if (path === '/api/userByUsername') {
             const { username } = data;
             const { data: users } = await getDb().collection(COLLECTIONS.users).where({ username: username }).limit(1).get();
-            return response(200, { code: 0, data: users[0] || null });
+            if (users.length === 0) {
+                return response(404, { code: 404, message: '用户不存在' });
+            }
+            // 🔒 绝不返回 password_hash
+            const { password_hash, ...safeUser } = users[0];
+            return response(200, { code: 0, data: safeUser });
         }
 
         if (path === '/api/checkRecords') {
@@ -291,9 +413,18 @@ exports.main = async (event, context) => {
         }
 
         if (path === '/api/settings') {
+            // 🔒 settings 仅 admin 可读
+            const user = params._user;
+            if (!user || user.role !== 'admin') {
+                return response(403, { code: 403, message: '需要管理员权限' });
+            }
+
             const { data: settings } = await getDb().collection(COLLECTIONS.settings).get();
             const result = {};
-            for (const s of settings) { result[s.key] = s.value; }
+            for (const s of settings) {
+                // 🔒 隐藏 access_password 明文
+                result[s.key] = s.key === 'access_password' ? '***' : s.value;
+            }
             return response(200, { code: 0, data: result });
         }
 
@@ -400,19 +531,37 @@ exports.main = async (event, context) => {
                     return response(400, { code: 400, message: '缺少用户名或密码' });
                 }
 
-                // 检查是否已存在
+                // 🔒 XSS 过滤：去掉 HTML 危险字符
+                function sanitizeInput(str) {
+                    if (!str) return str;
+                    return str.replace(/[<>'"&]/g, '');
+                }
+                const safeUsername = sanitizeInput(username);
+                const safeDisplayName = sanitizeInput(username);  // display_name 默认同 username
+
+                // 🔒 长度限制
+                if (safeUsername.length < 2 || safeUsername.length > 32) {
+                    return response(400, { code: 400, message: '用户名长度应为 2-32 字符' });
+                }
+
+                // 🔒 密码强度校验（至少 6 位）
+                if (!password || password.length < 6) {
+                    return response(400, { code: 400, message: '密码至少 6 位' });
+                }
+
+                // 🔒 检查是否已存在（不暴露"用户名已存在"）
                 const { data: existing } = await getDb().collection(COLLECTIONS.users)
-                    .where({ username }).limit(1).get();
+                    .where({ username: safeUsername }).limit(1).get();
                 if (existing.length > 0) {
-                    return response(400, { code: 400, message: '用户名已被注册' });
+                    return response(200, { code: 0, message: '注册请求已提交' });
                 }
 
                 // 🔒 服务端哈希密码，role 强制 inspector
                 const password_hash = hashPassword(password);
                 const createRes = await getDb().collection(COLLECTIONS.users).add({
-                    username,
+                    username: safeUsername,
                     password_hash,
-                    display_name: username,
+                    display_name: safeDisplayName,
                     role: 'inspector',
                     created_at: new Date().toISOString(),
                     is_temp: 0
@@ -423,20 +572,57 @@ exports.main = async (event, context) => {
                 // 签发 token（使用数据库中的真实 role）
                 const token = signJWT({
                     user_id: userId,
-                    username,
-                    display_name: username,
+                    username: safeUsername,
+                    display_name: safeDisplayName,
                     role: 'inspector',
                     iat: Math.floor(Date.now() / 1000),
                     exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
                 });
 
                 return response(200, {
-                    code: 0, success: true, message: '注册成功', token,
-                    user: { id: userId, username, display_name: username, role: 'inspector' }
+                    code: 0, success: true, message: '注册请求已提交', token,
+                    user: { id: userId, username: safeUsername, display_name: safeDisplayName, role: 'inspector' }
                 });
             }
 
-            return response(400, { code: 400, message: '[v2026-0612b] Invalid action: ' + (action || 'none') });
+            // ===== 修改密码（服务端验证）=====
+            if (action === 'change_password') {
+                const authUser = requireAuth(event);
+                if (!authUser) {
+                    return response(401, { code: 401, message: '请先登录' });
+                }
+                const { old_password, new_password } = params;
+
+                if (!old_password || !new_password) {
+                    return response(400, { code: 400, message: '缺少旧密码或新密码' });
+                }
+                if (new_password.length < 6) {
+                    return response(400, { code: 400, message: '新密码至少 6 位' });
+                }
+
+                // 1. 查当前用户
+                const { data: dbUsers } = await getDb().collection(COLLECTIONS.users)
+                    .where({ _id: authUser.user_id }).limit(1).get();
+                if (dbUsers.length === 0) {
+                    return response(404, { code: 404, message: '用户不存在' });
+                }
+                const dbUser = dbUsers[0];
+
+                // 2. 🔒 服务端验证旧密码
+                const valid = verifyPassword(old_password, dbUser.password_hash);
+                if (!valid) {
+                    return response(401, { code: 401, message: '旧密码错误' });
+                }
+
+                // 3. 🔒 服务端哈希新密码并更新
+                const newHash = hashPassword(new_password);
+                await getDb().collection(COLLECTIONS.users).doc(authUser.user_id)
+                    .update({ password_hash: newHash });
+
+                return response(200, { code: 0, message: '密码修改成功' });
+            }
+
+            return response(400, { code: 400, message: '[v2026-0612c] Invalid action: ' + (action || 'none') });
         }
 
         // ============ P0: 宿舍数据（主页核心，需认证）============
@@ -1218,10 +1404,284 @@ exports.main = async (event, context) => {
             });
         }
 
+        // ============ 创建房间（前端 room.js 走 /api/room）============
+        if (path === '/api/room') {
+            const user = requireAuth(event);
+            if (!user) return response(401, { code: 401, message: '请先登录' });
+            if (user.role !== 'admin' && user.role !== 'inspector') {
+                return response(403, { code: 403, message: '无权创建房间' });
+            }
+
+            const action = params.action || (data && data.action);
+            const roomCode = (params.code || (data && data.code) || '').toUpperCase();
+
+            if (action === 'create') {
+                // 生成 6 位随机房间码
+                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';  // 排除易混淆字符 I/O/0/1
+                let code = '';
+                for (let i = 0; i < 6; i++) {
+                    code += chars[Math.floor(Math.random() * chars.length)];
+                }
+
+                // 确保不重复（最多重试 3 次）
+                let retries = 3;
+                while (retries > 0) {
+                    const { data: existing } = await getDb().collection(COLLECTIONS.rooms)
+                        .where({ code }).limit(1).get();
+                    if (existing.length === 0) break;
+                    code = '';
+                    for (let i = 0; i < 6; i++) {
+                        code += chars[Math.floor(Math.random() * chars.length)];
+                    }
+                    retries--;
+                }
+
+                const now = new Date();
+                const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000); // 48小时后过期
+                const roomData = {
+                    code,
+                    creator_id: user.user_id,
+                    created_at: now.toISOString(),
+                    expires_at: expiresAt.toISOString(),
+                    status: 'active',
+                    dorm_building: params.dorm_building || (data && data.dorm_building) || ''
+                };
+
+                const res = await getDb().collection(COLLECTIONS.rooms).add(roomData);
+                return response(200, {
+                    code: 0, success: true,
+                    data: { id: res.id || res._id, code, expires_at: expiresAt.toISOString() },
+                    code: code, expires_at: expiresAt.toISOString()
+                });
+            }
+
+            if (action === 'join') {
+                if (!roomCode || roomCode.length !== 6) {
+                    return response(400, { code: 400, message: '请输入6位房间码' });
+                }
+
+                // 查找房间
+                const { data: rooms } = await getDb().collection(COLLECTIONS.rooms)
+                    .where({ code: roomCode }).limit(1).get();
+                if (rooms.length === 0) {
+                    return response(404, { code: 404, message: '房间不存在' });
+                }
+                const room = rooms[0];
+
+                // 检查是否过期
+                if (room.status === 'expired' || (room.expires_at && new Date(room.expires_at) < new Date())) {
+                    if (room.status !== 'expired') {
+                        await getDb().collection(COLLECTIONS.rooms).doc(room._id).update({ status: 'expired' });
+                    }
+                    return response(400, { code: 400, message: '房间已过期' });
+                }
+
+                // 检查是否已是成员
+                const { data: existingMembers } = await getDb().collection(COLLECTIONS.room_members)
+                    .where({ room_id: room._id, user_id: user.user_id }).limit(1).get();
+
+                if (existingMembers.length === 0) {
+                    // 加入房间
+                    await getDb().collection(COLLECTIONS.room_members).add({
+                        room_id: room._id,
+                        user_id: user.user_id,
+                        username: user.username,
+                        display_name: user.display_name || user.username,
+                        role: user.role || 'inspector',
+                        joined_at: new Date().toISOString()
+                    });
+                }
+
+                return response(200, {
+                    code: 0, success: true,
+                    code: room.code, expires_at: room.expires_at
+                });
+            }
+
+            if (action === 'sync') {
+                const messagesOnly = !!(params.messages_only || (data && data.messages_only));
+
+                if (!roomCode || roomCode.length !== 6) {
+                    return response(400, { code: 400, message: '缺少 room code' });
+                }
+
+                // 查找房间
+                const { data: rooms } = await getDb().collection(COLLECTIONS.rooms)
+                    .where({ code: roomCode }).limit(1).get();
+                if (rooms.length === 0) return response(404, { code: 404, message: '房间不存在' });
+                const room = rooms[0];
+
+                // 检查过期 & 自动标记
+                if (room.status === 'active' && room.expires_at) {
+                    if (new Date(room.expires_at) < new Date()) {
+                        await getDb().collection(COLLECTIONS.rooms).doc(room._id).update({ status: 'expired' });
+                        room.status = 'expired';
+                    } else {
+                        // Heartbeat
+                        await getDb().collection(COLLECTIONS.rooms).doc(room._id).update({
+                            last_activity_at: new Date().toISOString()
+                        }).catch(() => {});
+                    }
+                }
+
+                if (messagesOnly) {
+                    // 仅拉取消息（轻量轮询）
+                    const { data: messages } = await getDb().collection(COLLECTIONS.room_messages)
+                        .where({ room_id: room._id }).orderBy('created_at', 'asc').limit(50).get();
+                    return response(200, { code: 0, success: true, messages: messages || [] });
+                }
+
+                // 全量同步：states + logs + messages + members
+                const [statesRes, logsRes, messagesRes, membersRes] = await Promise.all([
+                    getDb().collection(COLLECTIONS.room_states).where({ room_id: room._id }).orderBy('dorm_number', 'asc').orderBy('bed_number', 'asc').get(),
+                    getDb().collection(COLLECTIONS.room_logs).where({ room_id: room._id }).orderBy('created_at', 'desc').limit(50).get(),
+                    getDb().collection(COLLECTIONS.room_messages).where({ room_id: room._id }).orderBy('created_at', 'asc').limit(50).get(),
+                    getDb().collection(COLLECTIONS.room_members).where({ room_id: room._id }).get()
+                ]);
+
+                const states = statesRes.data || [];
+                const logs = logsRes.data || [];
+                const messages = messagesRes.data || [];
+                const members = membersRes.data || [];
+
+                // 收集 user_ids 批量查询用户名
+                const userIds = new Set();
+                for (const l of logs) { if (l.user_id) userIds.add(String(l.user_id)); }
+                for (const m of messages) { if (m.user_id) userIds.add(String(m.user_id)); }
+                for (const m of members) { if (m.user_id) userIds.add(String(m.user_id)); }
+
+                const userMap = {};
+                if (userIds.size > 0) {
+                    const userPromises = [...userIds].map(uid =>
+                        getDb().collection(COLLECTIONS.users).where({ _id: uid }).limit(1).get()
+                            .then(r => r.data[0] || null).catch(() => null)
+                    );
+                    const userResults = await Promise.all(userPromises);
+                    for (const u of userResults) {
+                        if (u) { userMap[String(u._id)] = u; if (u._old_id) userMap[String(u._old_id)] = u; }
+                    }
+                }
+
+                const enrich = (item) => {
+                    const u = userMap[String(item.user_id)];
+                    return { ...item, username: u ? u.username : null, display_name: u ? (u.display_name || u.username) : null };
+                };
+
+                // 更新 last_read_msg_id
+                const lastMsg = messages.length > 0 ? messages[messages.length - 1]._id : null;
+                if (lastMsg) {
+                    const memberDoc = members.find(m => String(m.user_id) === String(user.user_id));
+                    if (memberDoc && memberDoc._id) {
+                        await getDb().collection(COLLECTIONS.room_members).doc(memberDoc._id).update({
+                            last_read_msg_id: lastMsg
+                        }).catch(() => {});
+                    }
+                }
+
+                return response(200, {
+                    code: 0, success: true,
+                    room_info: {
+                        id: room._id || room.id, code: room.code, creator_id: room.creator_id,
+                        created_at: room.created_at, expires_at: room.expires_at,
+                        status: room.status, dorm_building: room.dorm_building
+                    },
+                    states, logs: logs.map(enrich), messages: messages.map(enrich), members: members.map(enrich)
+                });
+            }
+
+            if (action === 'state') {
+                const studentName = params.student_name || (data && data.student_name);
+                const newStatus = params.new_status || (data && data.new_status);
+                const detail = params.detail || (data && data.detail) || '';
+
+                if (!roomCode || !studentName || !newStatus) {
+                    return response(400, { code: 400, message: '缺少必要参数' });
+                }
+
+                // 查找房间
+                const { data: rooms } = await getDb().collection(COLLECTIONS.rooms)
+                    .where({ code: roomCode }).limit(1).get();
+                if (rooms.length === 0) return response(404, { code: 404, message: '房间不存在' });
+                const room = rooms[0];
+
+                // Upsert room_state
+                const { data: existingStates } = await getDb().collection(COLLECTIONS.room_states)
+                    .where({ room_id: room._id, student_name: studentName }).limit(1).get();
+
+                const stateData = {
+                    student_name: studentName,
+                    status: newStatus,
+                    reason: detail,
+                    reason_detail: detail || null,
+                    updated_at: new Date().toISOString()
+                };
+
+                if (existingStates.length > 0) {
+                    await getDb().collection(COLLECTIONS.room_states)
+                        .doc(existingStates[0]._id).update(stateData);
+                } else {
+                    await getDb().collection(COLLECTIONS.room_states).add({
+                        room_id: room._id,
+                        ...stateData,
+                        created_at: new Date().toISOString()
+                    });
+                }
+
+                // Add to room_logs（含新旧状态用于前端展示）
+                const oldStatus = existingStates.length > 0 ? existingStates[0].status : null;
+                await getDb().collection(COLLECTIONS.room_logs).add({
+                    room_id: room._id,
+                    room_code: roomCode,
+                    user_id: user.user_id,
+                    user_name: user.display_name || user.username,
+                    action: 'state',
+                    student_name: studentName,
+                    old_status: oldStatus,
+                    new_status: newStatus,
+                    detail: detail,
+                    created_at: new Date().toISOString()
+                }).catch(() => {});
+
+                return response(200, { code: 0, success: true, message: '状态已更新' });
+            }
+
+            if (action === 'message') {
+                const content = params.content || (data && data.content);
+
+                if (!roomCode || !content) {
+                    return response(400, { code: 400, message: '缺少必要参数' });
+                }
+
+                // 查找房间
+                const { data: rooms } = await getDb().collection(COLLECTIONS.rooms)
+                    .where({ code: roomCode }).limit(1).get();
+                if (rooms.length === 0) return response(404, { code: 404, message: '房间不存在' });
+                const room = rooms[0];
+
+                const msgData = {
+                    room_id: room._id,
+                    user_id: user.user_id,
+                    username: user.username,
+                    display_name: user.display_name || user.username,
+                    content: content,
+                    created_at: new Date().toISOString()
+                };
+
+                const res = await getDb().collection(COLLECTIONS.room_messages).add(msgData);
+                return response(200, {
+                    code: 0, success: true,
+                    message: '消息已发送',
+                    data: { id: res.id || res._id, ...msgData }
+                });
+            }
+
+            return response(400, { code: 400, message: 'Unknown room action: ' + action });
+        }
+
         return response(404, {
             code: 404, message: 'Unknown path: ' + path, available: [
                 '/api/list', '/api/add', '/api/addBatch', '/api/update', '/api/delete', '/api/count',
-                '/api/roomByCode', '/api/roomMembers', '/api/roomStates', '/api/roomLogs', '/api/roomMessages',
+                '/api/room', '/api/roomByCode', '/api/roomMembers', '/api/roomStates', '/api/roomLogs', '/api/roomMessages',
                 '/api/userByUsername', '/api/checkRecords', '/api/singleCheckByUserDate',
                 '/api/dormByFloor', '/api/dormByName', '/api/gradeMapping', '/api/settings',
                 '/api/updateSetting', '/api/checkSensitive',

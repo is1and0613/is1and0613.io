@@ -187,26 +187,13 @@ async function registerUser(username, password) {
 }
 
 /**
- * 修改密码（本地验证 + 更新）
+ * 修改密码（服务端验证，不传输 password_hash）
  */
-async function changePassword(oldPassword, newPassword, username) {
-  // Step 1: 获取当前用户
-  const userRes = await getUserByUsername(username);
-  if (!userRes.data) {
-    return { success: false, message: '用户不存在' };
-  }
-
-  // Step 2: 验证原密码
-  const valid = await verifyPassword(oldPassword, userRes.data.password_hash);
-  if (!valid) {
-    return { success: false, message: '原密码错误' };
-  }
-
-  // Step 3: 哈希新密码并更新
-  const newHash = await hashPassword(newPassword);
-  return apiRequest('/api/update', {
-    collection: 'users',
-    data: { _id: userRes.data._id, password_hash: newHash }
+async function changePassword(oldPassword, newPassword) {
+  return apiRequest('/api/auth', {
+    action: 'change_password',
+    old_password: oldPassword,
+    new_password: newPassword
   });
 }
 

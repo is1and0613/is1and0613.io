@@ -92,7 +92,7 @@ async function doLogin() {
       ? await loginUser(username, password)
       : await registerUser(username, password);
 
-    if (data.success) {
+    if (data.success && data.token) {
       sessionStorage.setItem('authToken', data.token);
       sessionStorage.setItem('loggedIn', 'true');
       if (data.user) {
@@ -121,11 +121,15 @@ async function doLogin() {
         return;
       }
 
-      showToast(currentMode === 'register' ? '注册成功' : '登录成功');
+      showToast(currentMode === 'register' ? '注册成功，请登录' : '登录成功');
       const target = role === 'admin' ? 'admin.html' : 'index.html';
       setTimeout(() => {
         window.location.replace(target);
       }, 500);
+    } else if (currentMode === 'register' && data.code === 0) {
+      // 🔒 用户枚举修复：注册已存在用户名时返回通用提示
+      showToast('注册请求已提交，请登录');
+      toggleMode(); // 切换到登录模式
     } else {
       showToast(data.message || '操作失败', 'error');
       if (data.message && data.message.includes('密码错误')) {

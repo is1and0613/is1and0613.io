@@ -2091,8 +2091,8 @@
     if (newPw.length < 6) { msgEl.textContent = '密码长度至少6位'; return; }
 
     try {
-      const data = await changePassword(oldPw, newPw, currentUser.username);
-      if (data.success) {
+      const data = await changePassword(oldPw, newPw);
+      if (data.code === 0) {
         msgEl.textContent = '密码修改成功';
         msgEl.style.color = '#059669';
         document.getElementById('oldPassword').value = '';
