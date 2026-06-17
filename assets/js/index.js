@@ -219,10 +219,24 @@ function getStatusDisplay(statusObj) {
 // ============================================
 
 let currentReportMode = 'absent';
-let internIncluded = false;
+let gradeFilter = 'all';
 
-function isInternStudent(student) {
-  return student.grade === '2023级';
+// grade 字段格式为 "2023级"（由 year_code 构造），需映射为 grade_name 做白名单匹配
+const GRADE_FILTER_MAP = {
+  'all': null,
+  'no-junior': ['大一', '大二', '大四'],
+  'only-underclass': ['大一', '大二']
+};
+
+function gradeCodeToName(gradeCode) {
+  const map = { '2025级': '大一', '2024级': '大二', '2023级': '大三', '2022级': '大四' };
+  return map[gradeCode] || gradeCode;
+}
+
+function shouldIncludeGrade(gradeCode) {
+  const allowed = GRADE_FILTER_MAP[gradeFilter];
+  if (!allowed) return true;  // 'all' → 全部包含
+  return allowed.includes(gradeCodeToName(gradeCode));
 }
 
 function generateReportText() {
@@ -254,7 +268,7 @@ function generateReportText() {
   const gradeStats = {};
 
   gradeOrderDesc.forEach(grade => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const students = studentsByGrade[grade] || [];
     const should = students.length;
 
@@ -292,7 +306,7 @@ function generateReportText() {
   overview += '合:' + totalLeaveSchool + '人请假离校 ' + totalBusiness + '人事假 ' + totalNotReturn + '人未返校 ' + totalLeaveOut + '人请假外出\n';
 
   gradeOrderDesc.forEach(grade => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const stats = gradeStats[grade];
     if (!stats) return;
     const shortGrade = getShortGrade(grade);
@@ -334,7 +348,7 @@ function generateReportText() {
 
   let summary = '';
   gradeOrderAsc.forEach(grade => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const stats = gradeStats[grade];
     if (!stats) return;
     let line = grade + '应到' + stats.should + ' 在校' + stats.inSchool + ' 正常就寝' + stats.normalSleep;
@@ -373,7 +387,7 @@ function generatePresentReportText() {
   const gradeStats = {};
 
   gradeOrderDesc.forEach(grade => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const students = studentsByGrade[grade] || [];
     const should = students.length;
     const leaveSchool = [], business = [], notReturn = [], leaveOut = [], present = [];
@@ -403,7 +417,7 @@ function generatePresentReportText() {
   overview += '合:' + totalLeaveSchool + '人请假离校 ' + totalBusiness + '人事假 ' + totalNotReturn + '人未返校 ' + totalLeaveOut + '人请假外出\n';
 
   gradeOrderDesc.forEach(grade => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const stats = gradeStats[grade];
     if (!stats) return;
     const shortGrade = getShortGrade(grade);
@@ -416,7 +430,7 @@ function generatePresentReportText() {
 
   let summary = '';
   gradeOrderDesc.forEach(grade => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const stats = gradeStats[grade];
     if (!stats) return;
     const inSchool = stats.should - stats.leaveSchool.length;
@@ -452,7 +466,7 @@ function generateVacationReportText() {
   const gradeStats = {};
 
   gradeOrder.forEach(grade => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const students = studentsByGrade[grade] || [];
     const should = students.length;
     const leaveSchoolCount = students.filter(s => {
@@ -469,7 +483,7 @@ function generateVacationReportText() {
 
   let overview = '信息大队女生' + totalShould + '名，在校' + totalPresent + '名，正常就寝' + totalPresent + '名，其中：\n';
   gradeOrder.forEach((grade, index) => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const stats = gradeStats[grade];
     if (!stats) return;
     const shortGrade = grade.replace('级', '').slice(-2);
@@ -483,7 +497,7 @@ function generateVacationReportText() {
   overview += '所有就寝学生已按要求熄灯。';
   let summary = '';
   gradeOrder.forEach(grade => {
-    if (!internIncluded && grade === '2023级') return;
+    if (!shouldIncludeGrade(grade)) return;
     const stats = gradeStats[grade];
     if (!stats) return;
     summary += grade + '应到' + stats.should + ' 在校' + stats.present + ' 正常就寝' + stats.present + '\n';
@@ -509,9 +523,8 @@ function switchReportMode(type) {
   document.getElementById('reportSummary').textContent = result.summary || '';
 }
 
-function toggleIntern() {
-  internIncluded = document.getElementById('internSwitch').checked;
-  document.getElementById('internSwitch').classList.toggle('on', internIncluded);
+function onGradeFilterChange() {
+  gradeFilter = document.getElementById('gradeFilter').value;
   switchReportMode(currentReportMode);
 }
 
@@ -1303,8 +1316,7 @@ async function showReportModal() {
   document.getElementById('btnAbsent').classList.add('active');
   document.getElementById('btnPresent').classList.remove('active');
   document.getElementById('btnVacation').classList.remove('active');
-  document.getElementById('internSwitch').checked = internIncluded;
-  document.getElementById('internSwitch').classList.toggle('on', internIncluded);
+  document.getElementById('gradeFilter').value = gradeFilter;
 
   const result = generateReportText();
   document.getElementById('reportOverview').textContent = result.overview;

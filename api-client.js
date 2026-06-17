@@ -166,11 +166,12 @@ async function getUserByUsername(username) {
  * 登录：直接发送用户名和明文密码到服务端，由服务端验证并签发 Token
  * 🔒 绝不信任客户端传入的 role，服务端从数据库读取真实角色
  */
-async function loginUser(username, password) {
+async function loginUser(username, password, pin) {
   return apiRequest('/api/auth', {
     action: 'login',
     username,
-    password
+    password,
+    pin
   });
 }
 
@@ -178,11 +179,12 @@ async function loginUser(username, password) {
  * 注册：服务端哈希密码 + 创建用户 + 签发 Token（一步完成）
  * 🔒 role 由服务端强制设为 inspector，客户端无法提权
  */
-async function registerUser(username, password) {
+async function registerUser(username, password, captcha) {
   return apiRequest('/api/auth', {
     action: 'register',
     username,
-    password
+    password,
+    captcha
   });
 }
 

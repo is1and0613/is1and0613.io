@@ -1898,7 +1898,9 @@
           <th>姓名</th><th>宿舍</th><th>床号</th><th>状态</th><th>修改人</th>
         </tr></thead><tbody>` + data.states.slice(0, 100).map(s => {
           const statusNames = { present: '在寝', absent: '未归', leaveSchool: '离校', leaveInside: '事假', leaveOutside: '外出' };
-          return `<tr><td data-label="姓名">${escHtml(s.student_name)}</td><td data-label="宿舍">${s.dorm_number}</td><td data-label="床号">${s.bed_number}</td>
+          return `<tr><td data-label="姓名">${escHtml(s.student_name || s.name || '-')}</td>
+            <td data-label="宿舍">${s.dorm_name || s.dorm_number || '-'}</td>
+            <td data-label="床号">${s.bed !== undefined ? s.bed : (s.bed_number !== undefined ? s.bed_number : '-')}</td>
             <td data-label="状态">${statusNames[s.status] || s.status}</td><td data-label="修改人">${escHtml(s.updated_by_name || '')}</td></tr>`;
         }).join('') + '</tbody></table></div>';
       }

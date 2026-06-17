@@ -75,36 +75,39 @@ function hashPassword(password) {
     return salt.toString('base64') + '$' + derived.toString('base64');
 }
 
-// ============ 内存速率限制器（按 IP 统计）============
-const rateLimitMap = new Map();
-const RATE_LIMIT = {
-    login: { max: 1, windowMs: 5 * 1000 },      // 5秒内最多1次登录
-    register: { max: 1, windowMs: 5 * 1000 },   // 5秒内最多1次注册
-    general: { max: 60, windowMs: 60 * 1000 }   // 1分钟内60次通用请求
-};
+// ============ 内存速率限制器（按 IP + 用户名统计）============
+const rateLimitMap = new Map(); // key: `${action}_${identifier}`
 
-function checkRateLimit(ip, action) {
-    const key = `${ip}:${action}`;
+function checkRateLimit(action, identifier, maxAttempts = 5, windowMs = 15 * 60 * 1000, minIntervalMs = 10 * 1000) {
+    const key = `${action}_${identifier}`;
     const now = Date.now();
-    const config = RATE_LIMIT[action] || RATE_LIMIT.general;
-
-    if (!rateLimitMap.has(key)) {
-        rateLimitMap.set(key, { count: 1, resetTime: now + config.windowMs });
-        return { allowed: true };
-    }
-
     const record = rateLimitMap.get(key);
-    if (now > record.resetTime) {
-        record.count = 1;
-        record.resetTime = now + config.windowMs;
+
+    if (!record) {
+        rateLimitMap.set(key, { count: 1, firstAttempt: now, lastAttempt: now });
         return { allowed: true };
     }
 
-    if (record.count >= config.max) {
-        return { allowed: false, retryAfter: Math.ceil((record.resetTime - now) / 1000) };
+    // 超过时间窗口，重置
+    if (now - record.firstAttempt > windowMs) {
+        rateLimitMap.set(key, { count: 1, firstAttempt: now, lastAttempt: now });
+        return { allowed: true };
     }
 
-    record.count++;
+    // 同一次窗口内，两次尝试间隔必须 >= minIntervalMs
+    if (now - record.lastAttempt < minIntervalMs) {
+        return { allowed: false, message: '请求过于频繁，请10秒后再试' };
+    }
+
+    // 超过最大尝试次数
+    if (record.count >= maxAttempts) {
+        const retryAfter = Math.ceil((record.firstAttempt + windowMs - now) / 1000);
+        return { allowed: false, message: `尝试次数过多，请${Math.ceil(windowMs/60000)}分钟后再试`, retryAfter };
+    }
+
+    record.count += 1;
+    record.lastAttempt = now;
+    rateLimitMap.set(key, record);
     return { allowed: true };
 }
 
@@ -128,18 +131,23 @@ const COLLECTIONS = {
 
 const ALLOWED_COLLECTIONS = Object.values(COLLECTIONS);
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': 'https://niteshift.cn',
-    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+const ALLOWED_ORIGIN = 'https://niteshift.cn';
+const SECURITY_HEADERS = {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Max-Age': '86400'
+    'Access-Control-Max-Age': '86400',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin'
 };
 
 function response(statusCode, body) {
     return {
         statusCode,
         isBase64Encoded: false,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     };
 }
@@ -152,7 +160,7 @@ exports.main = async (event, context) => {
         return {
             statusCode: 204,
             isBase64Encoded: false,
-            headers: corsHeaders,
+            headers: SECURITY_HEADERS,
             body: ''
         };
     }
@@ -196,11 +204,24 @@ exports.main = async (event, context) => {
 
     if (['/api/auth', '/api/userByUsername'].includes(path)) {
         const limitAction = (params.action === 'login') ? 'login' : (params.action === 'register' ? 'register' : 'general');
-        const limitResult = checkRateLimit(clientIp, limitAction);
+        const limitIdentifier = `${clientIp}_${params.username || 'anonymous'}`;
+        const limitResult = checkRateLimit(limitAction, limitIdentifier, 5, 15 * 60 * 1000, 10 * 1000);
         if (!limitResult.allowed) {
             return response(429, {
                 code: 429,
-                message: `请求过于频繁，请 ${limitResult.retryAfter} 秒后重试`
+                message: limitResult.message
+            });
+        }
+    }
+
+    // 🔒 /api/verify-access-password 也加速率限制
+    if (path === '/api/verify-access-password') {
+        const pinLimitKey = `pin_${clientIp}`;
+        const pinLimit = checkRateLimit('pin_verify', pinLimitKey, 5, 15 * 60 * 1000, 10 * 1000);
+        if (!pinLimit.allowed) {
+            return response(429, {
+                code: 429,
+                message: pinLimit.message
             });
         }
     }
@@ -492,7 +513,24 @@ exports.main = async (event, context) => {
                     return response(401, { code: 401, message: '用户名或密码错误' });
                 }
 
-                // 3. 使用数据库中的 role，绝不信任客户端传入
+                // 3. 🔒 PIN 码校验（登录时验证，后续不再弹 PIN）
+                const { pin } = params;
+                if (!pin || !/^\d{4}$/.test(pin)) {
+                    return response(400, { code: 400, message: '请输入4位数字PIN码' });
+                }
+
+                const settingsRes = await getDb().collection(COLLECTIONS.settings)
+                    .where({ key: 'access_password' }).limit(1).get();
+                const systemPin = (settingsRes.data.length > 0) ? settingsRes.data[0].value : '';
+
+                if (!systemPin) {
+                    // 系统尚未设置 PIN（首次使用），跳过验证
+                    console.log('[auth] No system PIN set, skipping PIN check');
+                } else if (pin !== systemPin) {
+                    return response(403, { code: 403, message: 'PIN码错误' });
+                }
+
+                // 4. 使用数据库中的 role，绝不信任客户端传入
                 const now = new Date().toISOString();
                 const ip = (event.headers || {})['x-forwarded-for'] || '';
                 const ua = ((event.headers || {})['user-agent'] || '').slice(0, 200);
@@ -516,7 +554,7 @@ exports.main = async (event, context) => {
                     display_name: user.display_name || user.username,
                     role: user.role || 'inspector',
                     iat: Math.floor(Date.now() / 1000),
-                    exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
+                    exp: Math.floor(Date.now() / 1000) + 2 * 60 * 60  // 2小时有效期
                 });
 
                 return response(200, {
@@ -529,6 +567,12 @@ exports.main = async (event, context) => {
             if (action === 'register') {
                 if (!username || !password) {
                     return response(400, { code: 400, message: '缺少用户名或密码' });
+                }
+
+                // 🔒 验证码格式校验（策略 A：仅校验格式，核心安全由 PIN 前移 + 限速覆盖）
+                const { captcha } = params;
+                if (!captcha || !/^[A-Z0-9]{4}$/.test(String(captcha).toUpperCase())) {
+                    return response(400, { code: 400, message: '验证码格式错误' });
                 }
 
                 // 🔒 XSS 过滤：去掉 HTML 危险字符
@@ -576,7 +620,7 @@ exports.main = async (event, context) => {
                     display_name: safeDisplayName,
                     role: 'inspector',
                     iat: Math.floor(Date.now() / 1000),
-                    exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
+                    exp: Math.floor(Date.now() / 1000) + 2 * 60 * 60  // 2小时有效期
                 });
 
                 return response(200, {
@@ -687,6 +731,15 @@ exports.main = async (event, context) => {
         if (path === '/api/admin/rooms') {
             const { data: rooms } = await getDb().collection(COLLECTIONS.rooms)
                 .orderBy('created_at', 'desc').limit(500).get();
+
+            // 过滤过期房间：仅保留未过期且状态为 active 的房间
+            const now = new Date();
+            const activeRooms = rooms.filter(r => {
+                if (r.status === 'expired') return false;
+                if (r.expires_at && new Date(r.expires_at) < now) return false;
+                return true;
+            });
+
             const { data: allMembers } = await getDb().collection(COLLECTIONS.room_members).limit(2000).get();
             const { data: allStates } = await getDb().collection(COLLECTIONS.room_states).limit(2000).get();
 
@@ -696,7 +749,7 @@ exports.main = async (event, context) => {
                 if (s.status !== 'present') { ac[s.room_id] = (ac[s.room_id] || 0) + 1; }
             }
 
-            const enriched = rooms.map(r => ({
+            const enriched = activeRooms.map(r => ({
                 ...r, member_count: mc[r._id] || mc[r._old_id] || 0, absent_count: ac[r._id] || ac[r._old_id] || 0
             }));
 
@@ -1620,11 +1673,23 @@ exports.main = async (event, context) => {
                     await getDb().collection(COLLECTIONS.room_states)
                         .doc(existingStates[0]._id).update(stateData);
                 } else {
-                    await getDb().collection(COLLECTIONS.room_states).add({
+                    // 新建 state 时，从 dorm_students 查询宿舍和床号信息
+                    const newState = {
                         room_id: room._id,
                         ...stateData,
                         created_at: new Date().toISOString()
-                    });
+                    };
+                    try {
+                        const { data: studentInfo } = await getDb().collection(COLLECTIONS.dorm_students)
+                            .where({ student_name: studentName }).limit(1).get();
+                        if (studentInfo && studentInfo.length > 0) {
+                            newState.dorm_number = studentInfo[0].dorm_name || studentInfo[0].dorm_number || '';
+                            newState.bed_number = studentInfo[0].bed !== undefined ? studentInfo[0].bed : (studentInfo[0].bed_number || '');
+                        }
+                    } catch (e) {
+                        // 查不到学生信息时不阻塞 state 创建
+                    }
+                    await getDb().collection(COLLECTIONS.room_states).add(newState);
                 }
 
                 // Add to room_logs（含新旧状态用于前端展示）
@@ -1696,6 +1761,11 @@ exports.main = async (event, context) => {
 
     } catch (e) {
         console.error('API Error:', e);
-        return response(500, { code: 500, message: e.message, stack: e.stack });
+        const isDev = process.env.NODE_ENV === 'development';
+        return response(500, {
+            code: 500,
+            message: isDev ? e.message : 'Internal Server Error'
+            // 🔒 绝不返回 err.stack、err.name、文件路径等技术信息
+        });
     }
 };

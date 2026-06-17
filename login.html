@@ -38,6 +38,25 @@
       <small style="color: #888; display: block; margin-top: 4px;">密码至少 6 位，建议包含字母和数字</small>
     </div>
 
+    <div class="input-group">
+      <label class="input-label">系统 PIN 码</label>
+      <div class="input-wrapper">
+        <i class="fas fa-key"></i>
+        <input type="password" class="input-field" id="pin" placeholder="请输入4位数字PIN码" maxlength="4" inputmode="numeric" autocomplete="off">
+      </div>
+      <small style="color: #888; display: block; margin-top: 4px;">4 位数字系统访问码</small>
+    </div>
+
+    <!-- 验证码区域（仅注册模式显示） -->
+    <div class="input-group" id="captchaGroup" style="display:none;">
+      <label class="input-label">验证码</label>
+      <div class="captcha-wrapper">
+        <canvas id="captchaCanvas" width="120" height="44" title="点击刷新" aria-label="验证码图片，点击刷新"></canvas>
+        <input type="text" class="input-field captcha-input" id="captchaInput" placeholder="输入验证码" maxlength="4" autocomplete="off" aria-label="验证码">
+      </div>
+      <small style="color: #888; display: block; margin-top: 4px;">看不清？点击图片刷新</small>
+    </div>
+
     <button class="login-btn login-btn-main" id="mainLoginBtn" onclick="doLogin()">
       <i class="fas fa-user-check"></i>
       <span id="mainLoginBtnText">查寝员登录</span>

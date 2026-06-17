@@ -349,11 +349,21 @@
           <button class="neu-tab" id="btnPresent" onclick="switchReportMode('present')">在校版</button>
           <button class="neu-tab" id="btnVacation" onclick="switchReportMode('vacation')">假期版</button>
         </div>
-        <div class="intern-toggle">
-          <label class="toggle-label">
-            <input type="checkbox" class="toggle-switch" id="internSwitch" onchange="toggleIntern()">
-            包含大三学生
-          </label>
+        <div class="grade-filter-box" style="display: flex; align-items: center; gap: 12px; margin: 12px 0;">
+          <span style="font-weight: 500; color: var(--text-primary); font-size: 13px;">年级范围</span>
+          <select id="gradeFilter" onchange="onGradeFilterChange()" style="
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.1);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+          ">
+            <option value="all">全部年级</option>
+            <option value="no-junior">忽略大三</option>
+            <option value="only-underclass">忽略大三大四</option>
+          </select>
         </div>
         <button class="modal-close" onclick="closeReportModal()">
           <i class="fas fa-times"></i>

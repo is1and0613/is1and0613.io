@@ -156,3 +156,40 @@ body {
   margin: 0 6px;
   color: var(--neu-text-secondary);
 }
+
+/* ===== Captcha — Neumorphic ===== */
+.captcha-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#captchaCanvas {
+  border-radius: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#captchaCanvas:hover {
+  transform: scale(1.03);
+}
+
+#captchaCanvas:active {
+  transform: scale(0.97);
+  box-shadow: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+}
+
+.captcha-input {
+  flex: 1;
+  min-width: 100px;
+  padding-left: 16px !important;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+}
+
+.captcha-input::placeholder {
+  letter-spacing: normal;
+  text-transform: none;
+}
