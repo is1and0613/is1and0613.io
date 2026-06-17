@@ -13,6 +13,15 @@ investigation/
 dormData.js
 *.bak
 *.log
+*.csv
+
+# 清理路径 — 历史已抹除，不再追踪
+data/exports/
+migrations/
+backup/
+dump/
+export/
+*backup*
 output.txt
 scripts/import-data.js
 .DS_Store
