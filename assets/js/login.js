@@ -186,7 +186,7 @@ async function doLogin() {
       ? document.getElementById('captchaInput').value.trim().toUpperCase() : '';
     const data = currentMode === 'login'
       ? await loginUser(username, password, pin)
-      : await registerUser(username, password, captchaVal);
+      : await registerUser(username, password, captchaVal, pin);
 
     if (data.success && data.token) {
       sessionStorage.setItem('authToken', data.token);

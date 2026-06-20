@@ -456,9 +456,11 @@
     }
   });
 
-  // v20: 前端密码墙 — 已登录但未验证访问密码时显示
+  // v20 → P0 Task 3: PIN 已前移至登录环节验证，不再需要独立密码墙
+  // 未登录用户在页面顶部已被重定向到 login.html
+  // 保留 access_password_verified 标记供其他组件兼容
   if (!sessionStorage.getItem('access_password_verified')) {
-    showPasswordWall();
+    sessionStorage.setItem('access_password_verified', '1');
   }
   </script>
 </body>

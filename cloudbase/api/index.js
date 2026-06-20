@@ -75,6 +75,17 @@ function hashPassword(password) {
     return salt.toString('base64') + '$' + derived.toString('base64');
 }
 
+// ============ P0 — Task 2: 房间归属校验（修复 IDOR 越权）============
+async function checkRoomAccess(db, roomId, userId) {
+  const memberRes = await db.collection('room_members')
+    .where({
+      room_id: roomId,
+      user_id: userId
+    })
+    .get();
+  return memberRes.data && memberRes.data.length > 0;
+}
+
 // ============ 内存速率限制器（按 IP + 用户名统计）============
 const rateLimitMap = new Map(); // key: `${action}_${identifier}`
 
@@ -115,7 +126,6 @@ function checkRateLimit(action, identifier, maxAttempts = 5, windowMs = 15 * 60 
 const PUBLIC_PATHS = [
     '/api/auth',
     '/api/userByUsername',
-    '/api/verify-access-password',
     '/api/dorm-data',   // 有自己的 JWT-or-PIN 逻辑
     '/api/cleanup'      // 有自己的 JWT-or-Secret 双重认证
 ];
@@ -210,18 +220,6 @@ exports.main = async (event, context) => {
             return response(429, {
                 code: 429,
                 message: limitResult.message
-            });
-        }
-    }
-
-    // 🔒 /api/verify-access-password 也加速率限制
-    if (path === '/api/verify-access-password') {
-        const pinLimitKey = `pin_${clientIp}`;
-        const pinLimit = checkRateLimit('pin_verify', pinLimitKey, 5, 15 * 60 * 1000, 10 * 1000);
-        if (!pinLimit.allowed) {
-            return response(429, {
-                code: 429,
-                message: pinLimit.message
             });
         }
     }
@@ -371,6 +369,10 @@ exports.main = async (event, context) => {
 
         if (path === '/api/roomMembers') {
             const { room_id } = data;
+            const currentUserId = params._user?.user_id;
+            if (!await checkRoomAccess(getDb(), room_id, currentUserId)) {
+                return response(403, { code: 403, message: '无权访问该房间' });
+            }
             const { data: members } = await getDb().collection(COLLECTIONS.room_members).where({ room_id: room_id }).get();
             return response(200, { code: 0, data: members });
         }
@@ -383,21 +385,37 @@ exports.main = async (event, context) => {
 
         if (path === '/api/roomLogs') {
             const { room_id } = data;
+            const currentUserId = params._user?.user_id;
+            if (!await checkRoomAccess(getDb(), room_id, currentUserId)) {
+                return response(403, { code: 403, message: '无权访问该房间' });
+            }
             const { data: logs } = await getDb().collection(COLLECTIONS.room_logs).where({ room_id: room_id }).orderBy('created_at', 'desc').limit(200).get();
             return response(200, { code: 0, data: logs });
         }
 
         if (path === '/api/roomMessages') {
             const { room_id } = data;
+            const currentUserId = params._user?.user_id;
+            if (!await checkRoomAccess(getDb(), room_id, currentUserId)) {
+                return response(403, { code: 403, message: '无权访问该房间' });
+            }
             const { data: messages } = await getDb().collection(COLLECTIONS.room_messages).where({ room_id: room_id }).orderBy('created_at', 'asc').limit(500).get();
             return response(200, { code: 0, data: messages });
         }
 
+        // ============ P1 — Task 4: 统一返回模糊提示（修复用户名枚举）============
         if (path === '/api/userByUsername') {
+            // 🔒 必须持有有效 JWT 才能查询用户
+            const authUser = requireAuth(event);
+            if (!authUser) {
+                return response(403, { code: 403, message: '无权访问' });
+            }
+
             const { username } = data;
             const { data: users } = await getDb().collection(COLLECTIONS.users).where({ username: username }).limit(1).get();
+            // 🔒 统一返回 403，不区分用户是否存在（防止用户名枚举）
             if (users.length === 0) {
-                return response(404, { code: 404, message: '用户不存在' });
+                return response(403, { code: 403, message: '无权访问' });
             }
             // 🔒 绝不返回 password_hash
             const { password_hash, ...safeUser } = users[0];
@@ -591,6 +609,23 @@ exports.main = async (event, context) => {
                 // 🔒 密码强度校验（至少 6 位）
                 if (!password || password.length < 6) {
                     return response(400, { code: 400, message: '密码至少 6 位' });
+                }
+
+                // ===== P0 — Task 1: 注册必须验证 PIN（修复注册验证码绕过）=====
+                const { pin } = params;
+                if (!pin || !/^\d{4}$/.test(pin)) {
+                    return response(400, { code: 400, message: '请输入4位数字PIN码' });
+                }
+
+                const settingsRes = await getDb().collection(COLLECTIONS.settings)
+                    .where({ key: 'access_password' }).limit(1).get();
+                const systemPin = (settingsRes.data.length > 0) ? settingsRes.data[0].value : '';
+
+                if (!systemPin) {
+                    // 系统尚未设置 PIN（首次使用），跳过验证
+                    console.log('[auth register] No system PIN set, skipping PIN check');
+                } else if (pin !== systemPin) {
+                    return response(403, { code: 403, message: 'PIN码错误' });
                 }
 
                 // 🔒 检查是否已存在（不暴露"用户名已存在"）
@@ -990,15 +1025,9 @@ exports.main = async (event, context) => {
             }
         }
 
-        // ============ P3: 验证访问密码（公开接口） ============
+        // ============ P0 — Task 3: 删除 verify-access-password 接口（修复 PIN 暴破）============
         if (path === '/api/verify-access-password') {
-            const password = params.password || (data && data.password);
-            if (!password) return response(400, { code: 400, message: '缺少 password' });
-
-            const { data: settings } = await getDb().collection(COLLECTIONS.settings)
-                .where({ key: 'access_password' }).limit(1).get();
-            const valid = settings.length > 0 && settings[0].value === password;
-            return response(200, { code: 0, success: true, valid });
+            return response(410, { code: 410, message: 'Gone' });
         }
 
         // ============ P3: 更新访问密码（admin） ============

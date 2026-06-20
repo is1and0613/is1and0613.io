@@ -179,12 +179,13 @@ async function loginUser(username, password, pin) {
  * 注册：服务端哈希密码 + 创建用户 + 签发 Token（一步完成）
  * 🔒 role 由服务端强制设为 inspector，客户端无法提权
  */
-async function registerUser(username, password, captcha) {
+async function registerUser(username, password, captcha, pin) {
   return apiRequest('/api/auth', {
     action: 'register',
     username,
     password,
-    captcha
+    captcha,
+    pin
   });
 }
 
